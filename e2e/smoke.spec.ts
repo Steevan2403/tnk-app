@@ -27,7 +27,7 @@ test("signs in, creates a building, and opens it on the dashboard", async ({ pag
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Menu" }).click();
-  await expect(page.getByRole("link", { name: "Cases" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Cases", exact: true })).toBeVisible();
   await page.screenshot({ path: path.join(shots, "dashboard-mobile.png"), fullPage: false });
   await page.getByRole("button", { name: "Close" }).click();
 

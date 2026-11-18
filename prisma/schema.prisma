@@ -51,6 +51,7 @@ model User {
   maintenanceEvents  MaintenanceEvent[]
   occurrenceRecords  MaintenanceOccurrence[]
   inspectionRuns     InspectionRun[]
+  buildingNotes      BuildingNote[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -73,6 +74,8 @@ model Building {
   maintenanceEvents    MaintenanceEvent[]
   inspectionTemplates  InspectionTemplate[]
   inspectionRuns       InspectionRun[]
+  notes                BuildingNote[]
+  usefulNumbers        UsefulNumber[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -883,6 +886,35 @@ model InspectionRunItem {
 
   @@index([areaId])
   @@index([result])
+}
+
+// Team notes and the phone list for one building. Shown on the dashboard.
+model BuildingNote {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  title      String?
+  body       String
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([buildingId, createdAt])
+  @@index([authorId])
+}
+
+model UsefulNumber {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  label      String
+  number     String
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([buildingId, label])
 }
 
 model InspectionPhoto {

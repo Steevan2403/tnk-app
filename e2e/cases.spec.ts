@@ -16,7 +16,7 @@ test("admin creates a case for an asset and contractor, updates the board, and s
   mkdirSync(shots, { recursive: true });
 
   await signIn(page, "admin@tnk.example", "example-admin-pass");
-  await page.getByRole("link", { name: "Cases" }).click();
+  await page.getByRole("link", { name: "Cases", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cases" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example fire pump drip" })).toBeVisible();
 

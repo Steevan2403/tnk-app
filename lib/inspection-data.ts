@@ -76,7 +76,14 @@ export async function listTemplates(buildingId: string, query: { q: string; type
 
 export async function listRuns(
   buildingId: string,
-  query: { status: "in_progress" | "completed"; q: string; type: string; from: Date | null; to: Date | null },
+  query: {
+    status: "in_progress" | "completed";
+    q: string;
+    type: string;
+    from: Date | null;
+    to: Date | null;
+    openFails: boolean;
+  },
 ): Promise<RunListRow[]> {
   const range = query.status === "completed" ? completedRange(query.from, query.to) : null;
   const runs = await prisma.inspectionRun.findMany({
@@ -86,6 +93,9 @@ export async function listRuns(
       ...(query.type === "common_area" || query.type === "private_lot" ? { type: query.type } : {}),
       ...(query.q ? { name: { contains: query.q } } : {}),
       ...(range ? { completedAt: range } : {}),
+      ...(query.openFails
+        ? { areas: { some: { items: { some: { result: "fail", linkedCase: { is: null } } } } } }
+        : {}),
     },
     orderBy: query.status === "completed" ? [{ completedAt: "desc" }, { createdAt: "desc" }] : [{ createdAt: "desc" }],
     include: {
