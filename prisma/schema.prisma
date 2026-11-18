@@ -1,0 +1,43 @@
+// SQLite for local development. The models use types Prisma supports on
+// PostgreSQL as well: swap the provider and DATABASE_URL when moving off SQLite.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  manager
+  staff
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  passwordHash       String
+  role               UserRole
+  selectedBuildingId String?
+  selectedBuilding   Building? @relation(fields: [selectedBuildingId], references: [id], onDelete: SetNull)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model Building {
+  id         String   @id @default(cuid())
+  name       String
+  address    String
+  suburb     String
+  state      String
+  postcode   String
+  photoUrl   String?
+  lotCount   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  selectedBy User[]
+}
