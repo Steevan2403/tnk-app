@@ -44,6 +44,7 @@ type Filters = {
   from: string;
   to: string;
   starred: boolean;
+  overdue: boolean;
   sort: CaseSort;
   dir: "asc" | "desc";
   page: number;
@@ -107,12 +108,15 @@ export default async function CasesPage({
     from: fromDate,
     to: toDate,
     starred: active.starred,
+    overdue: active.overdue,
   };
   const listed = active.view === "board" ? null : await listCases({ ...query, sort: active.sort, dir: active.dir, page: active.page });
   const board = active.view === "board" ? await listCaseBoard(query) : null;
   const total = listed?.total ?? board?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil((listed?.total ?? 0) / PAGE_SIZE));
-  const filtered = Boolean(active.q || active.typeId || active.priority || active.status || active.companyId || active.from || active.to || active.starred);
+  const filtered = Boolean(
+    active.q || active.typeId || active.priority || active.status || active.companyId || active.from || active.to || active.starred || active.overdue,
+  );
   const returnTo = casesHref(active);
 
   return (
@@ -177,6 +181,10 @@ export default async function CasesPage({
           <label className="flex items-center gap-2 pb-2 text-sm font-medium">
             <input type="checkbox" name="starred" value="1" defaultChecked={active.starred} className="size-4 accent-brand-navy" />
             Starred only
+          </label>
+          <label className="flex items-center gap-2 pb-2 text-sm font-medium">
+            <input type="checkbox" name="overdue" value="1" defaultChecked={active.overdue} className="size-4 accent-brand-navy" />
+            Overdue only
           </label>
           <button type="submit" className="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue">
             Apply
@@ -404,6 +412,7 @@ function casesHref(input: Filters): string {
   if (input.from) search.set("from", input.from);
   if (input.to) search.set("to", input.to);
   if (input.starred) search.set("starred", "1");
+  if (input.overdue) search.set("overdue", "1");
   if (input.sort !== "number") search.set("sort", input.sort);
   if (input.dir !== "desc") search.set("dir", input.dir);
   if (input.view !== "board" && input.page > 1) search.set("page", String(input.page));
@@ -421,6 +430,7 @@ function readFilters(params: Record<string, string | string[] | undefined>): Fil
     from: first(params.from),
     to: first(params.to),
     starred: first(params.starred) === "1",
+    overdue: first(params.overdue) === "1",
     sort: parseCaseSort(first(params.sort)),
     dir: parseSortDir(first(params.dir)),
     page: parsePage(first(params.page)),

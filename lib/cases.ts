@@ -115,6 +115,7 @@ export type CaseListQuery = {
   from: Date | null;
   to: Date | null;
   starred: boolean;
+  overdue: boolean;
   sort: CaseSort;
   dir: "asc" | "desc";
   page: number;

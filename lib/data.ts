@@ -16,12 +16,13 @@ import {
   parseResidentType,
   type ResidentType,
 } from "@/lib/residents";
-import { PAGE_SIZE as ASSET_PAGE_SIZE, latestWarrantyExpiry } from "@/lib/assets";
+import { PAGE_SIZE as ASSET_PAGE_SIZE, expiredWarrantyWhere, latestWarrantyExpiry } from "@/lib/assets";
 import {
   PAGE_SIZE as CASE_PAGE_SIZE,
   compareCases,
   isCasePriority,
   isCaseStatus,
+  overdueCaseWhere,
   parseCaseNumber,
   type CaseListQuery,
   type CasePriority,
@@ -412,6 +413,7 @@ export type AssetListQuery = {
   buildingId: string;
   q: string;
   categoryId: string;
+  warranty: "" | "expired";
   page: number;
 };
 
@@ -703,6 +705,7 @@ function caseWhere(query: CaseListQuery): Prisma.CaseWhereInput {
       },
     });
   }
+  if (query.overdue) filters.push(overdueCaseWhere());
   const q = query.q.trim();
   if (q) {
     const or: Prisma.CaseWhereInput[] = [{ subject: { contains: q } }, { descriptionHtml: { contains: q } }];
@@ -716,6 +719,7 @@ function caseWhere(query: CaseListQuery): Prisma.CaseWhereInput {
 function assetWhere(query: AssetListQuery): Prisma.AssetWhereInput {
   const filters: Prisma.AssetWhereInput[] = [{ buildingId: query.buildingId }];
   if (query.categoryId) filters.push({ categoryId: query.categoryId });
+  if (query.warranty === "expired") filters.push(expiredWarrantyWhere());
   if (query.q) {
     filters.push({
       OR: [

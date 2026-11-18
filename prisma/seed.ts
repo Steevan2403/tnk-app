@@ -1,6 +1,8 @@
 import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
+import { createGeneratedReport } from "../lib/report-data";
+import { defaultSections, monthPeriod } from "../lib/reports";
 import { occurrencesBetween, scheduleOf, sydneyToday } from "../lib/maintenance";
 import { hashPassword } from "../lib/password";
 import { copyStoredFile, removeUpload, saveBytes, saveUpload } from "../lib/storage";
@@ -315,6 +317,8 @@ async function main() {
   await seedWorkOrders(admin.id);
   await seedMaintenance(admin.id);
   await seedInspections(admin.id, staff.id);
+  await seedDashboard(admin.id, staff.id);
+  await seedManagementReport(admin.id, admin.name);
 }
 
 const apartmentPlan = [
@@ -1941,6 +1945,96 @@ function pngCrc(buffer: Buffer): number {
     for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
   }
   return (crc ^ 0xffffffff) >>> 0;
+}
+
+async function seedDashboard(adminId: string, staffId: string) {
+  const notes = [
+    {
+      id: "seed_building_note_panel",
+      title: "Fire panel monitoring",
+      body: "Example: the monitoring desk calls the after-hours mobile when the lobby panel alarms.",
+      authorId: adminId,
+      createdAt: new Date("2026-11-02T01:00:00.000Z"),
+    },
+    {
+      id: "seed_building_note_keys",
+      title: "Plant room access",
+      body: "Example: the plant room key is in the concierge cupboard.",
+      authorId: staffId,
+      createdAt: new Date("2026-11-10T01:00:00.000Z"),
+    },
+    {
+      id: "seed_building_note_lift",
+      title: null as string | null,
+      body: "Example: passenger lift A is serviced once a month.",
+      authorId: adminId,
+      createdAt: new Date("2026-11-16T01:00:00.000Z"),
+    },
+  ];
+  for (const note of notes) {
+    const data = {
+      buildingId: "seed_example_tower",
+      title: note.title,
+      body: note.body,
+      authorId: note.authorId,
+      createdAt: note.createdAt,
+    };
+    await prisma.buildingNote.upsert({ where: { id: note.id }, update: data, create: { id: note.id, ...data } });
+  }
+
+  const numbers = [
+    {
+      id: "seed_number_panel",
+      label: "Fire panel monitoring",
+      number: "02 0000 0000",
+      notes: "Example after-hours alarm line.",
+    },
+    {
+      id: "seed_number_plumber",
+      label: "After-hours plumber",
+      number: "0400 000 000",
+      notes: "Example call-out number.",
+    },
+    {
+      id: "seed_number_lift",
+      label: "Lift breakdown",
+      number: "02 0000 1111",
+      notes: null as string | null,
+    },
+  ];
+  for (const entry of numbers) {
+    const data = {
+      buildingId: "seed_example_tower",
+      label: entry.label,
+      number: entry.number,
+      notes: entry.notes,
+    };
+    await prisma.usefulNumber.upsert({ where: { id: entry.id }, update: data, create: { id: entry.id, ...data } });
+  }
+}
+
+async function seedManagementReport(userId: string, userName: string) {
+  const period = monthPeriod(new Date(), -1);
+  await createGeneratedReport({
+    id: "seed_report_last_month",
+    buildingId: "seed_example_tower",
+    userId,
+    userName,
+    selection: {
+      from: period.from,
+      to: period.to,
+      includeOpen: false,
+      typeIds: [],
+      statuses: [],
+      companyIds: [],
+      priorities: [],
+      assetIds: [],
+      apartmentIds: [],
+      excludedIds: [],
+    },
+    sections: defaultSections(),
+    format: "pdf",
+  });
 }
 
 function onMonth(today: Date, monthOffset: number, dayOfMonth: number): Date {

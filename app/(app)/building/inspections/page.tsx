@@ -29,6 +29,7 @@ export default async function InspectionsPage({
   const type = isInspectionType(first(params.type)) ? first(params.type) : "";
   const from = parseDateOnly(first(params.from));
   const to = parseDateOnly(first(params.to));
+  const openFails = first(params.openFails) === "1";
   const canEditTemplates = canManageInspectionTemplates(user.role);
 
   if (!user.selectedBuildingId) {
@@ -40,7 +41,7 @@ export default async function InspectionsPage({
     );
   }
 
-  const filters = { tab, q, type, from: from ? first(params.from) : "", to: to ? first(params.to) : "" };
+  const filters = { tab, q, type, from: from ? first(params.from) : "", to: to ? first(params.to) : "", openFails: tab === "completed" && openFails };
   const templates = tab === "templates" ? await listTemplates(user.selectedBuildingId, { q, type }) : [];
   const runs =
     tab === "templates"
@@ -51,6 +52,7 @@ export default async function InspectionsPage({
           type: tab === "completed" ? type : "",
           from: tab === "completed" ? from : null,
           to: tab === "completed" ? to : null,
+          openFails: tab === "completed" && openFails,
         });
 
   return (
@@ -93,6 +95,10 @@ export default async function InspectionsPage({
             <>
               <TextField label="Completed from" name="from" type="date" defaultValue={filters.from} />
               <TextField label="Completed to" name="to" type="date" defaultValue={filters.to} />
+              <label className="flex items-center gap-2 pb-2 text-sm font-medium">
+                <input type="checkbox" name="openFails" value="1" defaultChecked={filters.openFails} className="size-4 accent-brand-navy" />
+                Failed items without a case
+              </label>
             </>
           ) : null}
           <div className="flex items-end">
@@ -326,13 +332,14 @@ function tabLabel(tab: InspectionTab): string {
   return "Completed";
 }
 
-function href(filters: { tab: InspectionTab; q: string; type: string; from: string; to: string }): string {
+function href(filters: { tab: InspectionTab; q: string; type: string; from: string; to: string; openFails: boolean }): string {
   const params = new URLSearchParams();
   if (filters.tab !== "templates") params.set("tab", filters.tab);
   if (filters.tab !== "progress" && filters.q) params.set("q", filters.q);
   if (filters.tab !== "progress" && filters.type) params.set("type", filters.type);
   if (filters.tab === "completed" && filters.from) params.set("from", filters.from);
   if (filters.tab === "completed" && filters.to) params.set("to", filters.to);
+  if (filters.tab === "completed" && filters.openFails) params.set("openFails", "1");
   const query = params.toString();
   return query ? `/building/inspections?${query}` : "/building/inspections";
 }

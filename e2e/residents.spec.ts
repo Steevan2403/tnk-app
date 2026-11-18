@@ -16,7 +16,7 @@ test("admin adds an apartment, resident, vehicle, and document; staff cannot add
   writeFileSync(imagePath, solidPng(64, 64, [16, 185, 129, 255]));
 
   await signIn(page, "admin@tnk.example", "example-admin-pass");
-  await page.getByRole("link", { name: "Residents" }).click();
+  await page.getByRole("link", { name: "Residents", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Residents" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Alex Example" })).toBeVisible();
 
@@ -98,7 +98,7 @@ test("admin adds an apartment, resident, vehicle, and document; staff cannot add
   await expect(page).toHaveURL(/\/sign-in$/);
 
   await signIn(page, "staff@tnk.example", "example-staff-pass");
-  await page.getByRole("link", { name: "Residents" }).click();
+  await page.getByRole("link", { name: "Residents", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Residents" })).toBeVisible();
   await expect(page.getByRole("link", { name: "New resident" })).toHaveCount(0);
   await shot(page, "residents-staff-desktop.png");

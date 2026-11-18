@@ -9,7 +9,7 @@ test("admin records a company with expired insurance and staff cannot add one", 
   mkdirSync(shots, { recursive: true });
 
   await signIn(page, "admin@tnk.example", "example-admin-pass");
-  await page.getByRole("link", { name: "Contractors" }).click();
+  await page.getByRole("link", { name: "Contractors", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Contractors" })).toBeVisible();
 
   const tabs = [
@@ -75,7 +75,7 @@ test("admin records a company with expired insurance and staff cannot add one", 
   await expect(page).toHaveURL(/\/sign-in$/);
 
   await signIn(page, "staff@tnk.example", "example-staff-pass");
-  await page.getByRole("link", { name: "Contractors" }).click();
+  await page.getByRole("link", { name: "Contractors", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Contractors" })).toBeVisible();
   await expect(page.getByRole("link", { name: "New company" })).toHaveCount(0);
   await shot(page, "contractors-staff-desktop.png");

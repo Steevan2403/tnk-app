@@ -12,6 +12,7 @@ import {
   canManageInspectionTemplates,
   canManageMaintenance,
   canRecordOccurrence,
+  canManageReports,
   canRunInspections,
   canSendWorkOrders,
   canViewOutbox,
@@ -126,6 +127,14 @@ describe("inspection permissions", () => {
     expect(canRunInspections("admin")).toBe(true);
     expect(canRunInspections("manager")).toBe(true);
     expect(canRunInspections("staff")).toBe(true);
+  });
+});
+
+describe("report permissions", () => {
+  it("lets an admin or a manager generate a report", () => {
+    expect(canManageReports("admin")).toBe(true);
+    expect(canManageReports("manager")).toBe(true);
+    expect(canManageReports("staff")).toBe(false);
   });
 });
 
