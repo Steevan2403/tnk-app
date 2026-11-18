@@ -7,6 +7,10 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov"]);
+
+const DOCUMENT_EXTENSIONS = new Set([".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".txt", ".doc", ".docx"]);
+
 const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
   ".png": "image/png",
@@ -17,6 +21,10 @@ const CONTENT_TYPES: Record<string, string> = {
   ".txt": "text/plain",
   ".doc": "application/msword",
   ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
 };
 
 export function uploadDir(): string {
@@ -32,7 +40,15 @@ export function uploadProblem(file: File): string | null {
   if (file.size === 0) return "Choose a file.";
   if (file.size > MAX_BYTES) return "File must be 10 MB or smaller.";
   const extension = path.extname(file.name).toLowerCase();
-  if (!CONTENT_TYPES[extension]) return "Upload a PDF, image, text file, or Word document.";
+  if (!DOCUMENT_EXTENSIONS.has(extension)) return "Upload a PDF, image, text file, or Word document.";
+  return null;
+}
+
+export function videoUploadProblem(file: File): string | null {
+  if (file.size === 0) return "Choose a video.";
+  if (file.size > MAX_BYTES) return "Video must be 10 MB or smaller.";
+  const extension = path.extname(file.name).toLowerCase();
+  if (!VIDEO_EXTENSIONS.has(extension)) return "Upload an MP4, WebM, or MOV video.";
   return null;
 }
 
@@ -49,8 +65,23 @@ export function fileBaseName(name: string): string {
   return base.slice(0, 180);
 }
 
-export async function saveUpload(file: File): Promise<{ storedName: string; originalName: string }> {
-  const problem = uploadProblem(file);
+export async function saveBytes(bytes: Uint8Array, extension: ".pdf" | ".xlsx"): Promise<string> {
+  if (extension !== ".pdf" && extension !== ".xlsx") throw new Error("Could not store that file.");
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) throw new Error("Could not store that file.");
+  const storedName = `${randomBytes(16).toString("hex")}${extension}`;
+  await mkdir(uploadDir(), { recursive: true });
+  const full = resolveStoredFile(storedName);
+  if (!full) throw new Error("Could not store that file.");
+  await writeFile(full, bytes);
+  return storedName;
+}
+
+export async function saveUpload(
+  file: File,
+  kind: "file" | "image" | "video" = "file",
+): Promise<{ storedName: string; originalName: string }> {
+  const problem =
+    kind === "image" ? imageUploadProblem(file) : kind === "video" ? videoUploadProblem(file) : uploadProblem(file);
   if (problem) throw new Error(problem);
   const extension = path.extname(file.name).toLowerCase();
   const storedName = `${randomBytes(16).toString("hex")}${extension}`;
@@ -60,6 +91,19 @@ export async function saveUpload(file: File): Promise<{ storedName: string; orig
   if (!full) throw new Error("Could not store that file.");
   await writeFile(full, bytes);
   return { storedName, originalName: fileBaseName(file.name) || "file" };
+}
+
+export async function copyStoredFile(storedName: string): Promise<string | null> {
+  const bytes = await readStoredFile(storedName);
+  if (!bytes || bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) return null;
+  const extension = path.extname(storedName).toLowerCase();
+  if (!/^\.[a-z0-9]{1,8}$/.test(extension)) return null;
+  const nextName = `${randomBytes(16).toString("hex")}${extension}`;
+  await mkdir(uploadDir(), { recursive: true });
+  const full = resolveStoredFile(nextName);
+  if (!full) return null;
+  await writeFile(full, bytes);
+  return nextName;
 }
 
 export async function readStoredFile(storedName: string): Promise<Buffer | null> {

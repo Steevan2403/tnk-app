@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  canDeleteCases,
+  canEditCases,
   canManageAssetCategories,
   canManageAssets,
   canManageBuildings,
+  canCancelWorkOrders,
+  canManageCaseTypes,
   canManageContractors,
   canManageResidents,
+  canManageInspectionTemplates,
+  canManageMaintenance,
+  canRecordOccurrence,
+  canManageReports,
+  canRunInspections,
+  canSendWorkOrders,
+  canViewOutbox,
 } from "./roles";
 
 describe("canManageBuildings", () => {
@@ -48,6 +59,82 @@ describe("canManageAssets", () => {
 
   it("blocks staff", () => {
     expect(canManageAssets("staff")).toBe(false);
+  });
+});
+
+describe("case permissions", () => {
+  it("lets admin, manager, and staff create and edit cases", () => {
+    expect(canEditCases("admin")).toBe(true);
+    expect(canEditCases("manager")).toBe(true);
+    expect(canEditCases("staff")).toBe(true);
+  });
+
+  it("lets an admin or a manager delete cases", () => {
+    expect(canDeleteCases("admin")).toBe(true);
+    expect(canDeleteCases("manager")).toBe(true);
+    expect(canDeleteCases("staff")).toBe(false);
+  });
+
+  it("lets only an admin manage case types", () => {
+    expect(canManageCaseTypes("admin")).toBe(true);
+    expect(canManageCaseTypes("manager")).toBe(false);
+    expect(canManageCaseTypes("staff")).toBe(false);
+  });
+});
+
+describe("work order permissions", () => {
+  it("lets admin, manager, and staff send work orders", () => {
+    expect(canSendWorkOrders("admin")).toBe(true);
+    expect(canSendWorkOrders("manager")).toBe(true);
+    expect(canSendWorkOrders("staff")).toBe(true);
+  });
+
+  it("lets an admin or a manager cancel a work order", () => {
+    expect(canCancelWorkOrders("admin")).toBe(true);
+    expect(canCancelWorkOrders("manager")).toBe(true);
+    expect(canCancelWorkOrders("staff")).toBe(false);
+  });
+
+  it("lets only an admin view the outbox", () => {
+    expect(canViewOutbox("admin")).toBe(true);
+    expect(canViewOutbox("manager")).toBe(false);
+    expect(canViewOutbox("staff")).toBe(false);
+  });
+});
+
+describe("maintenance permissions", () => {
+  it("lets an admin or a manager manage the schedule", () => {
+    expect(canManageMaintenance("admin")).toBe(true);
+    expect(canManageMaintenance("manager")).toBe(true);
+    expect(canManageMaintenance("staff")).toBe(false);
+  });
+
+  it("lets admin, manager, and staff record an occurrence", () => {
+    expect(canRecordOccurrence("admin")).toBe(true);
+    expect(canRecordOccurrence("manager")).toBe(true);
+    expect(canRecordOccurrence("staff")).toBe(true);
+  });
+});
+
+describe("inspection permissions", () => {
+  it("lets an admin or a manager edit templates", () => {
+    expect(canManageInspectionTemplates("admin")).toBe(true);
+    expect(canManageInspectionTemplates("manager")).toBe(true);
+    expect(canManageInspectionTemplates("staff")).toBe(false);
+  });
+
+  it("lets admin, manager, and staff run an inspection", () => {
+    expect(canRunInspections("admin")).toBe(true);
+    expect(canRunInspections("manager")).toBe(true);
+    expect(canRunInspections("staff")).toBe(true);
+  });
+});
+
+describe("report permissions", () => {
+  it("lets an admin or a manager generate a report", () => {
+    expect(canManageReports("admin")).toBe(true);
+    expect(canManageReports("manager")).toBe(true);
+    expect(canManageReports("staff")).toBe(false);
   });
 });
 

@@ -16,6 +16,11 @@ enum UserRole {
   staff
 }
 
+enum ReportFormat {
+  pdf
+  xlsx
+}
+
 enum ContractorStatus {
   pending
   approved
@@ -42,12 +47,23 @@ model User {
   selectedBuilding   Building?        @relation(fields: [selectedBuildingId], references: [id], onDelete: SetNull)
   contractorNotes    ContractorNote[]
   apartmentNotes     ApartmentNote[]
+  casesCreated       Case[]
+  caseFiles          CaseFile[]
+  caseComments       CaseComment[]
+  caseActivities     CaseActivity[]
+  caseStars          CaseStar[]
+  workOrdersSent     WorkOrder[]
+  maintenanceEvents  MaintenanceEvent[]
+  occurrenceRecords  MaintenanceOccurrence[]
+  inspectionRuns     InspectionRun[]
+  buildingNotes      BuildingNote[]
+  generatedReports   GeneratedReport[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
 
 model Building {
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
   name       String
   address    String
   suburb     String
@@ -55,11 +71,18 @@ model Building {
   postcode   String
   photoUrl   String?
   lotCount   Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  selectedBy User[]
-  apartments Apartment[]
-  assets     Asset[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  selectedBy        User[]
+  apartments        Apartment[]
+  assets            Asset[]
+  cases                Case[]
+  maintenanceEvents    MaintenanceEvent[]
+  inspectionTemplates  InspectionTemplate[]
+  inspectionRuns       InspectionRun[]
+  notes                BuildingNote[]
+  usefulNumbers        UsefulNumber[]
+  generatedReports     GeneratedReport[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -71,40 +94,46 @@ model ContractorCategory {
 }
 
 model ContractorCompany {
-  id         String               @id @default(cuid())
+  id         String                @id @default(cuid())
   name       String
   abn        String?
   address    String?
   phone      String?
   email      String?
   website    String?
-  status     ContractorStatus     @default(approved)
+  status     ContractorStatus      @default(approved)
   categoryId String
-  category   ContractorCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category   ContractorCategory    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   contacts   ContractorContact[]
   notes      ContractorNote[]
   documents  ContractorDocument[]
   insurances ContractorInsurance[]
-  assets     Asset[]
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
+  assets            Asset[]
+  caseLinks         CaseCompany[]
+  workOrders        WorkOrder[]
+  maintenanceLinks  MaintenanceCompany[]
+  createdAt         DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
 
   @@index([categoryId])
   @@index([status])
 }
 
 model ContractorContact {
-  id        String            @id @default(cuid())
-  companyId String
-  company   ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  name      String
-  title     String?
-  phone     String?
-  mobile    String?
-  email     String?
-  assets    Asset[]
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  id         String            @id @default(cuid())
+  companyId  String
+  company    ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name       String
+  title      String?
+  phone      String?
+  mobile     String?
+  email      String?
+  assets           Asset[]
+  caseLinks        CaseContact[]
+  workOrders       WorkOrder[]
+  maintenanceLinks MaintenanceContact[]
+  createdAt        DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@index([companyId])
 }
@@ -151,21 +180,24 @@ model ContractorInsurance {
 
 // Apartments and the people, vehicles, and files on them belong to one building.
 model Apartment {
-  id          String            @id @default(cuid())
-  buildingId  String
-  building    Building          @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  number      String
-  lotNumber   String
-  occupancy   Occupancy         @default(owner_occupied)
-  residents   Resident[]
-  vehicles    Vehicle[]
-  documents   ApartmentDocument[]
-  images      ApartmentImage[]
-  notes       ApartmentNote[]
-  owners      ApartmentOwner[]
-  agent       ManagingAgent?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id         String              @id @default(cuid())
+  buildingId String
+  building   Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  number     String
+  lotNumber  String
+  occupancy  Occupancy           @default(owner_occupied)
+  residents  Resident[]
+  vehicles   Vehicle[]
+  documents  ApartmentDocument[]
+  images     ApartmentImage[]
+  notes      ApartmentNote[]
+  owners            ApartmentOwner[]
+  agent             ManagingAgent?
+  cases             Case[]
+  maintenanceEvents MaintenanceEvent[]
+  inspectionRuns    InspectionRun[]
+  createdAt         DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@unique([buildingId, number])
   @@unique([buildingId, lotNumber])
@@ -213,13 +245,13 @@ model Vehicle {
 }
 
 model ApartmentDocument {
-  id         String    @id @default(cuid())
+  id          String    @id @default(cuid())
   apartmentId String
-  apartment  Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
-  name       String
-  storedName String
-  expiresOn  DateTime?
-  uploadedAt DateTime  @default(now())
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  name        String
+  storedName  String
+  expiresOn   DateTime?
+  uploadedAt  DateTime  @default(now())
 
   @@index([apartmentId])
 }
@@ -308,8 +340,10 @@ model Asset {
   contact        ContractorContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   photos         AssetPhoto[]
   documents      AssetDocument[]
-  warranties     AssetWarranty[]
-  createdAt      DateTime           @default(now())
+  warranties       AssetWarranty[]
+  caseLinks        CaseAsset[]
+  maintenanceLinks MaintenanceAsset[]
+  createdAt        DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
   @@index([buildingId])
@@ -353,4 +387,569 @@ model AssetWarranty {
 
   @@index([assetId])
   @@index([expiresOn])
+}
+
+// Cases belong to one building. A work order is a job sheet sent from a case.
+// Suffixes letter the case number: 12-A, 12-B, then 12-Z, 12-AA.
+enum CasePriority {
+  urgent
+  high
+  medium
+  low
+}
+
+enum CaseStatus {
+  new
+  in_progress
+  awaiting_contractor
+  awaiting_quote
+  awaiting_invoice
+  completed
+  closed
+}
+
+enum CaseArea {
+  asset
+  apartment
+  none
+}
+
+enum CaseFileKind {
+  photo
+  video
+  quote
+  invoice
+  document
+}
+
+enum CaseActivityKind {
+  created
+  status_changed
+  field_changed
+  file_added
+  comment_added
+  work_order_sent
+}
+
+enum WorkOrderStatus {
+  new
+  accepted
+  in_progress
+  awaiting_contractor
+  completed
+  cancelled
+}
+
+model CaseType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  cases     Case[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Case {
+  id                  String         @id @default(cuid())
+  buildingId          String
+  building            Building       @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  number              Int
+  typeId              String
+  type                CaseType       @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  purchaseOrderNumber String?
+  startDate           DateTime
+  dueDate             DateTime
+  priority            CasePriority   @default(low)
+  status              CaseStatus     @default(new)
+  completedAt         DateTime?
+  subject             String
+  descriptionHtml     String         @default("")
+  internalNotes       String?
+  includeInReport     Boolean        @default(true)
+  area                CaseArea       @default(none)
+  apartmentId         String?
+  apartment           Apartment?     @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  createdById         String
+  createdBy           User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  assets              CaseAsset[]
+  companies           CaseCompany[]
+  contacts            CaseContact[]
+  files               CaseFile[]
+  comments            CaseComment[]
+  activities          CaseActivity[]
+  stars               CaseStar[]
+  workOrders          WorkOrder[]
+  maintenanceEventId  String?
+  maintenanceEvent    MaintenanceEvent? @relation(fields: [maintenanceEventId], references: [id], onDelete: SetNull)
+  occurrenceOn        DateTime?
+  inspectionItemId    String?            @unique
+  inspectionItem      InspectionRunItem? @relation(fields: [inspectionItemId], references: [id], onDelete: SetNull)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@unique([buildingId, number])
+  @@index([buildingId, status])
+  @@index([buildingId, startDate])
+  @@index([typeId])
+  @@index([apartmentId])
+  @@index([createdById])
+  @@index([dueDate])
+  @@index([maintenanceEventId])
+}
+
+enum MaintenanceFrequency {
+  one_off
+  weekly
+  fortnightly
+  monthly
+  quarterly
+  half_yearly
+  yearly
+  every_n_months
+}
+
+enum MaintenanceFileKind {
+  photo
+  document
+}
+
+enum MaintenanceMark {
+  completed
+  skipped
+}
+
+enum InspectionType {
+  common_area
+  private_lot
+}
+
+enum InspectionStatus {
+  in_progress
+  completed
+}
+
+enum InspectionResult {
+  pass
+  fail
+  na
+}
+
+// A maintenance event is the rule. Occurrences are calculated for a date window.
+// Only completed or skipped occurrences, and sent reminders, are stored.
+model MaintenanceEvent {
+  id               String               @id @default(cuid())
+  buildingId       String
+  building         Building             @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  subject          String
+  description      String               @default("")
+  notes            String?
+  startDate        DateTime
+  endDate          DateTime?
+  frequency        MaintenanceFrequency
+  intervalMonths   Int?
+  remindContractor Boolean              @default(false)
+  reminderDays     Int                  @default(7)
+  area             CaseArea             @default(none)
+  apartmentId      String?
+  apartment        Apartment?           @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  createdById      String
+  createdBy        User                 @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  assets           MaintenanceAsset[]
+  companies        MaintenanceCompany[]
+  contacts         MaintenanceContact[]
+  files            MaintenanceFile[]
+  occurrences      MaintenanceOccurrence[]
+  reminders        MaintenanceReminder[]
+  cases            Case[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([buildingId, startDate])
+  @@index([frequency])
+  @@index([apartmentId])
+  @@index([createdById])
+}
+
+model MaintenanceAsset {
+  eventId String
+  event   MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, assetId])
+  @@index([assetId])
+}
+
+model MaintenanceCompany {
+  eventId   String
+  event     MaintenanceEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  companyId String
+  company   ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, companyId])
+  @@index([companyId])
+}
+
+model MaintenanceContact {
+  eventId   String
+  event     MaintenanceEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   ContractorContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, contactId])
+  @@index([contactId])
+}
+
+model MaintenanceFile {
+  id         String              @id @default(cuid())
+  eventId    String
+  event      MaintenanceEvent    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  kind       MaintenanceFileKind
+  name       String
+  storedName String
+  uploadedAt DateTime            @default(now())
+
+  @@index([eventId])
+}
+
+model MaintenanceOccurrence {
+  id             String          @id @default(cuid())
+  eventId        String
+  event          MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occursOn       DateTime
+  state          MaintenanceMark
+  note           String?
+  fileName       String?
+  fileStoredName String?
+  actedAt        DateTime
+  actedById      String
+  actedBy        User            @relation(fields: [actedById], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, occursOn])
+  @@index([occursOn])
+  @@index([actedById])
+}
+
+model MaintenanceReminder {
+  id        String           @id @default(cuid())
+  eventId   String
+  event     MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occursOn  DateTime
+  createdAt DateTime         @default(now())
+
+  @@unique([eventId, occursOn])
+  @@index([occursOn])
+}
+
+model CaseAsset {
+  caseId  String
+  case    Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, assetId])
+  @@index([assetId])
+}
+
+model CaseCompany {
+  caseId    String
+  case      Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  companyId String
+  company   ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, companyId])
+  @@index([companyId])
+}
+
+model CaseContact {
+  caseId    String
+  case      Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   ContractorContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, contactId])
+  @@index([contactId])
+}
+
+model CaseFile {
+  id             String          @id @default(cuid())
+  caseId         String
+  case           Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  kind           CaseFileKind
+  name           String
+  storedName     String
+  uploadedById   String
+  uploadedBy     User            @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  workOrderFiles WorkOrderFile[]
+  uploadedAt     DateTime        @default(now())
+
+  @@index([caseId])
+  @@index([uploadedById])
+}
+
+model CaseComment {
+  id        String        @id @default(cuid())
+  caseId    String
+  case      Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    CaseComment?  @relation("CaseCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   CaseComment[] @relation("CaseCommentReplies")
+  body      String
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  createdAt DateTime      @default(now())
+
+  @@index([caseId])
+  @@index([parentId])
+  @@index([authorId])
+}
+
+model CaseActivity {
+  id        String           @id @default(cuid())
+  caseId    String
+  case      Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User             @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  kind      CaseActivityKind
+  summary   String
+  createdAt DateTime         @default(now())
+
+  @@index([caseId])
+  @@index([actorId])
+}
+
+model CaseStar {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, caseId])
+  @@index([caseId])
+}
+
+model WorkOrder {
+  id                  String             @id @default(cuid())
+  caseId              String
+  case                Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  suffix              String
+  companyId           String?
+  company             ContractorCompany? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyName         String
+  contactId           String?
+  contact             ContractorContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactName         String
+  contactEmail        String
+  subject             String
+  message             String             @default("")
+  attendingAt         DateTime?
+  purchaseOrderNumber String?
+  accessNotes         String?
+  status              WorkOrderStatus    @default(new)
+  sentAt              DateTime
+  sentById            String
+  sentBy              User               @relation(fields: [sentById], references: [id], onDelete: Restrict)
+  pdfStoredName       String
+  pdfName             String
+  files               WorkOrderFile[]
+  messages            OutboxMessage[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@unique([caseId, suffix])
+  @@index([companyId])
+  @@index([contactId])
+  @@index([sentById])
+  @@index([sentAt])
+  @@index([status])
+}
+
+model WorkOrderFile {
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  caseFileId  String
+  caseFile    CaseFile  @relation(fields: [caseFileId], references: [id], onDelete: Cascade)
+
+  @@id([workOrderId, caseFileId])
+  @@index([caseFileId])
+}
+
+// Local copy of outgoing mail. Development and tests write here. SMTP is off unless configured.
+model OutboxMessage {
+  id          String             @id @default(cuid())
+  toAddress   String
+  subject     String
+  body        String
+  workOrderId String?
+  workOrder   WorkOrder?         @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  attachments OutboxAttachment[]
+  createdAt   DateTime           @default(now())
+
+  @@index([workOrderId])
+  @@index([createdAt])
+}
+
+model OutboxAttachment {
+  id         String        @id @default(cuid())
+  messageId  String
+  message    OutboxMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  name       String
+  storedName String
+
+  @@index([messageId])
+}
+
+// A template is the checklist. A run copies its areas and items, so later edits do not change a run.
+model InspectionTemplate {
+  id          String           @id @default(cuid())
+  buildingId  String
+  building    Building         @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  name        String
+  type        InspectionType
+  description String           @default("")
+  areas       InspectionArea[]
+  runs        InspectionRun[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([buildingId])
+  @@index([type])
+}
+
+model InspectionArea {
+  id         String             @id @default(cuid())
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  name       String
+  position   Int
+  items      InspectionItem[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([templateId])
+}
+
+model InspectionItem {
+  id        String         @id @default(cuid())
+  areaId    String
+  area      InspectionArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  name      String
+  guidance  String?
+  position  Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([areaId])
+}
+
+model InspectionRun {
+  id           String             @id @default(cuid())
+  buildingId   String
+  building     Building           @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  templateId   String
+  template     InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  name         String
+  type         InspectionType
+  apartmentId  String?
+  apartment    Apartment?         @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  inspectorId  String
+  inspector    User               @relation(fields: [inspectorId], references: [id], onDelete: Restrict)
+  inspectedAt  DateTime
+  status       InspectionStatus   @default(in_progress)
+  completedAt  DateTime?
+  areas        InspectionRunArea[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([buildingId, status])
+  @@index([templateId])
+  @@index([inspectorId])
+  @@index([apartmentId])
+  @@index([completedAt])
+}
+
+model InspectionRunArea {
+  id       String              @id @default(cuid())
+  runId    String
+  run      InspectionRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  name     String
+  position Int
+  items    InspectionRunItem[]
+
+  @@index([runId])
+}
+
+model InspectionRunItem {
+  id         String            @id @default(cuid())
+  areaId     String
+  area       InspectionRunArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  name       String
+  guidance   String?
+  position   Int
+  result     InspectionResult?
+  comment    String?
+  photos     InspectionPhoto[]
+  linkedCase Case?
+
+  @@index([areaId])
+  @@index([result])
+}
+
+// Team notes and the phone list for one building. Shown on the dashboard.
+model BuildingNote {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  title      String?
+  body       String
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([buildingId, createdAt])
+  @@index([authorId])
+}
+
+model UsefulNumber {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  label      String
+  number     String
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([buildingId, label])
+}
+
+// A stored management report for one building and period.
+model GeneratedReport {
+  id          String       @id @default(cuid())
+  buildingId  String
+  building    Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  periodFrom  DateTime
+  periodTo    DateTime
+  optionsJson String
+  format      ReportFormat
+  fileName    String
+  storedName  String
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime     @default(now())
+
+  @@index([buildingId, createdAt])
+  @@index([createdById])
+}
+
+model InspectionPhoto {
+  id         String            @id @default(cuid())
+  itemId     String
+  item       InspectionRunItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  name       String
+  storedName String
+  uploadedAt DateTime          @default(now())
+
+  @@index([itemId])
 }

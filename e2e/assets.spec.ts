@@ -11,7 +11,7 @@ test("admin adds an asset with a company, contact, and expired warranty; staff c
   mkdirSync(shots, { recursive: true });
 
   await signIn(page, "admin@tnk.example", "example-admin-pass");
-  await page.getByRole("link", { name: "Assets" }).click();
+  await page.getByRole("link", { name: "Assets", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Assets" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Fire pump 1" })).toBeVisible();
   await expect(page.getByRole("row", { name: /Fire pump 1/ }).getByText("15 Jan 2024", { exact: true })).toHaveClass(/text-danger/);
@@ -78,7 +78,7 @@ test("admin adds an asset with a company, contact, and expired warranty; staff c
   await expect(page).toHaveURL(/\/sign-in$/);
 
   await signIn(page, "staff@tnk.example", "example-staff-pass");
-  await page.getByRole("link", { name: "Assets" }).click();
+  await page.getByRole("link", { name: "Assets", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Assets" })).toBeVisible();
   await expect(page.getByRole("link", { name: "New asset" })).toHaveCount(0);
   await expect(page.getByText("Asset categories")).toHaveCount(0);

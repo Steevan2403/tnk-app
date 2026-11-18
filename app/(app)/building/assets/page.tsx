@@ -24,6 +24,7 @@ export default async function AssetsPage({
   const params = await searchParams;
   const q = first(params.q).slice(0, 120);
   const categoryId = first(params.category);
+  const warranty = first(params.warranty) === "expired" ? "expired" : "";
   const page = parsePage(first(params.page));
   const canManage = canManageAssets(user.role);
   const canManageCategories = canManageAssetCategories(user.role);
@@ -40,9 +41,9 @@ export default async function AssetsPage({
 
   const categories = await listAssetCategories();
   const selectedCategory = categories.some((category) => category.id === categoryId) ? categoryId : "";
-  const result = await listAssets({ buildingId, q, categoryId: selectedCategory, page });
+  const result = await listAssets({ buildingId, q, categoryId: selectedCategory, warranty, page });
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
-  const filters = { q, categoryId: selectedCategory };
+  const filters = { q, categoryId: selectedCategory, warranty };
 
   return (
     <section>
@@ -58,7 +59,7 @@ export default async function AssetsPage({
         ) : null}
       </div>
 
-      <form method="get" action="/building/assets" className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-end">
+      <form method="get" action="/building/assets" className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
         <TextField
           label="Search assets"
           name="q"
@@ -74,11 +75,15 @@ export default async function AssetsPage({
             </option>
           ))}
         </SelectField>
+        <SelectField label="Warranty" name="warranty" defaultValue={warranty}>
+          <option value="">All</option>
+          <option value="expired">Expired</option>
+        </SelectField>
         <button type="submit" className="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue">
           Apply
         </button>
       </form>
-      {q || selectedCategory ? (
+      {q || selectedCategory || warranty ? (
         <Link href="/building/assets" className="mt-3 inline-block text-sm text-brand-blue hover:underline">
           Clear filters
         </Link>
@@ -86,7 +91,7 @@ export default async function AssetsPage({
 
       <p className="mt-4 text-sm text-muted">{result.total === 1 ? "1 asset" : `${result.total} assets`}</p>
       {result.rows.length === 0 ? (
-        <p className="mt-4 text-muted">{q || selectedCategory ? "No assets match." : "No assets yet."}</p>
+        <p className="mt-4 text-muted">{q || selectedCategory || warranty ? "No assets match." : "No assets yet."}</p>
       ) : (
         <AssetResults rows={result.rows} />
       )}
@@ -213,10 +218,11 @@ function WarrantyDate({ date }: { date: Date | null }) {
   );
 }
 
-function assetsHref(input: { q?: string; categoryId?: string; page?: number }): string {
+function assetsHref(input: { q?: string; categoryId?: string; warranty?: string; page?: number }): string {
   const search = new URLSearchParams();
   if (input.q) search.set("q", input.q);
   if (input.categoryId) search.set("category", input.categoryId);
+  if (input.warranty === "expired") search.set("warranty", "expired");
   if (input.page && input.page > 1) search.set("page", String(input.page));
   const query = search.toString();
   return query ? `/building/assets?${query}` : "/building/assets";

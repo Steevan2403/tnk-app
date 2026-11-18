@@ -1,5 +1,13 @@
+import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
+import { formatAddress } from "../lib/buildings";
+import { createGeneratedReport } from "../lib/report-data";
+import { defaultSections, monthPeriod } from "../lib/reports";
+import { occurrencesBetween, scheduleOf, sydneyToday } from "../lib/maintenance";
 import { hashPassword } from "../lib/password";
+import { copyStoredFile, removeUpload, saveBytes, saveUpload } from "../lib/storage";
+import { buildWorkOrderPdf } from "../lib/work-order-pdf";
+import { workOrderEmailBody, workOrderPdfName, workOrderSentSummary } from "../lib/work-orders";
 
 const prisma = new PrismaClient();
 
@@ -305,6 +313,12 @@ async function main() {
 
   await seedApartments(admin.id);
   await seedAssets();
+  await seedCases(admin.id);
+  await seedWorkOrders(admin.id);
+  await seedMaintenance(admin.id);
+  await seedInspections(admin.id, staff.id);
+  await seedDashboard(admin.id, staff.id);
+  await seedManagementReport(admin.id, admin.name);
 }
 
 const apartmentPlan = [
@@ -696,6 +710,1340 @@ async function seedAssets() {
     });
   }
 }
+
+const caseTypes = [
+  ["seed_case_type_repair", "Repair & maintenance"],
+  ["seed_case_type_approval", "Approval"],
+  ["seed_case_type_move_in", "Moving in"],
+  ["seed_case_type_move_out", "Moving out"],
+  ["seed_case_type_pest", "Pest control"],
+  ["seed_case_type_cleaning", "Cleaning"],
+  ["seed_case_type_fire", "Fire safety"],
+  ["seed_case_type_complaint", "Complaint"],
+] as const;
+
+const exampleCases = [
+  {
+    id: "seed_case_01",
+    number: 1,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: "PO-EX-1001",
+    startDate: "2026-10-01",
+    dueDate: "2026-10-08",
+    priority: "urgent" as const,
+    status: "in_progress" as const,
+    completedAt: null,
+    subject: "Example fire pump drip",
+    descriptionHtml: "<p>Example drip at the seal. <strong>Please inspect</strong> before the next run.</p>",
+    internalNotes: "Example note for the plant room team.",
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_fire_pump"],
+    companyIds: ["seed_co_fire"],
+    contactIds: ["seed_contact_avery"],
+  },
+  {
+    id: "seed_case_02",
+    number: 2,
+    typeId: "seed_case_type_approval",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-01",
+    dueDate: "2026-11-20",
+    priority: "high" as const,
+    status: "awaiting_quote" as const,
+    completedAt: null,
+    subject: "Example lift modernisation approval",
+    descriptionHtml: "<p>Example request to approve a quote for passenger lift A.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_lift"],
+    companyIds: [],
+    contactIds: [],
+  },
+  {
+    id: "seed_case_03",
+    number: 3,
+    typeId: "seed_case_type_move_in",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-10",
+    dueDate: "2026-11-24",
+    priority: "medium" as const,
+    status: "new" as const,
+    completedAt: null,
+    subject: "Example move in for apartment 101",
+    descriptionHtml: "<p>Example move-in checklist for apartment 101.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "apartment" as const,
+    apartmentId: "seed_apt_101",
+    assetIds: [],
+    companyIds: [],
+    contactIds: [],
+  },
+  {
+    id: "seed_case_04",
+    number: 4,
+    typeId: "seed_case_type_pest",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-05",
+    dueDate: "2026-11-19",
+    priority: "low" as const,
+    status: "awaiting_contractor" as const,
+    completedAt: null,
+    subject: "Example pest treatment for apartment 201",
+    descriptionHtml: "<p>Example pest treatment requested for apartment 201.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "apartment" as const,
+    apartmentId: "seed_apt_201",
+    assetIds: [],
+    companyIds: ["seed_co_cleaning"],
+    contactIds: ["seed_contact_jordan"],
+  },
+  {
+    id: "seed_case_05",
+    number: 5,
+    typeId: "seed_case_type_cleaning",
+    purchaseOrderNumber: "PO-EX-1005",
+    startDate: "2026-07-01",
+    dueDate: "2026-07-08",
+    priority: "medium" as const,
+    status: "completed" as const,
+    completedAt: "2026-07-08T01:00:00.000Z",
+    subject: "Example common area clean",
+    descriptionHtml: "<p>Example clean of the ground lobby and mail room.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "none" as const,
+    apartmentId: null,
+    assetIds: [],
+    companyIds: ["seed_co_cleaning"],
+    contactIds: ["seed_contact_jordan"],
+  },
+  {
+    id: "seed_case_06",
+    number: 6,
+    typeId: "seed_case_type_complaint",
+    purchaseOrderNumber: null,
+    startDate: "2026-09-01",
+    dueDate: "2026-09-10",
+    priority: "high" as const,
+    status: "new" as const,
+    completedAt: null,
+    subject: "Example noise complaint for apartment 104",
+    descriptionHtml: "<p>Example complaint about evening noise at apartment 104.</p>",
+    internalNotes: "Example Holdings asked for a written reply.",
+    includeInReport: true,
+    area: "apartment" as const,
+    apartmentId: "seed_apt_104",
+    assetIds: [],
+    companyIds: [],
+    contactIds: [],
+  },
+  {
+    id: "seed_case_07",
+    number: 7,
+    typeId: "seed_case_type_fire",
+    purchaseOrderNumber: "PO-EX-1007",
+    startDate: "2026-11-02",
+    dueDate: "2026-11-30",
+    priority: "medium" as const,
+    status: "awaiting_invoice" as const,
+    completedAt: null,
+    subject: "Example fire panel service",
+    descriptionHtml: "<p>Example annual service of the ground lobby fire panel.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_panel"],
+    companyIds: ["seed_co_fire"],
+    contactIds: ["seed_contact_avery"],
+  },
+  {
+    id: "seed_case_08",
+    number: 8,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-12",
+    dueDate: "2026-11-19",
+    priority: "urgent" as const,
+    status: "in_progress" as const,
+    completedAt: null,
+    subject: "Example hot water leak",
+    descriptionHtml: "<p>Example leak reported under the hot water plant.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_hot_water"],
+    companyIds: ["seed_co_plumbing"],
+    contactIds: ["seed_contact_casey"],
+  },
+  {
+    id: "seed_case_09",
+    number: 9,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-05",
+    dueDate: "2026-11-25",
+    priority: "high" as const,
+    status: "awaiting_contractor" as const,
+    completedAt: null,
+    subject: "Example car park gate fault",
+    descriptionHtml: "<p>Example report that the basement gate stops halfway.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_gate"],
+    companyIds: [],
+    contactIds: [],
+  },
+  {
+    id: "seed_case_10",
+    number: 10,
+    typeId: "seed_case_type_move_out",
+    purchaseOrderNumber: null,
+    startDate: "2026-06-01",
+    dueDate: "2026-06-08",
+    priority: "low" as const,
+    status: "closed" as const,
+    completedAt: "2026-06-08T01:00:00.000Z",
+    subject: "Example move out for apartment 204",
+    descriptionHtml: "<p>Example move-out inspection for apartment 204.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "apartment" as const,
+    apartmentId: "seed_apt_204",
+    assetIds: [],
+    companyIds: [],
+    contactIds: [],
+  },
+  {
+    id: "seed_case_11",
+    number: 11,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-15",
+    dueDate: "2026-11-29",
+    priority: "medium" as const,
+    status: "new" as const,
+    completedAt: null,
+    subject: "Example switchboard check",
+    descriptionHtml: "<p>Example check of the main switchboard after a flicker.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_switchboard"],
+    companyIds: ["seed_co_electrical"],
+    contactIds: ["seed_contact_pat"],
+  },
+  {
+    id: "seed_case_12",
+    number: 12,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-08",
+    dueDate: "2026-12-01",
+    priority: "low" as const,
+    status: "awaiting_quote" as const,
+    completedAt: null,
+    subject: "Example lobby camera quote",
+    descriptionHtml: "<p>Example quote request for lobby camera 1.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_camera"],
+    companyIds: [],
+    contactIds: [],
+  },
+  {
+    id: "seed_case_13",
+    number: 13,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-11",
+    dueDate: "2026-11-28",
+    priority: "medium" as const,
+    status: "in_progress" as const,
+    completedAt: null,
+    subject: "Example rooftop filter service",
+    descriptionHtml: "<p>Example filter change for the rooftop HVAC unit.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_hvac"],
+    companyIds: [],
+    contactIds: [],
+  },
+  {
+    id: "seed_case_14",
+    number: 14,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: "PO-EX-1014",
+    startDate: "2026-08-01",
+    dueDate: "2026-08-10",
+    priority: "low" as const,
+    status: "completed" as const,
+    completedAt: "2026-08-10T01:00:00.000Z",
+    subject: "Example basement lamp replacement",
+    descriptionHtml: "<p>Example lamp replacement on basement B1.</p>",
+    internalNotes: null,
+    includeInReport: true,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_lights"],
+    companyIds: ["seed_co_electrical"],
+    contactIds: ["seed_contact_sam"],
+  },
+  {
+    id: "seed_case_15",
+    number: 15,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: "2026-11-16",
+    dueDate: "2026-11-23",
+    priority: "low" as const,
+    status: "new" as const,
+    completedAt: null,
+    subject: "Example door closer adjustment",
+    descriptionHtml: "<p>Example adjustment of the level 1 door closer.</p>",
+    internalNotes: "Leave this example out of the management report.",
+    includeInReport: false,
+    area: "asset" as const,
+    apartmentId: null,
+    assetIds: ["seed_asset_closer"],
+    companyIds: [],
+    contactIds: [],
+  },
+];
+
+async function seedCases(authorId: string) {
+  for (const [id, name] of caseTypes) {
+    await prisma.caseType.upsert({
+      where: { id },
+      update: { name },
+      create: { id, name },
+    });
+  }
+
+  for (const item of exampleCases) {
+    const data = {
+      buildingId: "seed_example_tower",
+      number: item.number,
+      typeId: item.typeId,
+      purchaseOrderNumber: item.purchaseOrderNumber,
+      startDate: onDay(item.startDate),
+      dueDate: onDay(item.dueDate),
+      priority: item.priority,
+      status: item.status,
+      completedAt: item.completedAt ? new Date(item.completedAt) : null,
+      subject: item.subject,
+      descriptionHtml: item.descriptionHtml,
+      internalNotes: item.internalNotes,
+      includeInReport: item.includeInReport,
+      area: item.area,
+      apartmentId: item.apartmentId,
+      createdById: authorId,
+    };
+    await prisma.case.upsert({ where: { id: item.id }, update: data, create: { id: item.id, ...data } });
+    await prisma.caseAsset.deleteMany({ where: { caseId: item.id } });
+    await prisma.caseCompany.deleteMany({ where: { caseId: item.id } });
+    await prisma.caseContact.deleteMany({ where: { caseId: item.id } });
+    if (item.assetIds.length) {
+      await prisma.caseAsset.createMany({ data: item.assetIds.map((assetId) => ({ caseId: item.id, assetId })) });
+    }
+    if (item.companyIds.length) {
+      await prisma.caseCompany.createMany({ data: item.companyIds.map((companyId) => ({ caseId: item.id, companyId })) });
+    }
+    if (item.contactIds.length) {
+      await prisma.caseContact.createMany({ data: item.contactIds.map((contactId) => ({ caseId: item.id, contactId })) });
+    }
+    await prisma.caseActivity.upsert({
+      where: { id: `${item.id}_created` },
+      update: { summary: "Case created." },
+      create: {
+        id: `${item.id}_created`,
+        caseId: item.id,
+        actorId: authorId,
+        kind: "created",
+        summary: "Case created.",
+        createdAt: onDay(item.startDate),
+      },
+    });
+  }
+
+  await prisma.caseComment.upsert({
+    where: { id: "seed_case_comment_01" },
+    update: { body: "Example: the drip is at the pump seal." },
+    create: {
+      id: "seed_case_comment_01",
+      caseId: "seed_case_01",
+      body: "Example: the drip is at the pump seal.",
+      authorId,
+      createdAt: new Date("2026-10-01T02:00:00.000Z"),
+    },
+  });
+  await prisma.caseActivity.upsert({
+    where: { id: "seed_case_01_comment" },
+    update: { summary: "Added a comment." },
+    create: {
+      id: "seed_case_01_comment",
+      caseId: "seed_case_01",
+      actorId: authorId,
+      kind: "comment_added",
+      summary: "Added a comment.",
+      createdAt: new Date("2026-10-01T02:00:00.000Z"),
+    },
+  });
+  await prisma.caseStar.upsert({
+    where: { userId_caseId: { userId: authorId, caseId: "seed_case_01" } },
+    update: {},
+    create: { userId: authorId, caseId: "seed_case_01" },
+  });
+}
+
+const exampleWorkOrders = [
+  {
+    id: "seed_wo_01a",
+    caseId: "seed_case_01",
+    caseNumber: 1,
+    suffix: "A",
+    companyId: "seed_co_fire",
+    companyName: "Fictional Fire Services",
+    contactId: "seed_contact_avery",
+    contactName: "Avery Sample",
+    contactEmail: "avery.sample@example.com",
+    status: "new" as const,
+    sentAt: "2026-10-02T01:00:00.000Z",
+    subject: "Work order 1-A: Example fire pump drip",
+    message: "Example drip at the seal. Please inspect before the next run.",
+    purchaseOrderNumber: "PO-EX-1001",
+    attendingAt: "2026-10-03T00:00:00.000Z",
+    accessNotes: "Example: plant room key is at the concierge desk.",
+    caseSubject: "Example fire pump drip",
+    caseType: "Repair & maintenance",
+    jobArea: "Fire pump 1",
+  },
+  {
+    id: "seed_wo_01b",
+    caseId: "seed_case_01",
+    caseNumber: 1,
+    suffix: "B",
+    companyId: "seed_co_fire",
+    companyName: "Fictional Fire Services",
+    contactId: "seed_contact_avery",
+    contactName: "Avery Sample",
+    contactEmail: "avery.sample@example.com",
+    status: "accepted" as const,
+    sentAt: "2026-10-03T02:00:00.000Z",
+    subject: "Work order 1-B: Example fire pump drip",
+    message: "Example follow-up after the first look at the pump seal.",
+    purchaseOrderNumber: "PO-EX-1001",
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example fire pump drip",
+    caseType: "Repair & maintenance",
+    jobArea: "Fire pump 1",
+  },
+  {
+    id: "seed_wo_08a",
+    caseId: "seed_case_08",
+    caseNumber: 8,
+    suffix: "A",
+    companyId: "seed_co_plumbing",
+    companyName: "Sample Plumbing Co",
+    contactId: "seed_contact_casey",
+    contactName: "Casey Placeholder",
+    contactEmail: "casey.placeholder@example.com",
+    status: "in_progress" as const,
+    sentAt: "2026-11-12T03:00:00.000Z",
+    subject: "Work order 8-A: Example hot water leak",
+    message: "Example leak reported under the hot water plant.",
+    purchaseOrderNumber: null,
+    attendingAt: "2026-11-13T01:00:00.000Z",
+    accessNotes: "Example: the plant room is on the roof.",
+    caseSubject: "Example hot water leak",
+    caseType: "Repair & maintenance",
+    jobArea: "Hot water plant",
+  },
+  {
+    id: "seed_wo_04a",
+    caseId: "seed_case_04",
+    caseNumber: 4,
+    suffix: "A",
+    companyId: "seed_co_cleaning",
+    companyName: "Placeholder Cleaning",
+    contactId: "seed_contact_jordan",
+    contactName: "Jordan Example",
+    contactEmail: "jordan.example@example.com",
+    status: "awaiting_contractor" as const,
+    sentAt: "2026-11-06T01:00:00.000Z",
+    subject: "Work order 4-A: Example pest treatment for apartment 201",
+    message: "Example pest treatment requested for apartment 201.",
+    purchaseOrderNumber: null,
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example pest treatment for apartment 201",
+    caseType: "Pest control",
+    jobArea: "Apartment 201",
+  },
+  {
+    id: "seed_wo_11a",
+    caseId: "seed_case_11",
+    caseNumber: 11,
+    suffix: "A",
+    companyId: "seed_co_electrical",
+    companyName: "Example Electrical Pty Ltd",
+    contactId: "seed_contact_pat",
+    contactName: "Pat Example",
+    contactEmail: "pat.example@example.com",
+    status: "completed" as const,
+    sentAt: "2026-11-15T04:00:00.000Z",
+    subject: "Work order 11-A: Example switchboard check",
+    message: "Example check of the main switchboard after a flicker.",
+    purchaseOrderNumber: null,
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example switchboard check",
+    caseType: "Repair & maintenance",
+    jobArea: "Main switchboard",
+  },
+  {
+    id: "seed_wo_14a",
+    caseId: "seed_case_14",
+    caseNumber: 14,
+    suffix: "A",
+    companyId: "seed_co_electrical",
+    companyName: "Example Electrical Pty Ltd",
+    contactId: "seed_contact_sam",
+    contactName: "Sam Sample",
+    contactEmail: "sam.sample@example.com",
+    status: "cancelled" as const,
+    sentAt: "2026-08-02T01:00:00.000Z",
+    subject: "Work order 14-A: Example basement lamp replacement",
+    message: "Example lamp replacement on basement B1.",
+    purchaseOrderNumber: "PO-EX-1014",
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example basement lamp replacement",
+    caseType: "Repair & maintenance",
+    jobArea: "Basement lights",
+  },
+];
+
+async function seedWorkOrders(authorId: string) {
+  const building = await prisma.building.findUniqueOrThrow({ where: { id: "seed_example_tower" } });
+  const address = formatAddress(building);
+  for (const item of exampleWorkOrders) {
+    const sentAt = new Date(item.sentAt);
+    const pdfName = workOrderPdfName(item.caseNumber, item.suffix);
+    const number = `${item.caseNumber}-${item.suffix}`;
+    const previous = await prisma.workOrder.findUnique({ where: { id: item.id }, select: { pdfStoredName: true } });
+    const pdf = await buildWorkOrderPdf({
+      number,
+      sentAt,
+      buildingName: building.name,
+      buildingAddress: address,
+      companyName: item.companyName,
+      contactName: item.contactName,
+      contactEmail: item.contactEmail,
+      caseNumber: item.caseNumber,
+      caseSubject: item.caseSubject,
+      caseType: item.caseType,
+      jobArea: item.jobArea,
+      instructions: item.message,
+      purchaseOrderNumber: item.purchaseOrderNumber,
+      attendingAt: item.attendingAt ? new Date(item.attendingAt) : null,
+      accessNotes: item.accessNotes,
+      attachmentNames: [],
+    });
+    const pdfStoredName = await saveBytes(pdf, ".pdf");
+    const data = {
+      caseId: item.caseId,
+      suffix: item.suffix,
+      companyId: item.companyId,
+      companyName: item.companyName,
+      contactId: item.contactId,
+      contactName: item.contactName,
+      contactEmail: item.contactEmail,
+      subject: item.subject,
+      message: item.message,
+      attendingAt: item.attendingAt ? new Date(item.attendingAt) : null,
+      purchaseOrderNumber: item.purchaseOrderNumber,
+      accessNotes: item.accessNotes,
+      status: item.status,
+      sentAt,
+      sentById: authorId,
+      pdfStoredName,
+      pdfName,
+    };
+    await prisma.workOrder.upsert({ where: { id: item.id }, update: data, create: { id: item.id, ...data } });
+    if (previous) await removeUpload(previous.pdfStoredName);
+
+    const summary = workOrderSentSummary(number, item.companyName, item.contactName);
+    await prisma.caseActivity.upsert({
+      where: { id: `${item.id}_sent` },
+      update: { summary },
+      create: {
+        id: `${item.id}_sent`,
+        caseId: item.caseId,
+        actorId: authorId,
+        kind: "work_order_sent",
+        summary,
+        createdAt: sentAt,
+      },
+    });
+
+    const messageId = item.id.replace("seed_wo_", "seed_mail_");
+    const body = workOrderEmailBody({
+      number,
+      buildingName: building.name,
+      companyName: item.companyName,
+      contactName: item.contactName,
+      message: item.message,
+      pdfName,
+    });
+    await prisma.outboxMessage.upsert({
+      where: { id: messageId },
+      update: { toAddress: item.contactEmail, subject: item.subject, body, workOrderId: item.id, createdAt: sentAt },
+      create: {
+        id: messageId,
+        toAddress: item.contactEmail,
+        subject: item.subject,
+        body,
+        workOrderId: item.id,
+        createdAt: sentAt,
+      },
+    });
+    await prisma.outboxAttachment.deleteMany({ where: { messageId } });
+    await prisma.outboxAttachment.create({
+      data: { messageId, name: pdfName, storedName: pdfStoredName },
+    });
+  }
+}
+
+async function seedMaintenance(authorId: string) {
+  const today = sydneyToday();
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const events = [
+    {
+      id: "seed_maint_fire",
+      subject: "Example fire system test",
+      description: "Example monthly test of the lobby fire panel.",
+      notes: "Example: write down the panel reading.",
+      start: onMonth(today, -8, 15),
+      end: null,
+      frequency: "monthly" as const,
+      intervalMonths: null,
+      remind: true,
+      area: "asset" as const,
+      assetIds: ["seed_asset_panel"],
+      companyIds: ["seed_co_fire"],
+      contactIds: ["seed_contact_avery"],
+      leaveOpen: 1,
+    },
+    {
+      id: "seed_maint_lift",
+      subject: "Example lift service",
+      description: "Example monthly service of passenger lift A.",
+      notes: null,
+      start: onMonth(today, -5, 4),
+      end: null,
+      frequency: "monthly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_lift"],
+      companyIds: ["seed_co_electrical"],
+      contactIds: ["seed_contact_pat"],
+      leaveOpen: 2,
+    },
+    {
+      id: "seed_maint_gutter",
+      subject: "Example gutter clean",
+      description: "Example half-yearly clean of the roof gutters.",
+      notes: "Example: stay off the garden beds.",
+      start: onMonth(today, -14, 2),
+      end: null,
+      frequency: "half_yearly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "none" as const,
+      assetIds: [],
+      companyIds: ["seed_co_cleaning"],
+      contactIds: ["seed_contact_jordan"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_pump",
+      subject: "Example pump service",
+      description: "Example quarterly service of fire pump 1.",
+      notes: null,
+      start: onMonth(today, -9, 20),
+      end: null,
+      frequency: "quarterly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_fire_pump"],
+      companyIds: ["seed_co_fire"],
+      contactIds: ["seed_contact_avery"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_hot_water",
+      subject: "Example hot water service",
+      description: "Example yearly service of the hot water plant.",
+      notes: null,
+      start: onMonth(today, -10, 9),
+      end: null,
+      frequency: "yearly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_hot_water"],
+      companyIds: ["seed_co_plumbing"],
+      contactIds: ["seed_contact_casey"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_board",
+      subject: "Example switchboard test",
+      description: "Example switchboard test every four months.",
+      notes: null,
+      start: onMonth(today, -9, 6),
+      end: null,
+      frequency: "every_n_months" as const,
+      intervalMonths: 4,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_switchboard"],
+      companyIds: ["seed_co_electrical"],
+      contactIds: ["seed_contact_pat"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_gate",
+      subject: "Example car park gate service",
+      description: "Example fortnightly check of the car park gate.",
+      notes: null,
+      start: onMonth(today, -2, 11),
+      end: null,
+      frequency: "fortnightly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_gate"],
+      companyIds: ["seed_co_electrical"],
+      contactIds: ["seed_contact_sam"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_camera",
+      subject: "Example lobby camera check",
+      description: "Example one-off check of lobby camera 1.",
+      notes: null,
+      start: onMonth(today, -4, 12),
+      end: null,
+      frequency: "one_off" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_camera"],
+      companyIds: [],
+      contactIds: [],
+      leaveOpen: 0,
+    },
+  ];
+
+  for (const event of events) {
+    const data = {
+      buildingId: "seed_example_tower",
+      subject: event.subject,
+      description: event.description,
+      notes: event.notes,
+      startDate: event.start,
+      endDate: event.end,
+      frequency: event.frequency,
+      intervalMonths: event.intervalMonths,
+      remindContractor: event.remind,
+      reminderDays: 7,
+      area: event.area,
+      apartmentId: null,
+      createdById: authorId,
+    };
+    await prisma.maintenanceEvent.upsert({
+      where: { id: event.id },
+      update: data,
+      create: { id: event.id, ...data },
+    });
+    await prisma.maintenanceAsset.deleteMany({ where: { eventId: event.id } });
+    await prisma.maintenanceCompany.deleteMany({ where: { eventId: event.id } });
+    await prisma.maintenanceContact.deleteMany({ where: { eventId: event.id } });
+    await prisma.maintenanceOccurrence.deleteMany({ where: { eventId: event.id } });
+    if (event.assetIds.length) {
+      await prisma.maintenanceAsset.createMany({
+        data: event.assetIds.map((assetId) => ({ eventId: event.id, assetId })),
+      });
+    }
+    if (event.companyIds.length) {
+      await prisma.maintenanceCompany.createMany({
+        data: event.companyIds.map((companyId) => ({ eventId: event.id, companyId })),
+      });
+    }
+    if (event.contactIds.length) {
+      await prisma.maintenanceContact.createMany({
+        data: event.contactIds.map((contactId) => ({ eventId: event.id, contactId })),
+      });
+    }
+    const schedule = scheduleOf({
+      startDate: event.start,
+      endDate: event.end,
+      frequency: event.frequency,
+      intervalMonths: event.intervalMonths,
+    });
+    if (!schedule) continue;
+    const past = occurrencesBetween(schedule, event.start, yesterday);
+    const done = past.slice(0, Math.max(0, past.length - event.leaveOpen));
+    if (done.length) {
+      await prisma.maintenanceOccurrence.createMany({
+        data: done.map((occursOn) => ({
+          eventId: event.id,
+          occursOn,
+          state: "completed" as const,
+          note: "Example visit marked done.",
+          actedAt: occursOn,
+          actedById: authorId,
+        })),
+      });
+    }
+  }
+
+  const file = await prisma.maintenanceFile.findUnique({ where: { id: "seed_maint_file_fire" } });
+  if (!file) {
+    const storedName = await saveBytes(Buffer.from(examplePdf), ".pdf");
+    await prisma.maintenanceFile.create({
+      data: {
+        id: "seed_maint_file_fire",
+        eventId: "seed_maint_fire",
+        kind: "document",
+        name: "Example fire test sheet.pdf",
+        storedName,
+      },
+    });
+  }
+}
+
+async function seedInspections(adminId: string, staffId: string) {
+  const commonAreas = [
+    {
+      id: "seed_insp_area_lobby",
+      name: "Lobby",
+      items: [
+        ["seed_insp_item_doors", "Entrance doors", "Check they close fully."],
+        ["seed_insp_item_floor", "Lobby floor", "Look for cracks and stains."],
+        ["seed_insp_item_light", "Lobby lighting", ""],
+      ],
+    },
+    {
+      id: "seed_insp_area_park",
+      name: "Car park",
+      items: [
+        ["seed_insp_item_gate", "Roller door", "Example: watch it travel."],
+        ["seed_insp_item_parklight", "Car park lighting", ""],
+        ["seed_insp_item_lines", "Line marking", ""],
+      ],
+    },
+    {
+      id: "seed_insp_area_l1",
+      name: "Level 1",
+      items: [
+        ["seed_insp_item_l1", "Level 1 corridor", ""],
+        ["seed_insp_item_stair", "Stair door", ""],
+      ],
+    },
+    {
+      id: "seed_insp_area_l2",
+      name: "Level 2",
+      items: [["seed_insp_item_l2", "Level 2 corridor", ""]],
+    },
+    {
+      id: "seed_insp_area_l3",
+      name: "Level 3",
+      items: [["seed_insp_item_l3", "Level 3 corridor", ""]],
+    },
+  ] as const;
+
+  await upsertInspectionTemplate(
+    "seed_insp_tpl_common",
+    "Monthly common area inspection",
+    "common_area",
+    "Example monthly walk through the common areas of Example Tower.",
+    onDay("2026-01-15"),
+    commonAreas,
+  );
+  await upsertInspectionTemplate(
+    "seed_insp_tpl_lot",
+    "Lot exit inspection",
+    "private_lot",
+    "Example checklist when a resident leaves a lot.",
+    onDay("2026-02-02"),
+    [
+      {
+        id: "seed_insp_area_kitchen",
+        name: "Kitchen",
+        items: [
+          ["seed_insp_item_bench", "Benchtop", ""],
+          ["seed_insp_item_sink", "Sink", ""],
+        ],
+      },
+      {
+        id: "seed_insp_area_bath",
+        name: "Bathroom",
+        items: [
+          ["seed_insp_item_taps", "Taps", ""],
+          ["seed_insp_item_waste", "Floor waste", ""],
+        ],
+      },
+      {
+        id: "seed_insp_area_living",
+        name: "Living",
+        items: [["seed_insp_item_walls", "Walls and ceiling", ""]],
+      },
+    ],
+  );
+  await upsertInspectionTemplate(
+    "seed_insp_tpl_roof",
+    "Example roof inspection",
+    "common_area",
+    "Example look at the roof of Example Tower.",
+    onDay("2026-03-03"),
+    [
+      {
+        id: "seed_insp_area_roof",
+        name: "Roof",
+        items: [
+          ["seed_insp_item_membrane", "Membrane", "Example: look for ponding."],
+          ["seed_insp_item_gutters", "Gutters", ""],
+        ],
+      },
+    ],
+  );
+
+  const blank = { result: null as "pass" | "fail" | "na" | null, comment: null as string | null };
+  await upsertInspectionRun({
+    id: "seed_insp_run_open",
+    templateId: "seed_insp_tpl_common",
+    name: "Monthly common area inspection",
+    type: "common_area",
+    inspectorId: staffId,
+    apartmentId: null,
+    inspectedAt: sydneyToday(),
+    status: "in_progress",
+    completedAt: null,
+    createdAt: new Date("2026-11-18T01:00:00.000Z"),
+    areas: commonAreas.map((area) => ({
+      id: area.id.replace("seed_insp_area_", "seed_insp_open_area_"),
+      name: area.name,
+      items: area.items.map(([id, name, guidance]) => ({
+        id: id.replace("seed_insp_item_", "seed_insp_open_"),
+        name,
+        guidance: guidance || null,
+        ...openAnswer(id),
+      })),
+    })),
+  });
+  await upsertInspectionRun({
+    id: "seed_insp_run_done",
+    templateId: "seed_insp_tpl_common",
+    name: "Monthly common area inspection",
+    type: "common_area",
+    inspectorId: adminId,
+    apartmentId: null,
+    inspectedAt: onDay("2026-10-20"),
+    status: "completed",
+    completedAt: new Date("2026-10-20T04:00:00.000Z"),
+    createdAt: new Date("2026-10-20T01:00:00.000Z"),
+    areas: commonAreas.map((area) => ({
+      id: area.id.replace("seed_insp_area_", "seed_insp_done_area_"),
+      name: area.name,
+      items: area.items.map(([id, name, guidance]) => ({
+        id: id.replace("seed_insp_item_", "seed_insp_done_"),
+        name,
+        guidance: guidance || null,
+        ...(doneAnswer(id) ?? blank),
+      })),
+    })),
+  });
+  await upsertInspectionRun({
+    id: "seed_insp_run_lot",
+    templateId: "seed_insp_tpl_lot",
+    name: "Lot exit inspection",
+    type: "private_lot",
+    inspectorId: staffId,
+    apartmentId: "seed_apt_104",
+    inspectedAt: onDay("2026-11-02"),
+    status: "completed",
+    completedAt: new Date("2026-11-02T03:00:00.000Z"),
+    createdAt: new Date("2026-11-02T01:00:00.000Z"),
+    areas: [
+      {
+        id: "seed_insp_lot_area_kitchen",
+        name: "Kitchen",
+        items: [
+          { id: "seed_insp_lot_bench", name: "Benchtop", guidance: null, result: "pass", comment: null },
+          { id: "seed_insp_lot_sink", name: "Sink", guidance: null, result: "fail", comment: "Example chip on the sink edge." },
+        ],
+      },
+      {
+        id: "seed_insp_lot_area_bath",
+        name: "Bathroom",
+        items: [
+          { id: "seed_insp_lot_taps", name: "Taps", guidance: null, result: "na", comment: null },
+          { id: "seed_insp_lot_waste", name: "Floor waste", guidance: null, result: "pass", comment: null },
+        ],
+      },
+      {
+        id: "seed_insp_lot_area_living",
+        name: "Living",
+        items: [{ id: "seed_insp_lot_walls", name: "Walls and ceiling", guidance: null, result: "pass", comment: null }],
+      },
+    ],
+  });
+
+  const existingPhoto = await prisma.inspectionPhoto.findUnique({ where: { id: "seed_insp_photo_floor" } });
+  let storedName = existingPhoto?.storedName ?? null;
+  if (!existingPhoto) {
+    const file = new File([Uint8Array.from(solidPng(80, 60, [0, 0, 128, 255]))], "example-lobby-floor.png", {
+      type: "image/png",
+    });
+    const saved = await saveUpload(file, "image");
+    storedName = saved.storedName;
+    await prisma.inspectionPhoto.create({
+      data: {
+        id: "seed_insp_photo_floor",
+        itemId: "seed_insp_done_floor",
+        name: saved.originalName,
+        storedName: saved.storedName,
+      },
+    });
+  }
+
+  const caseData = {
+    buildingId: "seed_example_tower",
+    number: 16,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: onDay("2026-10-20"),
+    dueDate: onDay("2026-10-27"),
+    priority: "low" as const,
+    status: "new" as const,
+    completedAt: null,
+    subject: "Lobby floor (Lobby)",
+    descriptionHtml: "<p>Example crack near the mailboxes.</p>",
+    internalNotes: "Created from inspection Monthly common area inspection, Lobby, Lobby floor.",
+    includeInReport: true,
+    area: "none" as const,
+    apartmentId: null,
+    createdById: adminId,
+    inspectionItemId: "seed_insp_done_floor",
+  };
+  await prisma.case.upsert({
+    where: { id: "seed_case_16" },
+    update: caseData,
+    create: { id: "seed_case_16", ...caseData },
+  });
+  await prisma.caseActivity.upsert({
+    where: { id: "seed_case_16_created" },
+    update: { summary: "Case created." },
+    create: {
+      id: "seed_case_16_created",
+      caseId: "seed_case_16",
+      actorId: adminId,
+      kind: "created",
+      summary: "Case created.",
+      createdAt: onDay("2026-10-20"),
+    },
+  });
+  const casePhoto = await prisma.caseFile.findUnique({ where: { id: "seed_case_16_photo" } });
+  if (!casePhoto && storedName) {
+    const copy = await copyStoredFile(storedName);
+    if (copy) {
+      await prisma.caseFile.create({
+        data: {
+          id: "seed_case_16_photo",
+          caseId: "seed_case_16",
+          kind: "photo",
+          name: "example-lobby-floor.png",
+          storedName: copy,
+          uploadedById: adminId,
+        },
+      });
+    }
+  }
+
+  function openAnswer(id: string): { result: "pass" | "fail" | "na" | null; comment: string | null } {
+    if (id.endsWith("_doors")) return { result: "pass", comment: null };
+    if (id.endsWith("_floor")) return { result: "fail", comment: "Example stain by the front desk." };
+    if (id.endsWith("_light")) return { result: "na", comment: null };
+    return blank;
+  }
+
+  function doneAnswer(id: string): { result: "pass" | "fail" | "na"; comment: string | null } | null {
+    if (
+      id.endsWith("_doors") ||
+      id.endsWith("_light") ||
+      id.endsWith("_parklight") ||
+      id.endsWith("_l1") ||
+      id.endsWith("_stair") ||
+      id.endsWith("_l2") ||
+      id.endsWith("_l3")
+    ) {
+      return { result: "pass", comment: null };
+    }
+    if (id.endsWith("_floor")) return { result: "fail", comment: "Example crack near the mailboxes." };
+    if (id.endsWith("_gate")) return { result: "fail", comment: "Example: the door stops halfway." };
+    if (id.endsWith("_lines")) return { result: "na", comment: null };
+    return null;
+  }
+}
+
+async function upsertInspectionTemplate(
+  id: string,
+  name: string,
+  type: "common_area" | "private_lot",
+  description: string,
+  createdAt: Date,
+  areas: readonly { id: string; name: string; items: readonly (readonly [string, string, string])[] }[],
+) {
+  await prisma.inspectionTemplate.upsert({
+    where: { id },
+    update: { name, type, description, buildingId: "seed_example_tower" },
+    create: { id, buildingId: "seed_example_tower", name, type, description, createdAt },
+  });
+  for (const [position, area] of areas.entries()) {
+    await prisma.inspectionArea.upsert({
+      where: { id: area.id },
+      update: { templateId: id, name: area.name, position },
+      create: { id: area.id, templateId: id, name: area.name, position },
+    });
+    for (const [itemPosition, item] of area.items.entries()) {
+      const [itemId, itemName, guidance] = item;
+      await prisma.inspectionItem.upsert({
+        where: { id: itemId },
+        update: { areaId: area.id, name: itemName, guidance: guidance || null, position: itemPosition },
+        create: { id: itemId, areaId: area.id, name: itemName, guidance: guidance || null, position: itemPosition },
+      });
+    }
+  }
+}
+
+async function upsertInspectionRun(run: {
+  id: string;
+  templateId: string;
+  name: string;
+  type: "common_area" | "private_lot";
+  inspectorId: string;
+  apartmentId: string | null;
+  inspectedAt: Date;
+  status: "in_progress" | "completed";
+  completedAt: Date | null;
+  createdAt: Date;
+  areas: {
+    id: string;
+    name: string;
+    items: { id: string; name: string; guidance: string | null; result: "pass" | "fail" | "na" | null; comment: string | null }[];
+  }[];
+}) {
+  const data = {
+    buildingId: "seed_example_tower",
+    templateId: run.templateId,
+    name: run.name,
+    type: run.type,
+    inspectorId: run.inspectorId,
+    apartmentId: run.apartmentId,
+    inspectedAt: run.inspectedAt,
+    status: run.status,
+    completedAt: run.completedAt,
+  };
+  await prisma.inspectionRun.upsert({
+    where: { id: run.id },
+    update: data,
+    create: { id: run.id, ...data, createdAt: run.createdAt },
+  });
+  for (const [position, area] of run.areas.entries()) {
+    await prisma.inspectionRunArea.upsert({
+      where: { id: area.id },
+      update: { runId: run.id, name: area.name, position },
+      create: { id: area.id, runId: run.id, name: area.name, position },
+    });
+    for (const [itemPosition, item] of area.items.entries()) {
+      const itemData = {
+        areaId: area.id,
+        name: item.name,
+        guidance: item.guidance,
+        position: itemPosition,
+        result: item.result,
+        comment: item.comment,
+      };
+      await prisma.inspectionRunItem.upsert({
+        where: { id: item.id },
+        update: itemData,
+        create: { id: item.id, ...itemData },
+      });
+    }
+  }
+}
+
+function solidPng(width: number, height: number, rgba: [number, number, number, number]): Buffer {
+  const row = Buffer.alloc(1 + width * 4);
+  for (let x = 0; x < width; x += 1) {
+    row[1 + x * 4] = rgba[0];
+    row[2 + x * 4] = rgba[1];
+    row[3 + x * 4] = rgba[2];
+    row[4 + x * 4] = rgba[3];
+  }
+  const raw = Buffer.concat(Array.from({ length: height }, () => row));
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk("IHDR", pngHeader(width, height)),
+    pngChunk("IDAT", deflateSync(raw)),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+function pngHeader(width: number, height: number): Buffer {
+  const buffer = Buffer.alloc(13);
+  buffer.writeUInt32BE(width, 0);
+  buffer.writeUInt32BE(height, 4);
+  buffer[8] = 8;
+  buffer[9] = 6;
+  return buffer;
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const typeBuf = Buffer.from(type, "ascii");
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(pngCrc(Buffer.concat([typeBuf, data])) >>> 0, 0);
+  return Buffer.concat([length, typeBuf, data, crc]);
+}
+
+function pngCrc(buffer: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+async function seedDashboard(adminId: string, staffId: string) {
+  const notes = [
+    {
+      id: "seed_building_note_panel",
+      title: "Fire panel monitoring",
+      body: "Example: the monitoring desk calls the after-hours mobile when the lobby panel alarms.",
+      authorId: adminId,
+      createdAt: new Date("2026-11-02T01:00:00.000Z"),
+    },
+    {
+      id: "seed_building_note_keys",
+      title: "Plant room access",
+      body: "Example: the plant room key is in the concierge cupboard.",
+      authorId: staffId,
+      createdAt: new Date("2026-11-10T01:00:00.000Z"),
+    },
+    {
+      id: "seed_building_note_lift",
+      title: null as string | null,
+      body: "Example: passenger lift A is serviced once a month.",
+      authorId: adminId,
+      createdAt: new Date("2026-11-16T01:00:00.000Z"),
+    },
+  ];
+  for (const note of notes) {
+    const data = {
+      buildingId: "seed_example_tower",
+      title: note.title,
+      body: note.body,
+      authorId: note.authorId,
+      createdAt: note.createdAt,
+    };
+    await prisma.buildingNote.upsert({ where: { id: note.id }, update: data, create: { id: note.id, ...data } });
+  }
+
+  const numbers = [
+    {
+      id: "seed_number_panel",
+      label: "Fire panel monitoring",
+      number: "02 0000 0000",
+      notes: "Example after-hours alarm line.",
+    },
+    {
+      id: "seed_number_plumber",
+      label: "After-hours plumber",
+      number: "0400 000 000",
+      notes: "Example call-out number.",
+    },
+    {
+      id: "seed_number_lift",
+      label: "Lift breakdown",
+      number: "02 0000 1111",
+      notes: null as string | null,
+    },
+  ];
+  for (const entry of numbers) {
+    const data = {
+      buildingId: "seed_example_tower",
+      label: entry.label,
+      number: entry.number,
+      notes: entry.notes,
+    };
+    await prisma.usefulNumber.upsert({ where: { id: entry.id }, update: data, create: { id: entry.id, ...data } });
+  }
+}
+
+async function seedManagementReport(userId: string, userName: string) {
+  const period = monthPeriod(new Date(), -1);
+  await createGeneratedReport({
+    id: "seed_report_last_month",
+    buildingId: "seed_example_tower",
+    userId,
+    userName,
+    selection: {
+      from: period.from,
+      to: period.to,
+      includeOpen: false,
+      typeIds: [],
+      statuses: [],
+      companyIds: [],
+      priorities: [],
+      assetIds: [],
+      apartmentIds: [],
+      excludedIds: [],
+    },
+    sections: defaultSections(),
+    format: "pdf",
+  });
+}
+
+function onMonth(today: Date, monthOffset: number, dayOfMonth: number): Date {
+  const shifted = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + monthOffset, 1));
+  const last = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), Math.min(dayOfMonth, last)));
+}
+
+const examplePdf = "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 80]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
 
 function onDay(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);

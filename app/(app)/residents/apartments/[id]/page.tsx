@@ -22,7 +22,9 @@ import {
 } from "@/components/apartment-forms";
 import { ApartmentDialog } from "@/components/apartment-dialog";
 import { ConfirmSubmit } from "@/components/confirm-submit";
-import { getApartment, listApartmentOptions, requireUser, type ApartmentDetail } from "@/lib/data";
+import { PriorityBadge } from "@/components/priority-badge";
+import { getApartment, listApartmentCases, listApartmentOptions, requireUser, type ApartmentDetail } from "@/lib/data";
+import { formatStatus } from "@/lib/cases";
 import { prisma } from "@/lib/db";
 import {
   compareLabel,
@@ -43,6 +45,7 @@ const TABS: { id: ApartmentTab; label: string }[] = [
   { id: "vehicles", label: "Vehicles" },
   { id: "documents", label: "Documents" },
   { id: "images", label: "Images" },
+  { id: "requests", label: "Requests" },
 ];
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -71,6 +74,7 @@ export default async function ApartmentPage({
 
   const canManage = canManageResidents(user.role);
   const tab = parseApartmentTab(first(query.tab));
+  const requests = tab === "requests" ? await listApartmentCases(user.selectedBuildingId, apartment.id) : [];
   const ordered = [...options].sort((a, b) => compareLabel(a.number, b.number));
   const index = ordered.findIndex((item) => item.id === apartment.id);
   const previous = index > 0 ? ordered[index - 1] : null;
@@ -170,6 +174,7 @@ export default async function ApartmentPage({
           ) : null}
           {tab === "documents" ? <DocumentTab apartment={apartment} canManage={canManage} /> : null}
           {tab === "images" ? <ImageTab apartment={apartment} canManage={canManage} /> : null}
+          {tab === "requests" ? <RequestsTab cases={requests} /> : null}
         </div>
 
         <aside className="space-y-6">
@@ -523,6 +528,32 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function Empty({ children }: { children: string }) {
   return <p className="mt-4 text-muted">{children}</p>;
+}
+
+function RequestsTab({
+  cases,
+}: {
+  cases: { number: number; subject: string; status: string; priority: string; startDate: Date }[];
+}) {
+  if (cases.length === 0) return <Empty>No requests yet.</Empty>;
+  return (
+    <ul className="mt-4 divide-y divide-line">
+      {cases.map((item) => (
+        <li key={item.number} className="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div>
+            <Link href={`/cases/${item.number}`} className="font-medium text-brand-blue hover:underline">
+              #{item.number} {item.subject}
+            </Link>
+            <p className="text-sm text-muted">{formatCalendarDate(item.startDate)}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <PriorityBadge priority={item.priority} />
+            <span className="text-sm">{formatStatus(item.status)}</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function tabHref(id: string, tab: ApartmentTab): string {

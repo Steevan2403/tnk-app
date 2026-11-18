@@ -22,6 +22,50 @@ export function canManageAssetCategories(role: string): boolean {
   return role === "admin";
 }
 
+export function canEditCases(role: string): boolean {
+  return role === "admin" || role === "manager" || role === "staff";
+}
+
+export function canDeleteCases(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
+export function canManageCaseTypes(role: string): boolean {
+  return role === "admin";
+}
+
+export function canSendWorkOrders(role: string): boolean {
+  return role === "admin" || role === "manager" || role === "staff";
+}
+
+export function canCancelWorkOrders(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
+export function canViewOutbox(role: string): boolean {
+  return role === "admin";
+}
+
+export function canManageMaintenance(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
+export function canRecordOccurrence(role: string): boolean {
+  return role === "admin" || role === "manager" || role === "staff";
+}
+
+export function canManageInspectionTemplates(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
+export function canRunInspections(role: string): boolean {
+  return role === "admin" || role === "manager" || role === "staff";
+}
+
+export function canManageReports(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
 export function formatRole(role: string): string {
   if (role === "admin") return "Admin";
   if (role === "manager") return "Manager";

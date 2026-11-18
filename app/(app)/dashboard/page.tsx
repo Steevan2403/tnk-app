@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DashboardView } from "@/components/dashboard-view";
 import { formatAddress } from "@/lib/buildings";
+import { noteSearch, parseChartPeriod } from "@/lib/dashboard";
+import { loadDashboard } from "@/lib/dashboard-data";
 import { listBuildings, requireUser } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireUser();
+  const params = await searchParams;
   const buildings = await listBuildings();
   const building = buildings.find((item) => item.id === user.selectedBuildingId) ?? null;
 
@@ -22,6 +30,11 @@ export default async function DashboardPage() {
     );
   }
 
+  const data = await loadDashboard(building.id, {
+    months: parseChartPeriod(first(params.months)),
+    noteQuery: noteSearch(first(params.note)),
+  });
+
   return (
     <section>
       <p className="text-sm font-medium tracking-wide text-muted uppercase">Dashboard</p>
@@ -30,6 +43,12 @@ export default async function DashboardPage() {
       <p className="mt-6 text-muted">
         {building.lotCount} {building.lotCount === 1 ? "lot" : "lots"}
       </p>
+      <DashboardView data={data} user={{ id: user.id, role: user.role }} editNoteId={first(params.editNote)} editNumberId={first(params.editNumber)} />
     </section>
   );
+}
+
+function first(value: string | string[] | undefined): string {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return (raw ?? "").trim();
 }
