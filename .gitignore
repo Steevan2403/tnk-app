@@ -40,6 +40,9 @@ yarn-error.log*
 /prisma/*.db
 /prisma/*.db-journal
 
+# contractor uploads
+/uploads
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
