@@ -50,6 +50,7 @@ model User {
   workOrdersSent     WorkOrder[]
   maintenanceEvents  MaintenanceEvent[]
   occurrenceRecords  MaintenanceOccurrence[]
+  inspectionRuns     InspectionRun[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -68,8 +69,10 @@ model Building {
   selectedBy        User[]
   apartments        Apartment[]
   assets            Asset[]
-  cases             Case[]
-  maintenanceEvents MaintenanceEvent[]
+  cases                Case[]
+  maintenanceEvents    MaintenanceEvent[]
+  inspectionTemplates  InspectionTemplate[]
+  inspectionRuns       InspectionRun[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -182,6 +185,7 @@ model Apartment {
   agent             ManagingAgent?
   cases             Case[]
   maintenanceEvents MaintenanceEvent[]
+  inspectionRuns    InspectionRun[]
   createdAt         DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
@@ -467,6 +471,8 @@ model Case {
   maintenanceEventId  String?
   maintenanceEvent    MaintenanceEvent? @relation(fields: [maintenanceEventId], references: [id], onDelete: SetNull)
   occurrenceOn        DateTime?
+  inspectionItemId    String?            @unique
+  inspectionItem      InspectionRunItem? @relation(fields: [inspectionItemId], references: [id], onDelete: SetNull)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -499,6 +505,22 @@ enum MaintenanceFileKind {
 enum MaintenanceMark {
   completed
   skipped
+}
+
+enum InspectionType {
+  common_area
+  private_lot
+}
+
+enum InspectionStatus {
+  in_progress
+  completed
+}
+
+enum InspectionResult {
+  pass
+  fail
+  na
 }
 
 // A maintenance event is the rule. Occurrences are calculated for a date window.
@@ -765,4 +787,111 @@ model OutboxAttachment {
   storedName String
 
   @@index([messageId])
+}
+
+// A template is the checklist. A run copies its areas and items, so later edits do not change a run.
+model InspectionTemplate {
+  id          String           @id @default(cuid())
+  buildingId  String
+  building    Building         @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  name        String
+  type        InspectionType
+  description String           @default("")
+  areas       InspectionArea[]
+  runs        InspectionRun[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([buildingId])
+  @@index([type])
+}
+
+model InspectionArea {
+  id         String             @id @default(cuid())
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  name       String
+  position   Int
+  items      InspectionItem[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([templateId])
+}
+
+model InspectionItem {
+  id        String         @id @default(cuid())
+  areaId    String
+  area      InspectionArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  name      String
+  guidance  String?
+  position  Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([areaId])
+}
+
+model InspectionRun {
+  id           String             @id @default(cuid())
+  buildingId   String
+  building     Building           @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  templateId   String
+  template     InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  name         String
+  type         InspectionType
+  apartmentId  String?
+  apartment    Apartment?         @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  inspectorId  String
+  inspector    User               @relation(fields: [inspectorId], references: [id], onDelete: Restrict)
+  inspectedAt  DateTime
+  status       InspectionStatus   @default(in_progress)
+  completedAt  DateTime?
+  areas        InspectionRunArea[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([buildingId, status])
+  @@index([templateId])
+  @@index([inspectorId])
+  @@index([apartmentId])
+  @@index([completedAt])
+}
+
+model InspectionRunArea {
+  id       String              @id @default(cuid())
+  runId    String
+  run      InspectionRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  name     String
+  position Int
+  items    InspectionRunItem[]
+
+  @@index([runId])
+}
+
+model InspectionRunItem {
+  id         String            @id @default(cuid())
+  areaId     String
+  area       InspectionRunArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  name       String
+  guidance   String?
+  position   Int
+  result     InspectionResult?
+  comment    String?
+  photos     InspectionPhoto[]
+  linkedCase Case?
+
+  @@index([areaId])
+  @@index([result])
+}
+
+model InspectionPhoto {
+  id         String            @id @default(cuid())
+  itemId     String
+  item       InspectionRunItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  name       String
+  storedName String
+  uploadedAt DateTime          @default(now())
+
+  @@index([itemId])
 }

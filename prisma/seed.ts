@@ -1,8 +1,9 @@
+import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
 import { occurrencesBetween, scheduleOf, sydneyToday } from "../lib/maintenance";
 import { hashPassword } from "../lib/password";
-import { removeUpload, saveBytes } from "../lib/storage";
+import { copyStoredFile, removeUpload, saveBytes, saveUpload } from "../lib/storage";
 import { buildWorkOrderPdf } from "../lib/work-order-pdf";
 import { workOrderEmailBody, workOrderPdfName, workOrderSentSummary } from "../lib/work-orders";
 
@@ -313,6 +314,7 @@ async function main() {
   await seedCases(admin.id);
   await seedWorkOrders(admin.id);
   await seedMaintenance(admin.id);
+  await seedInspections(admin.id, staff.id);
 }
 
 const apartmentPlan = [
@@ -1534,6 +1536,411 @@ async function seedMaintenance(authorId: string) {
       },
     });
   }
+}
+
+async function seedInspections(adminId: string, staffId: string) {
+  const commonAreas = [
+    {
+      id: "seed_insp_area_lobby",
+      name: "Lobby",
+      items: [
+        ["seed_insp_item_doors", "Entrance doors", "Check they close fully."],
+        ["seed_insp_item_floor", "Lobby floor", "Look for cracks and stains."],
+        ["seed_insp_item_light", "Lobby lighting", ""],
+      ],
+    },
+    {
+      id: "seed_insp_area_park",
+      name: "Car park",
+      items: [
+        ["seed_insp_item_gate", "Roller door", "Example: watch it travel."],
+        ["seed_insp_item_parklight", "Car park lighting", ""],
+        ["seed_insp_item_lines", "Line marking", ""],
+      ],
+    },
+    {
+      id: "seed_insp_area_l1",
+      name: "Level 1",
+      items: [
+        ["seed_insp_item_l1", "Level 1 corridor", ""],
+        ["seed_insp_item_stair", "Stair door", ""],
+      ],
+    },
+    {
+      id: "seed_insp_area_l2",
+      name: "Level 2",
+      items: [["seed_insp_item_l2", "Level 2 corridor", ""]],
+    },
+    {
+      id: "seed_insp_area_l3",
+      name: "Level 3",
+      items: [["seed_insp_item_l3", "Level 3 corridor", ""]],
+    },
+  ] as const;
+
+  await upsertInspectionTemplate(
+    "seed_insp_tpl_common",
+    "Monthly common area inspection",
+    "common_area",
+    "Example monthly walk through the common areas of Example Tower.",
+    onDay("2026-01-15"),
+    commonAreas,
+  );
+  await upsertInspectionTemplate(
+    "seed_insp_tpl_lot",
+    "Lot exit inspection",
+    "private_lot",
+    "Example checklist when a resident leaves a lot.",
+    onDay("2026-02-02"),
+    [
+      {
+        id: "seed_insp_area_kitchen",
+        name: "Kitchen",
+        items: [
+          ["seed_insp_item_bench", "Benchtop", ""],
+          ["seed_insp_item_sink", "Sink", ""],
+        ],
+      },
+      {
+        id: "seed_insp_area_bath",
+        name: "Bathroom",
+        items: [
+          ["seed_insp_item_taps", "Taps", ""],
+          ["seed_insp_item_waste", "Floor waste", ""],
+        ],
+      },
+      {
+        id: "seed_insp_area_living",
+        name: "Living",
+        items: [["seed_insp_item_walls", "Walls and ceiling", ""]],
+      },
+    ],
+  );
+  await upsertInspectionTemplate(
+    "seed_insp_tpl_roof",
+    "Example roof inspection",
+    "common_area",
+    "Example look at the roof of Example Tower.",
+    onDay("2026-03-03"),
+    [
+      {
+        id: "seed_insp_area_roof",
+        name: "Roof",
+        items: [
+          ["seed_insp_item_membrane", "Membrane", "Example: look for ponding."],
+          ["seed_insp_item_gutters", "Gutters", ""],
+        ],
+      },
+    ],
+  );
+
+  const blank = { result: null as "pass" | "fail" | "na" | null, comment: null as string | null };
+  await upsertInspectionRun({
+    id: "seed_insp_run_open",
+    templateId: "seed_insp_tpl_common",
+    name: "Monthly common area inspection",
+    type: "common_area",
+    inspectorId: staffId,
+    apartmentId: null,
+    inspectedAt: sydneyToday(),
+    status: "in_progress",
+    completedAt: null,
+    createdAt: new Date("2026-11-18T01:00:00.000Z"),
+    areas: commonAreas.map((area) => ({
+      id: area.id.replace("seed_insp_area_", "seed_insp_open_area_"),
+      name: area.name,
+      items: area.items.map(([id, name, guidance]) => ({
+        id: id.replace("seed_insp_item_", "seed_insp_open_"),
+        name,
+        guidance: guidance || null,
+        ...openAnswer(id),
+      })),
+    })),
+  });
+  await upsertInspectionRun({
+    id: "seed_insp_run_done",
+    templateId: "seed_insp_tpl_common",
+    name: "Monthly common area inspection",
+    type: "common_area",
+    inspectorId: adminId,
+    apartmentId: null,
+    inspectedAt: onDay("2026-10-20"),
+    status: "completed",
+    completedAt: new Date("2026-10-20T04:00:00.000Z"),
+    createdAt: new Date("2026-10-20T01:00:00.000Z"),
+    areas: commonAreas.map((area) => ({
+      id: area.id.replace("seed_insp_area_", "seed_insp_done_area_"),
+      name: area.name,
+      items: area.items.map(([id, name, guidance]) => ({
+        id: id.replace("seed_insp_item_", "seed_insp_done_"),
+        name,
+        guidance: guidance || null,
+        ...(doneAnswer(id) ?? blank),
+      })),
+    })),
+  });
+  await upsertInspectionRun({
+    id: "seed_insp_run_lot",
+    templateId: "seed_insp_tpl_lot",
+    name: "Lot exit inspection",
+    type: "private_lot",
+    inspectorId: staffId,
+    apartmentId: "seed_apt_104",
+    inspectedAt: onDay("2026-11-02"),
+    status: "completed",
+    completedAt: new Date("2026-11-02T03:00:00.000Z"),
+    createdAt: new Date("2026-11-02T01:00:00.000Z"),
+    areas: [
+      {
+        id: "seed_insp_lot_area_kitchen",
+        name: "Kitchen",
+        items: [
+          { id: "seed_insp_lot_bench", name: "Benchtop", guidance: null, result: "pass", comment: null },
+          { id: "seed_insp_lot_sink", name: "Sink", guidance: null, result: "fail", comment: "Example chip on the sink edge." },
+        ],
+      },
+      {
+        id: "seed_insp_lot_area_bath",
+        name: "Bathroom",
+        items: [
+          { id: "seed_insp_lot_taps", name: "Taps", guidance: null, result: "na", comment: null },
+          { id: "seed_insp_lot_waste", name: "Floor waste", guidance: null, result: "pass", comment: null },
+        ],
+      },
+      {
+        id: "seed_insp_lot_area_living",
+        name: "Living",
+        items: [{ id: "seed_insp_lot_walls", name: "Walls and ceiling", guidance: null, result: "pass", comment: null }],
+      },
+    ],
+  });
+
+  const existingPhoto = await prisma.inspectionPhoto.findUnique({ where: { id: "seed_insp_photo_floor" } });
+  let storedName = existingPhoto?.storedName ?? null;
+  if (!existingPhoto) {
+    const file = new File([Uint8Array.from(solidPng(80, 60, [0, 0, 128, 255]))], "example-lobby-floor.png", {
+      type: "image/png",
+    });
+    const saved = await saveUpload(file, "image");
+    storedName = saved.storedName;
+    await prisma.inspectionPhoto.create({
+      data: {
+        id: "seed_insp_photo_floor",
+        itemId: "seed_insp_done_floor",
+        name: saved.originalName,
+        storedName: saved.storedName,
+      },
+    });
+  }
+
+  const caseData = {
+    buildingId: "seed_example_tower",
+    number: 16,
+    typeId: "seed_case_type_repair",
+    purchaseOrderNumber: null,
+    startDate: onDay("2026-10-20"),
+    dueDate: onDay("2026-10-27"),
+    priority: "low" as const,
+    status: "new" as const,
+    completedAt: null,
+    subject: "Lobby floor (Lobby)",
+    descriptionHtml: "<p>Example crack near the mailboxes.</p>",
+    internalNotes: "Created from inspection Monthly common area inspection, Lobby, Lobby floor.",
+    includeInReport: true,
+    area: "none" as const,
+    apartmentId: null,
+    createdById: adminId,
+    inspectionItemId: "seed_insp_done_floor",
+  };
+  await prisma.case.upsert({
+    where: { id: "seed_case_16" },
+    update: caseData,
+    create: { id: "seed_case_16", ...caseData },
+  });
+  await prisma.caseActivity.upsert({
+    where: { id: "seed_case_16_created" },
+    update: { summary: "Case created." },
+    create: {
+      id: "seed_case_16_created",
+      caseId: "seed_case_16",
+      actorId: adminId,
+      kind: "created",
+      summary: "Case created.",
+      createdAt: onDay("2026-10-20"),
+    },
+  });
+  const casePhoto = await prisma.caseFile.findUnique({ where: { id: "seed_case_16_photo" } });
+  if (!casePhoto && storedName) {
+    const copy = await copyStoredFile(storedName);
+    if (copy) {
+      await prisma.caseFile.create({
+        data: {
+          id: "seed_case_16_photo",
+          caseId: "seed_case_16",
+          kind: "photo",
+          name: "example-lobby-floor.png",
+          storedName: copy,
+          uploadedById: adminId,
+        },
+      });
+    }
+  }
+
+  function openAnswer(id: string): { result: "pass" | "fail" | "na" | null; comment: string | null } {
+    if (id.endsWith("_doors")) return { result: "pass", comment: null };
+    if (id.endsWith("_floor")) return { result: "fail", comment: "Example stain by the front desk." };
+    if (id.endsWith("_light")) return { result: "na", comment: null };
+    return blank;
+  }
+
+  function doneAnswer(id: string): { result: "pass" | "fail" | "na"; comment: string | null } | null {
+    if (
+      id.endsWith("_doors") ||
+      id.endsWith("_light") ||
+      id.endsWith("_parklight") ||
+      id.endsWith("_l1") ||
+      id.endsWith("_stair") ||
+      id.endsWith("_l2") ||
+      id.endsWith("_l3")
+    ) {
+      return { result: "pass", comment: null };
+    }
+    if (id.endsWith("_floor")) return { result: "fail", comment: "Example crack near the mailboxes." };
+    if (id.endsWith("_gate")) return { result: "fail", comment: "Example: the door stops halfway." };
+    if (id.endsWith("_lines")) return { result: "na", comment: null };
+    return null;
+  }
+}
+
+async function upsertInspectionTemplate(
+  id: string,
+  name: string,
+  type: "common_area" | "private_lot",
+  description: string,
+  createdAt: Date,
+  areas: readonly { id: string; name: string; items: readonly (readonly [string, string, string])[] }[],
+) {
+  await prisma.inspectionTemplate.upsert({
+    where: { id },
+    update: { name, type, description, buildingId: "seed_example_tower" },
+    create: { id, buildingId: "seed_example_tower", name, type, description, createdAt },
+  });
+  for (const [position, area] of areas.entries()) {
+    await prisma.inspectionArea.upsert({
+      where: { id: area.id },
+      update: { templateId: id, name: area.name, position },
+      create: { id: area.id, templateId: id, name: area.name, position },
+    });
+    for (const [itemPosition, item] of area.items.entries()) {
+      const [itemId, itemName, guidance] = item;
+      await prisma.inspectionItem.upsert({
+        where: { id: itemId },
+        update: { areaId: area.id, name: itemName, guidance: guidance || null, position: itemPosition },
+        create: { id: itemId, areaId: area.id, name: itemName, guidance: guidance || null, position: itemPosition },
+      });
+    }
+  }
+}
+
+async function upsertInspectionRun(run: {
+  id: string;
+  templateId: string;
+  name: string;
+  type: "common_area" | "private_lot";
+  inspectorId: string;
+  apartmentId: string | null;
+  inspectedAt: Date;
+  status: "in_progress" | "completed";
+  completedAt: Date | null;
+  createdAt: Date;
+  areas: {
+    id: string;
+    name: string;
+    items: { id: string; name: string; guidance: string | null; result: "pass" | "fail" | "na" | null; comment: string | null }[];
+  }[];
+}) {
+  const data = {
+    buildingId: "seed_example_tower",
+    templateId: run.templateId,
+    name: run.name,
+    type: run.type,
+    inspectorId: run.inspectorId,
+    apartmentId: run.apartmentId,
+    inspectedAt: run.inspectedAt,
+    status: run.status,
+    completedAt: run.completedAt,
+  };
+  await prisma.inspectionRun.upsert({
+    where: { id: run.id },
+    update: data,
+    create: { id: run.id, ...data, createdAt: run.createdAt },
+  });
+  for (const [position, area] of run.areas.entries()) {
+    await prisma.inspectionRunArea.upsert({
+      where: { id: area.id },
+      update: { runId: run.id, name: area.name, position },
+      create: { id: area.id, runId: run.id, name: area.name, position },
+    });
+    for (const [itemPosition, item] of area.items.entries()) {
+      const itemData = {
+        areaId: area.id,
+        name: item.name,
+        guidance: item.guidance,
+        position: itemPosition,
+        result: item.result,
+        comment: item.comment,
+      };
+      await prisma.inspectionRunItem.upsert({
+        where: { id: item.id },
+        update: itemData,
+        create: { id: item.id, ...itemData },
+      });
+    }
+  }
+}
+
+function solidPng(width: number, height: number, rgba: [number, number, number, number]): Buffer {
+  const row = Buffer.alloc(1 + width * 4);
+  for (let x = 0; x < width; x += 1) {
+    row[1 + x * 4] = rgba[0];
+    row[2 + x * 4] = rgba[1];
+    row[3 + x * 4] = rgba[2];
+    row[4 + x * 4] = rgba[3];
+  }
+  const raw = Buffer.concat(Array.from({ length: height }, () => row));
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk("IHDR", pngHeader(width, height)),
+    pngChunk("IDAT", deflateSync(raw)),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+function pngHeader(width: number, height: number): Buffer {
+  const buffer = Buffer.alloc(13);
+  buffer.writeUInt32BE(width, 0);
+  buffer.writeUInt32BE(height, 4);
+  buffer[8] = 8;
+  buffer[9] = 6;
+  return buffer;
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const typeBuf = Buffer.from(type, "ascii");
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(pngCrc(Buffer.concat([typeBuf, data])) >>> 0, 0);
+  return Buffer.concat([length, typeBuf, data, crc]);
+}
+
+function pngCrc(buffer: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
 }
 
 function onMonth(today: Date, monthOffset: number, dayOfMonth: number): Date {

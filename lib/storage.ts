@@ -92,6 +92,19 @@ export async function saveUpload(
   return { storedName, originalName: fileBaseName(file.name) || "file" };
 }
 
+export async function copyStoredFile(storedName: string): Promise<string | null> {
+  const bytes = await readStoredFile(storedName);
+  if (!bytes || bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) return null;
+  const extension = path.extname(storedName).toLowerCase();
+  if (!/^\.[a-z0-9]{1,8}$/.test(extension)) return null;
+  const nextName = `${randomBytes(16).toString("hex")}${extension}`;
+  await mkdir(uploadDir(), { recursive: true });
+  const full = resolveStoredFile(nextName);
+  if (!full) return null;
+  await writeFile(full, bytes);
+  return nextName;
+}
+
 export async function readStoredFile(storedName: string): Promise<Buffer | null> {
   const full = resolveStoredFile(storedName);
   if (!full) return null;

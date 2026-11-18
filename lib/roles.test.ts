@@ -9,8 +9,10 @@ import {
   canManageCaseTypes,
   canManageContractors,
   canManageResidents,
+  canManageInspectionTemplates,
   canManageMaintenance,
   canRecordOccurrence,
+  canRunInspections,
   canSendWorkOrders,
   canViewOutbox,
 } from "./roles";
@@ -110,6 +112,20 @@ describe("maintenance permissions", () => {
     expect(canRecordOccurrence("admin")).toBe(true);
     expect(canRecordOccurrence("manager")).toBe(true);
     expect(canRecordOccurrence("staff")).toBe(true);
+  });
+});
+
+describe("inspection permissions", () => {
+  it("lets an admin or a manager edit templates", () => {
+    expect(canManageInspectionTemplates("admin")).toBe(true);
+    expect(canManageInspectionTemplates("manager")).toBe(true);
+    expect(canManageInspectionTemplates("staff")).toBe(false);
+  });
+
+  it("lets admin, manager, and staff run an inspection", () => {
+    expect(canRunInspections("admin")).toBe(true);
+    expect(canRunInspections("manager")).toBe(true);
+    expect(canRunInspections("staff")).toBe(true);
   });
 });
 

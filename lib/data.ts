@@ -639,6 +639,12 @@ const caseDetailInclude = {
     },
   },
   maintenanceEvent: { select: { id: true, subject: true } },
+  inspectionItem: {
+    select: {
+      name: true,
+      area: { select: { name: true, run: { select: { id: true, name: true } } } },
+    },
+  },
 } satisfies Prisma.CaseInclude;
 
 export type CaseDetail = Prisma.CaseGetPayload<{ include: typeof caseDetailInclude }>;

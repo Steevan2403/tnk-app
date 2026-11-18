@@ -100,6 +100,15 @@ export default async function CasePage({
               · due {formatCalendarDate(record.occurrenceOn)}
             </p>
           ) : null}
+          {record.inspectionItem ? (
+            <p className="mt-2 text-sm text-muted">
+              From inspection{" "}
+              <Link href={`/building/inspections/runs/${record.inspectionItem.area.run.id}`} className="text-brand-blue hover:underline">
+                {record.inspectionItem.area.run.name}
+              </Link>{" "}
+              · {record.inspectionItem.area.name} · {record.inspectionItem.name}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex gap-3 text-sm">
