@@ -638,6 +638,7 @@ const caseDetailInclude = {
       contact: { select: { name: true } },
     },
   },
+  maintenanceEvent: { select: { id: true, subject: true } },
 } satisfies Prisma.CaseInclude;
 
 export type CaseDetail = Prisma.CaseGetPayload<{ include: typeof caseDetailInclude }>;

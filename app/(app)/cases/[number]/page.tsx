@@ -88,6 +88,18 @@ export default async function CasePage({
         <div>
           <h1 className="font-serif text-3xl">{record.subject}</h1>
           <p className="mt-2 text-muted">Case #{record.number}</p>
+          {record.maintenanceEvent && record.occurrenceOn ? (
+            <p className="mt-2 text-sm text-muted">
+              From maintenance{" "}
+              <Link
+                href={`/calendar?event=${record.maintenanceEvent.id}&on=${formatIsoDate(record.occurrenceOn)}`}
+                className="text-brand-blue hover:underline"
+              >
+                {record.maintenanceEvent.subject}
+              </Link>{" "}
+              · due {formatCalendarDate(record.occurrenceOn)}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex gap-3 text-sm">

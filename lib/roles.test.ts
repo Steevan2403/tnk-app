@@ -9,6 +9,8 @@ import {
   canManageCaseTypes,
   canManageContractors,
   canManageResidents,
+  canManageMaintenance,
+  canRecordOccurrence,
   canSendWorkOrders,
   canViewOutbox,
 } from "./roles";
@@ -94,6 +96,20 @@ describe("work order permissions", () => {
     expect(canViewOutbox("admin")).toBe(true);
     expect(canViewOutbox("manager")).toBe(false);
     expect(canViewOutbox("staff")).toBe(false);
+  });
+});
+
+describe("maintenance permissions", () => {
+  it("lets an admin or a manager manage the schedule", () => {
+    expect(canManageMaintenance("admin")).toBe(true);
+    expect(canManageMaintenance("manager")).toBe(true);
+    expect(canManageMaintenance("staff")).toBe(false);
+  });
+
+  it("lets admin, manager, and staff record an occurrence", () => {
+    expect(canRecordOccurrence("admin")).toBe(true);
+    expect(canRecordOccurrence("manager")).toBe(true);
+    expect(canRecordOccurrence("staff")).toBe(true);
   });
 });
 

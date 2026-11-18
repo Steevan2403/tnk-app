@@ -48,6 +48,8 @@ model User {
   caseActivities     CaseActivity[]
   caseStars          CaseStar[]
   workOrdersSent     WorkOrder[]
+  maintenanceEvents  MaintenanceEvent[]
+  occurrenceRecords  MaintenanceOccurrence[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -63,10 +65,11 @@ model Building {
   lotCount   Int
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
-  selectedBy User[]
-  apartments Apartment[]
-  assets     Asset[]
-  cases      Case[]
+  selectedBy        User[]
+  apartments        Apartment[]
+  assets            Asset[]
+  cases             Case[]
+  maintenanceEvents MaintenanceEvent[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -92,10 +95,11 @@ model ContractorCompany {
   notes      ContractorNote[]
   documents  ContractorDocument[]
   insurances ContractorInsurance[]
-  assets     Asset[]
-  caseLinks  CaseCompany[]
-  workOrders WorkOrder[]
-  createdAt  DateTime              @default(now())
+  assets            Asset[]
+  caseLinks         CaseCompany[]
+  workOrders        WorkOrder[]
+  maintenanceLinks  MaintenanceCompany[]
+  createdAt         DateTime              @default(now())
   updatedAt  DateTime              @updatedAt
 
   @@index([categoryId])
@@ -111,10 +115,11 @@ model ContractorContact {
   phone      String?
   mobile     String?
   email      String?
-  assets     Asset[]
-  caseLinks  CaseContact[]
-  workOrders WorkOrder[]
-  createdAt  DateTime          @default(now())
+  assets           Asset[]
+  caseLinks        CaseContact[]
+  workOrders       WorkOrder[]
+  maintenanceLinks MaintenanceContact[]
+  createdAt        DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
   @@index([companyId])
@@ -173,10 +178,11 @@ model Apartment {
   documents  ApartmentDocument[]
   images     ApartmentImage[]
   notes      ApartmentNote[]
-  owners     ApartmentOwner[]
-  agent      ManagingAgent?
-  cases      Case[]
-  createdAt  DateTime            @default(now())
+  owners            ApartmentOwner[]
+  agent             ManagingAgent?
+  cases             Case[]
+  maintenanceEvents MaintenanceEvent[]
+  createdAt         DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
   @@unique([buildingId, number])
@@ -320,9 +326,10 @@ model Asset {
   contact        ContractorContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   photos         AssetPhoto[]
   documents      AssetDocument[]
-  warranties     AssetWarranty[]
-  caseLinks      CaseAsset[]
-  createdAt      DateTime           @default(now())
+  warranties       AssetWarranty[]
+  caseLinks        CaseAsset[]
+  maintenanceLinks MaintenanceAsset[]
+  createdAt        DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
   @@index([buildingId])
@@ -457,6 +464,9 @@ model Case {
   activities          CaseActivity[]
   stars               CaseStar[]
   workOrders          WorkOrder[]
+  maintenanceEventId  String?
+  maintenanceEvent    MaintenanceEvent? @relation(fields: [maintenanceEventId], references: [id], onDelete: SetNull)
+  occurrenceOn        DateTime?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -467,6 +477,135 @@ model Case {
   @@index([apartmentId])
   @@index([createdById])
   @@index([dueDate])
+  @@index([maintenanceEventId])
+}
+
+enum MaintenanceFrequency {
+  one_off
+  weekly
+  fortnightly
+  monthly
+  quarterly
+  half_yearly
+  yearly
+  every_n_months
+}
+
+enum MaintenanceFileKind {
+  photo
+  document
+}
+
+enum MaintenanceMark {
+  completed
+  skipped
+}
+
+// A maintenance event is the rule. Occurrences are calculated for a date window.
+// Only completed or skipped occurrences, and sent reminders, are stored.
+model MaintenanceEvent {
+  id               String               @id @default(cuid())
+  buildingId       String
+  building         Building             @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  subject          String
+  description      String               @default("")
+  notes            String?
+  startDate        DateTime
+  endDate          DateTime?
+  frequency        MaintenanceFrequency
+  intervalMonths   Int?
+  remindContractor Boolean              @default(false)
+  reminderDays     Int                  @default(7)
+  area             CaseArea             @default(none)
+  apartmentId      String?
+  apartment        Apartment?           @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  createdById      String
+  createdBy        User                 @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  assets           MaintenanceAsset[]
+  companies        MaintenanceCompany[]
+  contacts         MaintenanceContact[]
+  files            MaintenanceFile[]
+  occurrences      MaintenanceOccurrence[]
+  reminders        MaintenanceReminder[]
+  cases            Case[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([buildingId, startDate])
+  @@index([frequency])
+  @@index([apartmentId])
+  @@index([createdById])
+}
+
+model MaintenanceAsset {
+  eventId String
+  event   MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, assetId])
+  @@index([assetId])
+}
+
+model MaintenanceCompany {
+  eventId   String
+  event     MaintenanceEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  companyId String
+  company   ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, companyId])
+  @@index([companyId])
+}
+
+model MaintenanceContact {
+  eventId   String
+  event     MaintenanceEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   ContractorContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, contactId])
+  @@index([contactId])
+}
+
+model MaintenanceFile {
+  id         String              @id @default(cuid())
+  eventId    String
+  event      MaintenanceEvent    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  kind       MaintenanceFileKind
+  name       String
+  storedName String
+  uploadedAt DateTime            @default(now())
+
+  @@index([eventId])
+}
+
+model MaintenanceOccurrence {
+  id             String          @id @default(cuid())
+  eventId        String
+  event          MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occursOn       DateTime
+  state          MaintenanceMark
+  note           String?
+  fileName       String?
+  fileStoredName String?
+  actedAt        DateTime
+  actedById      String
+  actedBy        User            @relation(fields: [actedById], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, occursOn])
+  @@index([occursOn])
+  @@index([actedById])
+}
+
+model MaintenanceReminder {
+  id        String           @id @default(cuid())
+  eventId   String
+  event     MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occursOn  DateTime
+  createdAt DateTime         @default(now())
+
+  @@unique([eventId, occursOn])
+  @@index([occursOn])
 }
 
 model CaseAsset {

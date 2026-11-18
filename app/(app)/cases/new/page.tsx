@@ -3,16 +3,31 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CaseForm } from "@/components/case-form";
 import { defaultCaseDates } from "@/lib/cases";
+import { parseDateOnly } from "@/lib/contractors";
 import { listCaseFormOptions, requireUser } from "@/lib/data";
+import { maintenanceCaseSource } from "@/lib/maintenance-data";
 import { canEditCases } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "New case" };
 
-export default async function NewCasePage() {
+export default async function NewCasePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireUser();
   if (!canEditCases(user.role) || !user.selectedBuildingId) redirect("/cases");
-
-  const options = await listCaseFormOptions(user.selectedBuildingId);
+  const params = await searchParams;
+  const date = typeof params.date === "string" && parseDateOnly(params.date) ? params.date : "";
+  const eventId = typeof params.event === "string" ? params.event : "";
+  const on = typeof params.on === "string" ? params.on : "";
+  const source = eventId && on ? await maintenanceCaseSource(user.selectedBuildingId, eventId, on) : null;
+  const options = await listCaseFormOptions(user.selectedBuildingId, source?.draft.companyIds ?? []);
+  const dates = source
+    ? { startDate: source.draft.startDate, dueDate: source.draft.dueDate }
+    : date
+      ? { startDate: date, dueDate: date }
+      : defaultCaseDates();
 
   return (
     <section>
@@ -28,7 +43,9 @@ export default async function NewCasePage() {
           assets={options.assets}
           apartments={options.apartments}
           companies={options.companies}
-          dates={defaultCaseDates()}
+          dates={dates}
+          draft={source?.draft}
+          source={source ? { eventId: source.eventId, occursOn: source.occursOn } : undefined}
         />
       )}
     </section>

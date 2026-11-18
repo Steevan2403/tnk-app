@@ -26,6 +26,7 @@ import {
   type CaseSnapshot,
 } from "@/lib/cases";
 import { requireUser } from "@/lib/data";
+import { maintenanceLinkFromForm } from "@/lib/maintenance-data";
 import { prisma } from "@/lib/db";
 import { canDeleteCases, canEditCases, canManageCaseTypes } from "@/lib/roles";
 import { fileBaseName, imageUploadProblem, removeUpload, saveUpload, uploadProblem, videoUploadProblem } from "@/lib/storage";
@@ -187,6 +188,7 @@ export async function saveCase(_prev: CaseFormState, formData: FormData): Promis
   }
 
   const created = caseCreatedActivity();
+  const link = await maintenanceLinkFromForm(user.buildingId, formData);
   let allocated = 0;
   let saved = false;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -203,6 +205,8 @@ export async function saveCase(_prev: CaseFormState, formData: FormData): Promis
           number: allocated,
           completedAt: parsed.value.status === "completed" || parsed.value.status === "closed" ? now : null,
           createdById: user.id,
+          maintenanceEventId: link?.eventId,
+          occurrenceOn: link?.occursOn,
           assets: parsed.value.assetIds.length
             ? { create: parsed.value.assetIds.map((assetId) => ({ assetId })) }
             : undefined,

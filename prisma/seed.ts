@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
+import { occurrencesBetween, scheduleOf, sydneyToday } from "../lib/maintenance";
 import { hashPassword } from "../lib/password";
 import { removeUpload, saveBytes } from "../lib/storage";
 import { buildWorkOrderPdf } from "../lib/work-order-pdf";
@@ -311,6 +312,7 @@ async function main() {
   await seedAssets();
   await seedCases(admin.id);
   await seedWorkOrders(admin.id);
+  await seedMaintenance(admin.id);
 }
 
 const apartmentPlan = [
@@ -1321,6 +1323,226 @@ async function seedWorkOrders(authorId: string) {
     });
   }
 }
+
+async function seedMaintenance(authorId: string) {
+  const today = sydneyToday();
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const events = [
+    {
+      id: "seed_maint_fire",
+      subject: "Example fire system test",
+      description: "Example monthly test of the lobby fire panel.",
+      notes: "Example: write down the panel reading.",
+      start: onMonth(today, -8, 15),
+      end: null,
+      frequency: "monthly" as const,
+      intervalMonths: null,
+      remind: true,
+      area: "asset" as const,
+      assetIds: ["seed_asset_panel"],
+      companyIds: ["seed_co_fire"],
+      contactIds: ["seed_contact_avery"],
+      leaveOpen: 1,
+    },
+    {
+      id: "seed_maint_lift",
+      subject: "Example lift service",
+      description: "Example monthly service of passenger lift A.",
+      notes: null,
+      start: onMonth(today, -5, 4),
+      end: null,
+      frequency: "monthly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_lift"],
+      companyIds: ["seed_co_electrical"],
+      contactIds: ["seed_contact_pat"],
+      leaveOpen: 2,
+    },
+    {
+      id: "seed_maint_gutter",
+      subject: "Example gutter clean",
+      description: "Example half-yearly clean of the roof gutters.",
+      notes: "Example: stay off the garden beds.",
+      start: onMonth(today, -14, 2),
+      end: null,
+      frequency: "half_yearly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "none" as const,
+      assetIds: [],
+      companyIds: ["seed_co_cleaning"],
+      contactIds: ["seed_contact_jordan"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_pump",
+      subject: "Example pump service",
+      description: "Example quarterly service of fire pump 1.",
+      notes: null,
+      start: onMonth(today, -9, 20),
+      end: null,
+      frequency: "quarterly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_fire_pump"],
+      companyIds: ["seed_co_fire"],
+      contactIds: ["seed_contact_avery"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_hot_water",
+      subject: "Example hot water service",
+      description: "Example yearly service of the hot water plant.",
+      notes: null,
+      start: onMonth(today, -10, 9),
+      end: null,
+      frequency: "yearly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_hot_water"],
+      companyIds: ["seed_co_plumbing"],
+      contactIds: ["seed_contact_casey"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_board",
+      subject: "Example switchboard test",
+      description: "Example switchboard test every four months.",
+      notes: null,
+      start: onMonth(today, -9, 6),
+      end: null,
+      frequency: "every_n_months" as const,
+      intervalMonths: 4,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_switchboard"],
+      companyIds: ["seed_co_electrical"],
+      contactIds: ["seed_contact_pat"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_gate",
+      subject: "Example car park gate service",
+      description: "Example fortnightly check of the car park gate.",
+      notes: null,
+      start: onMonth(today, -2, 11),
+      end: null,
+      frequency: "fortnightly" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_gate"],
+      companyIds: ["seed_co_electrical"],
+      contactIds: ["seed_contact_sam"],
+      leaveOpen: 0,
+    },
+    {
+      id: "seed_maint_camera",
+      subject: "Example lobby camera check",
+      description: "Example one-off check of lobby camera 1.",
+      notes: null,
+      start: onMonth(today, -4, 12),
+      end: null,
+      frequency: "one_off" as const,
+      intervalMonths: null,
+      remind: false,
+      area: "asset" as const,
+      assetIds: ["seed_asset_camera"],
+      companyIds: [],
+      contactIds: [],
+      leaveOpen: 0,
+    },
+  ];
+
+  for (const event of events) {
+    const data = {
+      buildingId: "seed_example_tower",
+      subject: event.subject,
+      description: event.description,
+      notes: event.notes,
+      startDate: event.start,
+      endDate: event.end,
+      frequency: event.frequency,
+      intervalMonths: event.intervalMonths,
+      remindContractor: event.remind,
+      reminderDays: 7,
+      area: event.area,
+      apartmentId: null,
+      createdById: authorId,
+    };
+    await prisma.maintenanceEvent.upsert({
+      where: { id: event.id },
+      update: data,
+      create: { id: event.id, ...data },
+    });
+    await prisma.maintenanceAsset.deleteMany({ where: { eventId: event.id } });
+    await prisma.maintenanceCompany.deleteMany({ where: { eventId: event.id } });
+    await prisma.maintenanceContact.deleteMany({ where: { eventId: event.id } });
+    await prisma.maintenanceOccurrence.deleteMany({ where: { eventId: event.id } });
+    if (event.assetIds.length) {
+      await prisma.maintenanceAsset.createMany({
+        data: event.assetIds.map((assetId) => ({ eventId: event.id, assetId })),
+      });
+    }
+    if (event.companyIds.length) {
+      await prisma.maintenanceCompany.createMany({
+        data: event.companyIds.map((companyId) => ({ eventId: event.id, companyId })),
+      });
+    }
+    if (event.contactIds.length) {
+      await prisma.maintenanceContact.createMany({
+        data: event.contactIds.map((contactId) => ({ eventId: event.id, contactId })),
+      });
+    }
+    const schedule = scheduleOf({
+      startDate: event.start,
+      endDate: event.end,
+      frequency: event.frequency,
+      intervalMonths: event.intervalMonths,
+    });
+    if (!schedule) continue;
+    const past = occurrencesBetween(schedule, event.start, yesterday);
+    const done = past.slice(0, Math.max(0, past.length - event.leaveOpen));
+    if (done.length) {
+      await prisma.maintenanceOccurrence.createMany({
+        data: done.map((occursOn) => ({
+          eventId: event.id,
+          occursOn,
+          state: "completed" as const,
+          note: "Example visit marked done.",
+          actedAt: occursOn,
+          actedById: authorId,
+        })),
+      });
+    }
+  }
+
+  const file = await prisma.maintenanceFile.findUnique({ where: { id: "seed_maint_file_fire" } });
+  if (!file) {
+    const storedName = await saveBytes(Buffer.from(examplePdf), ".pdf");
+    await prisma.maintenanceFile.create({
+      data: {
+        id: "seed_maint_file_fire",
+        eventId: "seed_maint_fire",
+        kind: "document",
+        name: "Example fire test sheet.pdf",
+        storedName,
+      },
+    });
+  }
+}
+
+function onMonth(today: Date, monthOffset: number, dayOfMonth: number): Date {
+  const shifted = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + monthOffset, 1));
+  const last = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), Math.min(dayOfMonth, last)));
+}
+
+const examplePdf = "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 80]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
 
 function onDay(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
