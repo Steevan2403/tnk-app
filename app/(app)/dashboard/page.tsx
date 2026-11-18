@@ -15,7 +15,7 @@ export default async function DashboardPage() {
       <section>
         <h1 className="font-serif text-3xl">Dashboard</h1>
         <p className="mt-3 text-muted">Select a building to see it here.</p>
-        <Link href="/buildings" className="mt-4 inline-block text-pine hover:underline">
+        <Link href="/buildings" className="mt-4 inline-block text-brand-blue hover:underline">
           Manage buildings
         </Link>
       </section>

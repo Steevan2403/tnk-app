@@ -3,16 +3,19 @@
 @theme {
   --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, "Iowan Old Style", Palatino, "Times New Roman", serif;
-  --color-ink: #17211e;
-  --color-paper: #f3efe6;
-  --color-card: #fffcf7;
-  --color-line: #e0d8cb;
-  --color-brass: #c4843c;
-  --color-pine: #146043;
-  --color-moss: #e7f3ec;
-  --color-muted: #5c675f;
-  --color-danger: #8f2a2a;
-  --color-foam: #e7efe9;
+  --color-brand-navy: #000080;
+  --color-brand-blue: #0066cc;
+  --color-brand-green: #10b981;
+  --color-page: #f3f4f6;
+  --color-card: #ffffff;
+  --color-line: #e5e7eb;
+  --color-ink: #1f2937;
+  --color-muted: #4b5563;
+  --color-danger: #b91c1c;
+}
+
+h1 {
+  color: var(--color-brand-navy);
 }
 
 summary {

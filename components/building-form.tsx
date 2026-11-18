@@ -91,11 +91,11 @@ export function BuildingForm({ building }: { building?: BuildingRecord }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-pine px-4 py-2 font-medium text-white hover:bg-pine/90 disabled:opacity-60"
+          className="rounded-md bg-brand-navy px-4 py-2 font-medium text-white hover:bg-brand-blue disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save building"}
         </button>
-        <Link href="/buildings" className="rounded-md px-3 py-2 text-sm text-muted hover:text-ink">
+        <Link href="/buildings" className="rounded-md border border-brand-blue px-3 py-2 text-sm text-brand-blue hover:bg-brand-blue hover:text-white">
           Cancel
         </Link>
       </div>

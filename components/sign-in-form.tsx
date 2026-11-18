@@ -25,7 +25,7 @@ export function SignInForm() {
           type="email"
           autoComplete="username"
           required
-          className="w-full rounded-md border border-line bg-white px-3 py-2 outline-none focus:border-pine focus:ring-2 focus:ring-pine/30"
+          className="w-full rounded-md border border-line bg-white px-3 py-2 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40"
         />
       </div>
       <div>
@@ -38,13 +38,13 @@ export function SignInForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="w-full rounded-md border border-line bg-white px-3 py-2 outline-none focus:border-pine focus:ring-2 focus:ring-pine/30"
+          className="w-full rounded-md border border-line bg-white px-3 py-2 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40"
         />
       </div>
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-pine px-4 py-2.5 font-medium text-white hover:bg-pine/90 disabled:opacity-60"
+        className="w-full rounded-md bg-brand-navy px-4 py-2.5 font-medium text-white hover:bg-brand-blue disabled:opacity-60"
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

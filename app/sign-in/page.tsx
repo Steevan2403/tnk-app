@@ -14,9 +14,9 @@ export default async function SignInPage() {
     <main className="flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-line bg-card px-6 py-8 shadow-sm sm:px-8">
         <div className="mb-8 flex items-center gap-3">
-          <Mark className="h-10 w-10 text-ink" />
+          <Mark className="h-10 w-10" />
           <div>
-            <p className="font-serif text-2xl leading-none">TNK</p>
+            <p className="font-serif text-2xl leading-none text-brand-navy">TNK</p>
             <p className="text-sm text-muted">Property Services</p>
           </div>
         </div>

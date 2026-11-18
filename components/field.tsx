@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
 const controlClass =
-  "w-full rounded-md border border-line bg-white px-3 py-2 text-ink outline-none focus:border-pine focus:ring-2 focus:ring-pine/30";
+  "w-full rounded-md border border-line bg-white px-3 py-2 text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40";
 
 export function TextField({
   label,

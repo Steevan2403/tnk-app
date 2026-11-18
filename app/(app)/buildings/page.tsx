@@ -17,7 +17,7 @@ export default async function BuildingsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-serif text-3xl">Buildings</h1>
         {canManage ? (
-          <Link href="/buildings/new" className="rounded-md bg-pine px-4 py-2 text-sm font-medium text-white">
+          <Link href="/buildings/new" className="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue">
             New building
           </Link>
         ) : null}
@@ -62,7 +62,7 @@ export default async function BuildingsPage() {
                         <div className="flex justify-end gap-3">
                           <SwitchButton buildingId={building.id} selected={selected} />
                           {canManage ? (
-                            <Link href={`/buildings/${building.id}/edit`} className="text-pine hover:underline">
+                            <Link href={`/buildings/${building.id}/edit`} className="text-brand-blue hover:underline">
                               Edit
                             </Link>
                           ) : null}
@@ -97,7 +97,7 @@ function BuildingSummary({
       <div className="mt-3 flex gap-3">
         <SwitchButton buildingId={building.id} selected={selected} />
         {canManage ? (
-          <Link href={`/buildings/${building.id}/edit`} className="text-sm text-pine hover:underline">
+          <Link href={`/buildings/${building.id}/edit`} className="text-sm text-brand-blue hover:underline">
             Edit
           </Link>
         ) : null}
@@ -110,7 +110,11 @@ function SwitchButton({ buildingId, selected }: { buildingId: string; selected: 
   return (
     <form action={selectBuilding}>
       <input type="hidden" name="buildingId" value={buildingId} />
-      <button type="submit" disabled={selected} className="text-sm text-pine disabled:text-muted">
+      <button
+        type="submit"
+        disabled={selected}
+        className="text-sm text-brand-blue disabled:rounded disabled:bg-brand-green disabled:px-2 disabled:py-0.5 disabled:text-brand-navy disabled:opacity-100"
+      >
         {selected ? "Selected" : "Switch"}
       </button>
     </form>
