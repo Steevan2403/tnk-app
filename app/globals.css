@@ -2,7 +2,7 @@
 
 @theme {
   --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-serif: Georgia, "Iowan Old Style", Palatino, "Times New Roman", serif;
+  --font-serif: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --color-brand-navy: #000080;
   --color-brand-blue: #0066cc;
   --color-brand-green: #10b981;
@@ -12,6 +12,15 @@
   --color-ink: #1f2937;
   --color-muted: #4b5563;
   --color-danger: #b91c1c;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
 }
 
 h1 {
