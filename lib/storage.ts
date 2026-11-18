@@ -5,6 +5,8 @@ import path from "node:path";
 // Local stand-in for object storage. Callers use these helpers so files can move later.
 const MAX_BYTES = 10 * 1024 * 1024;
 
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+
 const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
   ".png": "image/png",
@@ -31,6 +33,14 @@ export function uploadProblem(file: File): string | null {
   if (file.size > MAX_BYTES) return "File must be 10 MB or smaller.";
   const extension = path.extname(file.name).toLowerCase();
   if (!CONTENT_TYPES[extension]) return "Upload a PDF, image, text file, or Word document.";
+  return null;
+}
+
+export function imageUploadProblem(file: File): string | null {
+  if (file.size === 0) return "Choose an image.";
+  if (file.size > MAX_BYTES) return "Image must be 10 MB or smaller.";
+  const extension = path.extname(file.name).toLowerCase();
+  if (!IMAGE_EXTENSIONS.has(extension)) return "Upload a PNG, JPEG, WebP, or GIF.";
   return null;
 }
 
@@ -73,7 +83,8 @@ export function contentTypeFor(storedName: string): string {
   return CONTENT_TYPES[path.extname(storedName).toLowerCase()] ?? "application/octet-stream";
 }
 
-export function contentDisposition(filename: string): string {
+export function contentDisposition(filename: string, inline = false): string {
   const cleaned = filename.replace(/["\r\n\\]/g, "");
-  return `attachment; filename="${cleaned}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+  const kind = inline ? "inline" : "attachment";
+  return `${kind}; filename="${cleaned}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }

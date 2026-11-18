@@ -10,6 +10,10 @@ export function canManageContractors(role: string): boolean {
   return role === "admin" || role === "manager";
 }
 
+export function canManageResidents(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
 export function formatRole(role: string): string {
   if (role === "admin") return "Admin";
   if (role === "manager") return "Manager";

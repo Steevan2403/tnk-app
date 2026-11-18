@@ -106,6 +106,40 @@ export function TextArea({
   );
 }
 
+export function CheckField({
+  label,
+  name,
+  error,
+  ...props
+}: {
+  label: string;
+  name: string;
+  error?: string;
+} & InputHTMLAttributes<HTMLInputElement>) {
+  const id = props.id ?? name;
+  return (
+    <div>
+      <label htmlFor={id} className="flex items-center gap-2 text-sm font-medium">
+        <input
+          {...props}
+          id={id}
+          name={name}
+          type="checkbox"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className="size-4 accent-brand-navy"
+        />
+        {label}
+      </label>
+      {error ? (
+        <p id={`${id}-error`} className="mt-1 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function FileField({
   label,
   name,

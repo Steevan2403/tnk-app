@@ -10,6 +10,12 @@ import {
   type ContractorTab,
   type InsuranceStanding,
 } from "@/lib/contractors";
+import {
+  PAGE_SIZE as RESIDENT_PAGE_SIZE,
+  compareLabel,
+  parseResidentType,
+  type ResidentType,
+} from "@/lib/residents";
 import { prisma } from "@/lib/db";
 
 export type CurrentUser = {
@@ -237,3 +243,157 @@ export const getContractorCompany = cache(async (id: string): Promise<Contractor
     include: companyDetailInclude,
   });
 });
+
+export type ResidentRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  type: ResidentType;
+  phone: string | null;
+  mobile: string | null;
+  email: string | null;
+  primaryContact: boolean;
+  apartmentId: string;
+  apartmentNumber: string;
+  lotNumber: string;
+};
+
+export type ApartmentRow = {
+  id: string;
+  number: string;
+  lotNumber: string;
+  occupancy: "owner_occupied" | "investment";
+  residentCount: number;
+};
+
+export type ResidentListQuery = {
+  buildingId: string;
+  q: string;
+  type: string;
+  page: number;
+};
+
+export async function listResidents(query: ResidentListQuery): Promise<{ total: number; rows: ResidentRow[] }> {
+  const where = residentWhere(query);
+  const skip = (query.page - 1) * RESIDENT_PAGE_SIZE;
+  const [total, residents] = await Promise.all([
+    prisma.resident.count({ where }),
+    prisma.resident.findMany({
+      where,
+      skip,
+      take: RESIDENT_PAGE_SIZE,
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      include: { apartment: { select: { id: true, number: true, lotNumber: true } } },
+    }),
+  ]);
+
+  return {
+    total,
+    rows: residents.map((resident) => ({
+      id: resident.id,
+      firstName: resident.firstName,
+      lastName: resident.lastName,
+      type: resident.type,
+      phone: resident.phone,
+      mobile: resident.mobile,
+      email: resident.email,
+      primaryContact: resident.primaryContact,
+      apartmentId: resident.apartment.id,
+      apartmentNumber: resident.apartment.number,
+      lotNumber: resident.apartment.lotNumber,
+    })),
+  };
+}
+
+export async function listApartments(buildingId: string): Promise<ApartmentRow[]> {
+  const apartments = await prisma.apartment.findMany({
+    where: { buildingId },
+    include: { _count: { select: { residents: true } } },
+  });
+
+  return apartments
+    .map((apartment) => ({
+      id: apartment.id,
+      number: apartment.number,
+      lotNumber: apartment.lotNumber,
+      occupancy: apartment.occupancy,
+      residentCount: apartment._count.residents,
+    }))
+    .sort((a, b) => compareLabel(a.number, b.number) || compareLabel(a.lotNumber, b.lotNumber));
+}
+
+export const listApartmentOptions = cache(async (buildingId: string) => {
+  const apartments = await prisma.apartment.findMany({
+    where: { buildingId },
+    select: { id: true, number: true, lotNumber: true },
+  });
+  return apartments.sort((a, b) => compareLabel(a.number, b.number));
+});
+
+const apartmentDetailInclude = {
+  residents: { orderBy: [{ lastName: "asc" as const }, { firstName: "asc" as const }] },
+  vehicles: { orderBy: { registration: "asc" as const } },
+  documents: { orderBy: { uploadedAt: "desc" as const } },
+  images: { orderBy: { uploadedAt: "desc" as const } },
+  notes: {
+    orderBy: { createdAt: "desc" as const },
+    include: { author: { select: { name: true } } },
+  },
+  owners: { orderBy: { name: "asc" as const } },
+  agent: true,
+} satisfies Prisma.ApartmentInclude;
+
+export type ApartmentDetail = Prisma.ApartmentGetPayload<{ include: typeof apartmentDetailInclude }>;
+
+export async function getApartment(buildingId: string, id: string): Promise<ApartmentDetail | null> {
+  return prisma.apartment.findFirst({
+    where: { id, buildingId },
+    include: apartmentDetailInclude,
+  });
+}
+
+const residentFormSelect = {
+  id: true,
+  apartmentId: true,
+  firstName: true,
+  lastName: true,
+  type: true,
+  phone: true,
+  mobile: true,
+  secondaryPhone: true,
+  email: true,
+  moveInOn: true,
+  moveOutOn: true,
+  primaryContact: true,
+  notes: true,
+} as const;
+
+export type ResidentFormRecord = Prisma.ResidentGetPayload<{ select: typeof residentFormSelect }>;
+
+export async function getResident(buildingId: string, id: string): Promise<ResidentFormRecord | null> {
+  return prisma.resident.findFirst({
+    where: { id, apartment: { buildingId } },
+    select: residentFormSelect,
+  });
+}
+
+function residentWhere(query: ResidentListQuery): Prisma.ResidentWhereInput {
+  const filters: Prisma.ResidentWhereInput[] = [{ apartment: { buildingId: query.buildingId } }];
+  const type = parseResidentType(query.type);
+  if (type) filters.push({ type });
+  const tokens = query.q.split(/\s+/).filter(Boolean);
+  for (const token of tokens) {
+    filters.push({
+      OR: [
+        { firstName: { contains: token } },
+        { lastName: { contains: token } },
+        { email: { contains: token } },
+        { phone: { contains: token } },
+        { mobile: { contains: token } },
+        { secondaryPhone: { contains: token } },
+        { apartment: { number: { contains: token } } },
+      ],
+    });
+  }
+  return { AND: filters };
+}

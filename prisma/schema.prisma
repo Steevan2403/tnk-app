@@ -21,6 +21,17 @@ enum ContractorStatus {
   approved
 }
 
+enum ResidentType {
+  owner
+  tenant
+  other
+}
+
+enum Occupancy {
+  owner_occupied
+  investment
+}
+
 model User {
   id                 String           @id @default(cuid())
   email              String           @unique
@@ -30,6 +41,7 @@ model User {
   selectedBuildingId String?
   selectedBuilding   Building?        @relation(fields: [selectedBuildingId], references: [id], onDelete: SetNull)
   contractorNotes    ContractorNote[]
+  apartmentNotes     ApartmentNote[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -46,6 +58,7 @@ model Building {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   selectedBy User[]
+  apartments Apartment[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -131,4 +144,131 @@ model ContractorInsurance {
 
   @@index([companyId])
   @@index([expiresOn])
+}
+
+// Apartments and the people, vehicles, and files on them belong to one building.
+model Apartment {
+  id          String            @id @default(cuid())
+  buildingId  String
+  building    Building          @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  number      String
+  lotNumber   String
+  occupancy   Occupancy         @default(owner_occupied)
+  residents   Resident[]
+  vehicles    Vehicle[]
+  documents   ApartmentDocument[]
+  images      ApartmentImage[]
+  notes       ApartmentNote[]
+  owners      ApartmentOwner[]
+  agent       ManagingAgent?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([buildingId, number])
+  @@unique([buildingId, lotNumber])
+  @@index([buildingId])
+}
+
+model Resident {
+  id             String       @id @default(cuid())
+  apartmentId    String
+  apartment      Apartment    @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String
+  type           ResidentType
+  phone          String?
+  mobile         String?
+  secondaryPhone String?
+  email          String?
+  moveInOn       DateTime?
+  moveOutOn      DateTime?
+  primaryContact Boolean      @default(false)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([apartmentId])
+  @@index([type])
+}
+
+model Vehicle {
+  id              String    @id @default(cuid())
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  registration    String
+  make            String?
+  model           String?
+  colour          String?
+  carSpace        String?
+  location        String?
+  photoName       String?
+  photoStoredName String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([apartmentId])
+}
+
+model ApartmentDocument {
+  id         String    @id @default(cuid())
+  apartmentId String
+  apartment  Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  name       String
+  storedName String
+  expiresOn  DateTime?
+  uploadedAt DateTime  @default(now())
+
+  @@index([apartmentId])
+}
+
+model ApartmentImage {
+  id          String    @id @default(cuid())
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  name        String
+  storedName  String
+  uploadedAt  DateTime  @default(now())
+
+  @@index([apartmentId])
+}
+
+model ApartmentNote {
+  id          String    @id @default(cuid())
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  body        String
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  createdAt   DateTime  @default(now())
+
+  @@index([apartmentId])
+}
+
+model ApartmentOwner {
+  id              String    @id @default(cuid())
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  name            String
+  phone           String?
+  mobile          String?
+  email           String?
+  postalAddress   String?
+  strataCommittee Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([apartmentId])
+}
+
+model ManagingAgent {
+  id          String    @id @default(cuid())
+  apartmentId String    @unique
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  company     String
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

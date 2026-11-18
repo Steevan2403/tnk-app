@@ -40,7 +40,7 @@ yarn-error.log*
 /prisma/*.db
 /prisma/*.db-journal
 
-# contractor uploads
+# uploaded files
 /uploads
 
 # typescript

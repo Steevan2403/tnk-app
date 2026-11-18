@@ -302,6 +302,147 @@ async function main() {
       create: note,
     });
   }
+
+  await seedApartments(admin.id);
+}
+
+const apartmentPlan = [
+  ["101", "1"],
+  ["102", "2"],
+  ["103", "3"],
+  ["104", "4"],
+  ["201", "5"],
+  ["202", "6"],
+  ["203", "7"],
+  ["204", "8"],
+  ["301", "9"],
+  ["302", "10"],
+  ["303", "11"],
+  ["304", "12"],
+] as const;
+
+const residentPlan = [
+  ["seed_res_alex", "101", "Alex", "Example", "owner", "02 0000 1001", "0400 000 001", "alex.example@example.com", "2023-02-01", null, true],
+  ["seed_res_blake", "101", "Blake", "Sample", "tenant", null, "0400 000 002", "blake.sample@example.com", "2022-03-01", "2025-06-01", false],
+  ["seed_res_casey", "102", "Casey", "Placeholder", "owner", "02 0000 1002", "0400 000 003", "casey.placeholder@example.com", "2021-11-15", null, true],
+  ["seed_res_dana", "103", "Dana", "Demo", "tenant", null, "0400 000 004", "dana.demo@example.com", "2024-01-08", null, true],
+  ["seed_res_eden", "103", "Eden", "Example", "other", null, "0400 000 005", "eden.example@example.com", "2024-04-01", null, false],
+  ["seed_res_finley", "104", "Finley", "Sample", "owner", "02 0000 1004", "0400 000 006", "finley.sample@example.com", "2020-07-01", null, true],
+  ["seed_res_gray", "201", "Gray", "Placeholder", "owner", null, "0400 000 007", "gray.placeholder@example.com", "2023-09-12", null, true],
+  ["seed_res_harper", "202", "Harper", "Demo", "tenant", null, "0400 000 008", "harper.demo@example.com", "2025-01-20", null, true],
+  ["seed_res_indigo", "203", "Indigo", "Example", "owner", "02 0000 1009", "0400 000 009", "indigo.example@example.com", "2019-05-03", null, true],
+  ["seed_res_jules", "203", "Jules", "Sample", "tenant", null, "0400 000 010", "jules.sample@example.com", "2024-08-01", null, false],
+  ["seed_res_kai", "204", "Kai", "Placeholder", "owner", null, "0400 000 011", "kai.placeholder@example.com", "2022-12-01", null, true],
+  ["seed_res_logan", "301", "Logan", "Demo", "tenant", null, "0400 000 012", "logan.demo@example.com", "2023-06-18", null, true],
+  ["seed_res_morgan", "302", "Morgan", "Example", "owner", "02 0000 1013", "0400 000 013", "morgan.example@example.com", "2021-02-14", null, true],
+  ["seed_res_quinn", "303", "Quinn", "Sample", "tenant", null, "0400 000 014", "quinn.sample@example.com", "2024-10-01", null, true],
+  ["seed_res_reese", "303", "Reese", "Example", "other", null, "0400 000 015", "reese.example@example.com", "2024-10-01", null, false],
+] as const;
+
+function day(value: string | null): Date | null {
+  return value ? new Date(`${value}T00:00:00.000Z`) : null;
+}
+
+async function seedApartments(authorId: string) {
+  for (const [number, lotNumber] of apartmentPlan) {
+    const id = `seed_apt_${number}`;
+    const data = {
+      buildingId: "seed_example_tower",
+      number,
+      lotNumber,
+      occupancy: number === "104" ? ("investment" as const) : ("owner_occupied" as const),
+    };
+    await prisma.apartment.upsert({ where: { id }, update: data, create: { id, ...data } });
+  }
+
+  for (const resident of residentPlan) {
+    const [id, apartment, firstName, lastName, type, phone, mobile, email, moveInOn, moveOutOn, primaryContact] = resident;
+    const data = {
+      apartmentId: `seed_apt_${apartment}`,
+      firstName,
+      lastName,
+      type,
+      phone,
+      mobile,
+      email,
+      moveInOn: day(moveInOn),
+      moveOutOn: day(moveOutOn),
+      primaryContact,
+    };
+    await prisma.resident.upsert({ where: { id }, update: data, create: { id, ...data } });
+  }
+
+  const vehicles = [
+    {
+      id: "seed_veh_exa001",
+      apartmentId: "seed_apt_101",
+      registration: "EXA-001",
+      make: "Example",
+      model: "Hatch",
+      colour: "Blue",
+      carSpace: "12",
+      location: "Basement",
+    },
+    {
+      id: "seed_veh_exa002",
+      apartmentId: "seed_apt_201",
+      registration: "EXA-002",
+      make: "Sample",
+      model: "Sedan",
+      colour: "White",
+      carSpace: "21",
+      location: "Basement",
+    },
+  ];
+
+  for (const vehicle of vehicles) {
+    await prisma.vehicle.upsert({ where: { id: vehicle.id }, update: vehicle, create: vehicle });
+  }
+
+  const owner = {
+    id: "seed_owner_104",
+    apartmentId: "seed_apt_104",
+    name: "Example Holdings",
+    phone: "02 0000 1104",
+    mobile: "0400 000 104",
+    email: "holdings@example.com",
+    postalAddress: "PO Box 104, Example NSW 2000",
+    strataCommittee: true,
+  };
+  await prisma.apartmentOwner.upsert({ where: { id: owner.id }, update: owner, create: owner });
+
+  const agent = {
+    apartmentId: "seed_apt_104",
+    company: "Sample Strata Management",
+    contactName: "Morgan Agent",
+    phone: "02 0000 1900",
+    email: "agent@example.com",
+    address: "9 Sample Road, Pyrmont NSW 2009",
+  };
+  await prisma.managingAgent.upsert({
+    where: { apartmentId: agent.apartmentId },
+    update: agent,
+    create: agent,
+  });
+
+  const apartmentNotes = [
+    {
+      id: "seed_note_apt_101",
+      apartmentId: "seed_apt_101",
+      body: "Parcel left with building management for Alex Example.",
+      authorId,
+    },
+    {
+      id: "seed_note_apt_104",
+      apartmentId: "seed_apt_104",
+      body: "Investment apartment. Example Holdings asked for levy notices by post.",
+      authorId,
+    },
+  ];
+
+  for (const note of apartmentNotes) {
+    await prisma.apartmentNote.upsert({ where: { id: note.id }, update: note, create: note });
+  }
 }
 
 main()
