@@ -1,6 +1,47 @@
 # TNK Property Services
 
-Building management for TNK Property Services. This app replaces the subscribed product the team was using. Feature 1 covers sign-in, the app shell, and buildings. Feature 2 covers contractors: companies, contacts, notes, documents, and insurance. Feature 3 covers apartments and residents for the selected building. Feature 4 covers the asset register for the selected building. Feature 5 covers cases for the selected building. Feature 6 covers work orders sent from a case to a contractor. Feature 7 covers the maintenance schedule and calendar. Feature 8 covers inspections: templates, runs, reports, and cases raised from failed items. Feature 9 covers the building dashboard: action counts, a month calendar, cases by type, summary counts, recent work orders, upcoming maintenance, team notes, useful numbers, and recent activity. Management reports are still to come.
+Building management for TNK Property Services. This app replaces the subscribed product the team was using. Feature 1 covers sign-in, the app shell, and buildings. Feature 2 covers contractors: companies, contacts, notes, documents, and insurance. Feature 3 covers apartments and residents for the selected building. Feature 4 covers the asset register for the selected building. Feature 5 covers cases for the selected building. Feature 6 covers work orders sent from a case to a contractor. Feature 7 covers the maintenance schedule and calendar. Feature 8 covers inspections: templates, runs, reports, and cases raised from failed items. Feature 9 covers the building dashboard: action counts, a month calendar, cases by type, summary counts, recent work orders, upcoming maintenance, team notes, useful numbers, and recent activity. Feature 10 covers management reports: period reports of the work at the selected building.
+
+## Run it on your computer
+
+Install Git and Node.js 22. npm comes with Node.js. If `node -v` does not start with `v22`, install Node.js 22 from https://nodejs.org. These accounts and the database exist only on your computer.
+
+### macOS
+
+Open Terminal and paste:
+
+```bash
+git clone https://github.com/Steevan2403/tnk-app.git
+cd tnk-app
+npm install
+cp .env.example .env
+npx prisma migrate deploy
+npx prisma db seed
+npm run dev
+```
+
+### Windows
+
+Open PowerShell and paste:
+
+```powershell
+git clone https://github.com/Steevan2403/tnk-app.git
+cd tnk-app
+npm install
+Copy-Item .env.example .env
+npx prisma migrate deploy
+npx prisma db seed
+npm run dev
+```
+
+Leave that window open. In a browser, open http://localhost:3000.
+
+Sign in with a placeholder account:
+
+- Admin: `admin@tnk.example` / `example-admin-pass`
+- Staff: `staff@tnk.example` / `example-staff-pass`
+
+The app does not send real email. Signed in as the admin, the development email outbox is at http://localhost:3000/settings/outbox.
 
 ## Requirements
 
@@ -9,15 +50,7 @@ Building management for TNK Property Services. This app replaces the subscribed 
 
 ## Local setup
 
-```bash
-npm install
-cp .env.example .env
-npx prisma migrate deploy
-npx prisma db seed
-npm run dev
-```
-
-Open http://localhost:3000.
+The copy-paste blocks above are the full local run: install dependencies, copy `.env.example` to `.env`, apply the migrations, load the seed, and start the app.
 
 `npx prisma migrate dev` is for creating a new migration after a schema change. `migrate deploy` applies the migrations already in the repo.
 
@@ -41,7 +74,7 @@ Staff, who can view contractors, residents, assets, and maintenance, and can add
 - Password: `example-staff-pass`
 - Role: `staff`
 
-Roles are `admin`, `manager`, and `staff`. Every page except sign-in requires a signed-in user. Only an admin can create or edit buildings. An admin or a manager can create, edit, approve, and delete contractors. An admin or a manager can create, edit, and delete apartments, residents, vehicles, documents, and images. Staff can view those records and add notes. An admin or a manager can create, edit, and delete assets, photos, documents, and warranties. Only an admin can add, rename, or remove asset categories, and a category can be removed only when no asset uses it. An admin, a manager, or a staff member can create and edit cases, change status, comment, and upload photos, videos, quotes, invoices, and documents. An admin or a manager can delete a case and its files. Only an admin can add, rename, or remove case types, and a type can be removed only when no case uses it. Case descriptions are stored as sanitised HTML. An admin, a manager, or a staff member can send a work order and change its status. Only an admin or a manager can cancel a work order. Completing work orders does not close the case. Only an admin can open the outbox. An admin or a manager can create and edit maintenance. An admin, a manager, or a staff member can mark a visit completed or skipped and create a case from one. An admin or a manager can create and edit inspection templates. An admin, a manager, or a staff member can start, fill in, and complete an inspection, and can create a case from a failed item. An admin or a manager can reopen a completed inspection. An admin, a manager, or a staff member can add a building note and can edit or delete their own. An admin or a manager can delete any building note. An admin or a manager can add, edit, and delete useful numbers. Staff can view them. The selected building is stored on the user and scopes the dashboard, apartments, residents, assets, cases, work orders, maintenance, the calendar, and inspections. Asset categories, case types, and contractors belong to the account. Dates are calendar days in Australia/Sydney.
+Roles are `admin`, `manager`, and `staff`. Every page except sign-in requires a signed-in user. Only an admin can create or edit buildings. An admin or a manager can create, edit, approve, and delete contractors. An admin or a manager can create, edit, and delete apartments, residents, vehicles, documents, and images. Staff can view those records and add notes. An admin or a manager can create, edit, and delete assets, photos, documents, and warranties. Only an admin can add, rename, or remove asset categories, and a category can be removed only when no asset uses it. An admin, a manager, or a staff member can create and edit cases, change status, comment, and upload photos, videos, quotes, invoices, and documents. An admin or a manager can delete a case and its files. Only an admin can add, rename, or remove case types, and a type can be removed only when no case uses it. Case descriptions are stored as sanitised HTML. An admin, a manager, or a staff member can send a work order and change its status. Only an admin or a manager can cancel a work order. Completing work orders does not close the case. Only an admin can open the outbox. An admin or a manager can create and edit maintenance. An admin, a manager, or a staff member can mark a visit completed or skipped and create a case from one. An admin or a manager can create and edit inspection templates. An admin, a manager, or a staff member can start, fill in, and complete an inspection, and can create a case from a failed item. An admin or a manager can reopen a completed inspection. An admin, a manager, or a staff member can add a building note and can edit or delete their own. An admin or a manager can delete any building note. An admin or a manager can add, edit, and delete useful numbers. Staff can view them. The selected building is stored on the user and scopes the dashboard, apartments, residents, assets, cases, work orders, maintenance, the calendar, inspections, and reports. Asset categories, case types, and contractors belong to the account. Dates are calendar days in Australia/Sydney.
 
 The seed also creates two buildings: Example Tower (Sydney) and Sample Court (Pyrmont). It creates example contractor companies, including Sample Plumbing Co with expired insurance and Demo Locksmith waiting for approval. Example Tower has apartments 101–104, 201–204, and 301–304, fifteen example residents, two vehicles (EXA-001 and EXA-002), and apartment 104 marked as an investment with Example Holdings and Sample Strata Management. Example Tower also has ten example assets, including Fire pump 1 with an expired warranty and Passenger lift A with a warranty still in date. Example Tower has sixteen example cases across the case types, priorities, and statuses. Two of them are overdue. Case 16 is the failed lobby floor from a completed inspection. Some are linked to the example assets, apartments, and contractors. Example Tower also has six example work orders. Case 1 has 1-A and 1-B. The others are on cases 4, 8, 11, and 14, in different statuses. Each one has a PDF and a matching outbox message. Example Tower also has eight example maintenance events, including a monthly fire system test, a monthly lift service with overdue visits, and a completed one-off camera check. Example Tower also has three example inspection templates, one inspection in progress, and two completed inspections. One failed item on a completed inspection is already a case. Example Tower also has three example building notes and three example useful numbers, including the fire panel line 02 0000 0000.
 
@@ -55,12 +88,12 @@ Uploaded contractor, resident, asset, case, and inspection files are stored in t
 - `npm test` — unit tests
 - `npm run test:e2e` — Playwright end-to-end tests (installs nothing by itself; see below)
 - `npm run db:migrate` — apply migrations
-- `npm run db:seed` — seed the local accounts, example buildings, example contractors, example apartments, example assets, example cases, example work orders, example maintenance, example inspections, example building notes, and example useful numbers
+- `npm run db:seed` — seed the local accounts, example buildings, example contractors, example apartments, example assets, example cases, example work orders, example maintenance, example inspections, example building notes, example useful numbers, and an example report
 - `npm run reminders` — queue maintenance reminder emails that are due into the local outbox
 
 ## End-to-end test
 
-Install the browser once, then run the smoke test. It needs the `.env` file from the setup above.
+Install the browser once, then run the smoke test. It needs the `.env` file from the setup above. The inspections and reports tests also call `pdftoppm` and `pdfinfo` from Poppler. On macOS, `brew install poppler`. On Windows, install Poppler and put those two commands on your PATH.
 
 ```bash
 npx playwright install chromium
