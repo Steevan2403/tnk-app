@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { canManageBuildings, canManageContractors, canManageResidents } from "./roles";
+import {
+  canManageAssetCategories,
+  canManageAssets,
+  canManageBuildings,
+  canManageContractors,
+  canManageResidents,
+} from "./roles";
 
 describe("canManageBuildings", () => {
   it("allows an admin", () => {
@@ -31,5 +37,27 @@ describe("canManageResidents", () => {
 
   it("blocks staff", () => {
     expect(canManageResidents("staff")).toBe(false);
+  });
+});
+
+describe("canManageAssets", () => {
+  it("allows an admin or a manager", () => {
+    expect(canManageAssets("admin")).toBe(true);
+    expect(canManageAssets("manager")).toBe(true);
+  });
+
+  it("blocks staff", () => {
+    expect(canManageAssets("staff")).toBe(false);
+  });
+});
+
+describe("canManageAssetCategories", () => {
+  it("allows an admin", () => {
+    expect(canManageAssetCategories("admin")).toBe(true);
+  });
+
+  it("blocks manager and staff", () => {
+    expect(canManageAssetCategories("manager")).toBe(false);
+    expect(canManageAssetCategories("staff")).toBe(false);
   });
 });

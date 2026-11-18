@@ -304,6 +304,7 @@ async function main() {
   }
 
   await seedApartments(admin.id);
+  await seedAssets();
 }
 
 const apartmentPlan = [
@@ -443,6 +444,261 @@ async function seedApartments(authorId: string) {
   for (const note of apartmentNotes) {
     await prisma.apartmentNote.upsert({ where: { id: note.id }, update: note, create: note });
   }
+}
+
+const assetCategories = [
+  ["seed_asset_cat_fire", "Fire services"],
+  ["seed_asset_cat_lifts", "Lifts"],
+  ["seed_asset_cat_pumps", "Pumps"],
+  ["seed_asset_cat_electrical", "Electrical"],
+  ["seed_asset_cat_plumbing", "Plumbing"],
+  ["seed_asset_cat_gates", "Gates and doors"],
+  ["seed_asset_cat_hvac", "HVAC"],
+  ["seed_asset_cat_security", "Security/CCTV"],
+  ["seed_asset_cat_lighting", "Lighting"],
+  ["seed_asset_cat_common", "Common area"],
+] as const;
+
+const assets = [
+  {
+    id: "seed_asset_fire_pump",
+    categoryId: "seed_asset_cat_pumps",
+    name: "Fire pump 1",
+    location: "Plant room",
+    make: "Example",
+    model: "FP-100",
+    serialNumber: "SN-FP-001",
+    barcode: "BC-FP-001",
+    purchasedOn: "2019-03-12",
+    assetValue: "18500.00",
+    endOfLifeValue: "2000.00",
+    lifeMonths: 240,
+    description: "Example fire pump for the basement plant room.",
+    companyId: "seed_co_fire",
+    contactId: "seed_contact_avery",
+  },
+  {
+    id: "seed_asset_lift",
+    categoryId: "seed_asset_cat_lifts",
+    name: "Passenger lift A",
+    location: "Core A",
+    make: "Sample",
+    model: "LA-2",
+    serialNumber: "SN-LA-002",
+    barcode: "BC-LA-002",
+    purchasedOn: "2016-07-01",
+    assetValue: "120000.00",
+    endOfLifeValue: "15000.00",
+    lifeMonths: 300,
+    description: "Example passenger lift serving the lobby and residential floors.",
+    companyId: null,
+    contactId: null,
+  },
+  {
+    id: "seed_asset_gate",
+    categoryId: "seed_asset_cat_gates",
+    name: "Car park gate",
+    location: "Basement entry",
+    make: "Demo",
+    model: "RG-4",
+    serialNumber: "SN-RG-003",
+    barcode: "BC-RG-003",
+    purchasedOn: "2021-11-02",
+    assetValue: "6400.00",
+    endOfLifeValue: "500.00",
+    lifeMonths: 120,
+    description: "Example roller gate at the car park entry.",
+    companyId: null,
+    contactId: null,
+  },
+  {
+    id: "seed_asset_switchboard",
+    categoryId: "seed_asset_cat_electrical",
+    name: "Main switchboard",
+    location: "Main switch room",
+    make: "Example",
+    model: "MSB-1",
+    serialNumber: "SN-EL-004",
+    barcode: "BC-EL-004",
+    purchasedOn: "2018-05-20",
+    assetValue: "24000.00",
+    endOfLifeValue: "3000.00",
+    lifeMonths: 360,
+    description: "Example main switchboard for the building.",
+    companyId: "seed_co_electrical",
+    contactId: "seed_contact_pat",
+  },
+  {
+    id: "seed_asset_hot_water",
+    categoryId: "seed_asset_cat_plumbing",
+    name: "Hot water plant",
+    location: "Plant room",
+    make: "Sample",
+    model: "HW-80",
+    serialNumber: "SN-PL-005",
+    barcode: null,
+    purchasedOn: "2020-02-14",
+    assetValue: "9800.00",
+    endOfLifeValue: "800.00",
+    lifeMonths: 180,
+    description: "Example hot water plant.",
+    companyId: "seed_co_plumbing",
+    contactId: "seed_contact_casey",
+  },
+  {
+    id: "seed_asset_camera",
+    categoryId: "seed_asset_cat_security",
+    name: "Lobby camera 1",
+    location: "Ground lobby",
+    make: "Placeholder",
+    model: "CAM-1",
+    serialNumber: "SN-SC-006",
+    barcode: "BC-SC-006",
+    purchasedOn: "2022-08-09",
+    assetValue: "1450.00",
+    endOfLifeValue: "100.00",
+    lifeMonths: 60,
+    description: "Example camera covering the ground lobby.",
+    companyId: null,
+    contactId: null,
+  },
+  {
+    id: "seed_asset_hvac",
+    categoryId: "seed_asset_cat_hvac",
+    name: "Rooftop HVAC unit",
+    location: "Roof",
+    make: "Example",
+    model: "AHU-3",
+    serialNumber: "SN-HV-007",
+    barcode: null,
+    purchasedOn: "2017-09-01",
+    assetValue: "32000.00",
+    endOfLifeValue: "4000.00",
+    lifeMonths: 240,
+    description: "Example rooftop air handling unit.",
+    companyId: null,
+    contactId: null,
+  },
+  {
+    id: "seed_asset_lights",
+    categoryId: "seed_asset_cat_lighting",
+    name: "Basement lights",
+    location: "Basement B1",
+    make: "Example",
+    model: "LT-B1",
+    serialNumber: "SN-LT-008",
+    barcode: null,
+    purchasedOn: "2023-01-11",
+    assetValue: "2200.00",
+    endOfLifeValue: "0.00",
+    lifeMonths: 84,
+    description: "Example lighting circuit for basement B1.",
+    companyId: "seed_co_electrical",
+    contactId: "seed_contact_sam",
+  },
+  {
+    id: "seed_asset_closer",
+    categoryId: "seed_asset_cat_common",
+    name: "Common area door closer",
+    location: "Level 1 corridor",
+    make: "Demo",
+    model: "DC-11",
+    serialNumber: "SN-CA-009",
+    barcode: null,
+    purchasedOn: "2024-04-04",
+    assetValue: "180.00",
+    endOfLifeValue: null,
+    lifeMonths: 36,
+    description: "Example door closer on the level 1 common corridor.",
+    companyId: null,
+    contactId: null,
+  },
+  {
+    id: "seed_asset_panel",
+    categoryId: "seed_asset_cat_fire",
+    name: "Fire panel",
+    location: "Ground lobby",
+    make: "Fictional",
+    model: "FPAN-1",
+    serialNumber: "SN-FS-010",
+    barcode: "BC-FS-010",
+    purchasedOn: "2019-03-12",
+    assetValue: "7600.00",
+    endOfLifeValue: "500.00",
+    lifeMonths: 180,
+    description: "Example fire indicator panel in the ground lobby.",
+    companyId: "seed_co_fire",
+    contactId: "seed_contact_avery",
+  },
+];
+
+const warranties = [
+  {
+    id: "seed_warranty_fire_pump",
+    assetId: "seed_asset_fire_pump",
+    provider: "Example Warranty Co",
+    startsOn: "2019-03-12",
+    expiresOn: "2024-01-15",
+    notes: "Example cover that has already lapsed.",
+  },
+  {
+    id: "seed_warranty_lift",
+    assetId: "seed_asset_lift",
+    provider: "Sample Cover",
+    startsOn: "2024-07-01",
+    expiresOn: "2028-06-30",
+    notes: "Example cover still in date.",
+  },
+];
+
+async function seedAssets() {
+  for (const [id, name] of assetCategories) {
+    await prisma.assetCategory.upsert({
+      where: { id },
+      update: { name },
+      create: { id, name },
+    });
+  }
+
+  for (const asset of assets) {
+    const data = {
+      buildingId: "seed_example_tower",
+      categoryId: asset.categoryId,
+      name: asset.name,
+      location: asset.location,
+      make: asset.make,
+      model: asset.model,
+      serialNumber: asset.serialNumber,
+      barcode: asset.barcode,
+      purchasedOn: onDay(asset.purchasedOn),
+      assetValue: asset.assetValue,
+      endOfLifeValue: asset.endOfLifeValue,
+      lifeMonths: asset.lifeMonths,
+      description: asset.description,
+      companyId: asset.companyId,
+      contactId: asset.contactId,
+    };
+    await prisma.asset.upsert({ where: { id: asset.id }, update: data, create: { id: asset.id, ...data } });
+  }
+
+  for (const warranty of warranties) {
+    const data = {
+      assetId: warranty.assetId,
+      provider: warranty.provider,
+      startsOn: onDay(warranty.startsOn),
+      expiresOn: onDay(warranty.expiresOn),
+      notes: warranty.notes,
+    };
+    await prisma.assetWarranty.upsert({
+      where: { id: warranty.id },
+      update: data,
+      create: { id: warranty.id, ...data },
+    });
+  }
+}
+
+function onDay(value: string): Date {
+  return new Date(`${value}T00:00:00.000Z`);
 }
 
 main()

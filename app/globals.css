@@ -34,3 +34,14 @@ summary {
 summary::-webkit-details-marker {
   display: none;
 }
+
+@media print {
+  aside,
+  header {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+}

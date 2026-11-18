@@ -59,6 +59,7 @@ model Building {
   updatedAt  DateTime @updatedAt
   selectedBy User[]
   apartments Apartment[]
+  assets     Asset[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -84,6 +85,7 @@ model ContractorCompany {
   notes      ContractorNote[]
   documents  ContractorDocument[]
   insurances ContractorInsurance[]
+  assets     Asset[]
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
@@ -100,6 +102,7 @@ model ContractorContact {
   phone     String?
   mobile    String?
   email     String?
+  assets    Asset[]
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 
@@ -271,4 +274,83 @@ model ManagingAgent {
   address     String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+// Asset categories belong to the account. Assets belong to one building.
+model AssetCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  assets    Asset[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Asset {
+  id             String             @id @default(cuid())
+  buildingId     String
+  building       Building           @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       AssetCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name           String
+  location       String?
+  make           String?
+  model          String?
+  serialNumber   String?
+  barcode        String?
+  purchasedOn    DateTime
+  assetValue     Decimal?
+  endOfLifeValue Decimal?
+  lifeMonths     Int?
+  description    String?
+  companyId      String?
+  company        ContractorCompany? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactId      String?
+  contact        ContractorContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  photos         AssetPhoto[]
+  documents      AssetDocument[]
+  warranties     AssetWarranty[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([buildingId])
+  @@index([categoryId])
+  @@index([companyId])
+  @@index([contactId])
+}
+
+model AssetPhoto {
+  id         String   @id @default(cuid())
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  name       String
+  storedName String
+  uploadedAt DateTime @default(now())
+
+  @@index([assetId])
+}
+
+model AssetDocument {
+  id         String   @id @default(cuid())
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  name       String
+  storedName String
+  uploadedAt DateTime @default(now())
+
+  @@index([assetId])
+}
+
+model AssetWarranty {
+  id        String   @id @default(cuid())
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  provider  String
+  startsOn  DateTime
+  expiresOn DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([expiresOn])
 }

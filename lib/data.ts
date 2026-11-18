@@ -16,6 +16,7 @@ import {
   parseResidentType,
   type ResidentType,
 } from "@/lib/residents";
+import { PAGE_SIZE as ASSET_PAGE_SIZE, latestWarrantyExpiry } from "@/lib/assets";
 import { prisma } from "@/lib/db";
 
 export type CurrentUser = {
@@ -375,6 +376,124 @@ export async function getResident(buildingId: string, id: string): Promise<Resid
     where: { id, apartment: { buildingId } },
     select: residentFormSelect,
   });
+}
+
+export type AssetRow = {
+  id: string;
+  name: string;
+  categoryName: string;
+  location: string | null;
+  serialNumber: string | null;
+  make: string | null;
+  model: string | null;
+  assetValue: string | null;
+  companyName: string | null;
+  purchasedOn: Date;
+  warrantyExpiresOn: Date | null;
+};
+
+export type AssetListQuery = {
+  buildingId: string;
+  q: string;
+  categoryId: string;
+  page: number;
+};
+
+export async function listAssets(query: AssetListQuery): Promise<{ total: number; rows: AssetRow[] }> {
+  const where = assetWhere(query);
+  const skip = (query.page - 1) * ASSET_PAGE_SIZE;
+  const [total, assets] = await Promise.all([
+    prisma.asset.count({ where }),
+    prisma.asset.findMany({
+      where,
+      skip,
+      take: ASSET_PAGE_SIZE,
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      include: {
+        category: { select: { name: true } },
+        company: { select: { name: true } },
+        warranties: { select: { expiresOn: true } },
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    rows: assets.map((asset) => ({
+      id: asset.id,
+      name: asset.name,
+      categoryName: asset.category.name,
+      location: asset.location,
+      serialNumber: asset.serialNumber,
+      make: asset.make,
+      model: asset.model,
+      assetValue: asset.assetValue?.toFixed(2) ?? null,
+      companyName: asset.company?.name ?? null,
+      purchasedOn: asset.purchasedOn,
+      warrantyExpiresOn: latestWarrantyExpiry(asset.warranties.map((warranty) => warranty.expiresOn)),
+    })),
+  };
+}
+
+export const listAssetCategories = cache(async () => {
+  return prisma.assetCategory.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, _count: { select: { assets: true } } },
+  });
+});
+
+export async function listServiceCompanies(includeCompanyId?: string | null) {
+  return prisma.contractorCompany.findMany({
+    where: includeCompanyId
+      ? { OR: [{ status: "approved" }, { id: includeCompanyId }] }
+      : { status: "approved" },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      contacts: {
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, companyId: true },
+      },
+    },
+  });
+}
+
+const assetDetailInclude = {
+  category: { select: { id: true, name: true } },
+  company: { select: { id: true, name: true } },
+  contact: { select: { id: true, name: true } },
+  building: { select: { id: true, name: true } },
+  photos: { orderBy: { uploadedAt: "desc" as const } },
+  documents: { orderBy: { uploadedAt: "desc" as const } },
+  warranties: { orderBy: [{ expiresOn: "desc" as const }, { provider: "asc" as const }] },
+} satisfies Prisma.AssetInclude;
+
+export type AssetDetail = Prisma.AssetGetPayload<{ include: typeof assetDetailInclude }>;
+
+export async function getAsset(buildingId: string, id: string): Promise<AssetDetail | null> {
+  return prisma.asset.findFirst({
+    where: { id, buildingId },
+    include: assetDetailInclude,
+  });
+}
+
+function assetWhere(query: AssetListQuery): Prisma.AssetWhereInput {
+  const filters: Prisma.AssetWhereInput[] = [{ buildingId: query.buildingId }];
+  if (query.categoryId) filters.push({ categoryId: query.categoryId });
+  if (query.q) {
+    filters.push({
+      OR: [
+        { name: { contains: query.q } },
+        { serialNumber: { contains: query.q } },
+        { make: { contains: query.q } },
+        { model: { contains: query.q } },
+        { location: { contains: query.q } },
+        { barcode: { contains: query.q } },
+      ],
+    });
+  }
+  return { AND: filters };
 }
 
 function residentWhere(query: ResidentListQuery): Prisma.ResidentWhereInput {

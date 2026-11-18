@@ -14,6 +14,14 @@ export function canManageResidents(role: string): boolean {
   return role === "admin" || role === "manager";
 }
 
+export function canManageAssets(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
+export function canManageAssetCategories(role: string): boolean {
+  return role === "admin";
+}
+
 export function formatRole(role: string): string {
   if (role === "admin") return "Admin";
   if (role === "manager") return "Manager";
