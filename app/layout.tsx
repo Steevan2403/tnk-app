@@ -4,8 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "TNK Property Services",
-    template: "%s · TNK Property Services",
+    default: "TNK Building Manager",
+    template: "%s · TNK Building Manager",
   },
   description: "Building management for TNK Property Services.",
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -7,7 +8,6 @@ import { signOutAction } from "@/app/actions/auth";
 import { selectBuilding } from "@/app/actions/buildings";
 import { formatAddress, type BuildingRecord } from "@/lib/buildings";
 import { formatRole } from "@/lib/roles";
-import { Mark } from "@/components/mark";
 
 const PRIMARY_NAV = [
   { href: "/dashboard", label: "Dashboard" },
@@ -66,17 +66,20 @@ export function Shell({
       <aside
         className={`${open ? "fixed inset-y-0 left-0 z-40 flex" : "hidden"} w-72 flex-col bg-brand-navy text-white md:static md:flex`}
       >
-        <div className="flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-2">
-            <Mark className="h-8 w-8 rounded-md ring-1 ring-white" />
-            <div>
-              <p className="font-serif text-lg leading-none">TNK</p>
-              <p className="text-xs text-white">Property Services</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between gap-3 px-4 py-4">
+          <Link href="/dashboard" onClick={close} className="min-w-0">
+            <Image
+              src="/brand/tnk-logo-white.svg"
+              alt="TNK Property Services"
+              width={407}
+              height={126}
+              unoptimized
+              className="h-12 w-auto max-w-full sm:h-14"
+            />
+          </Link>
           <button
             type="button"
-            className="rounded-md px-2 py-1 text-sm text-white md:hidden"
+            className="shrink-0 rounded-md px-2 py-1 text-sm text-white md:hidden"
             onClick={close}
           >
             Close
