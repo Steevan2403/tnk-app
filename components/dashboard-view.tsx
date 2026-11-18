@@ -45,7 +45,7 @@ export function DashboardView({
       <NotesCard data={data} userId={user.id} role={user.role} canAdd={canNotes} editNoteId={editNoteId} className="md:col-span-2 xl:col-span-2" />
       <NumbersCard data={data} canManage={canNumbers} editNumberId={editNumberId} />
       <ActivityCard data={data} className="md:col-span-2 xl:col-span-2" />
-      <ReportsCard />
+      <ReportsCard data={data} />
     </div>
   );
 }
@@ -478,10 +478,28 @@ function ActivityCard({ data, className }: { data: DashboardData; className?: st
   );
 }
 
-function ReportsCard() {
+function ReportsCard({ data }: { data: DashboardData }) {
   return (
     <Card title="Management reports" id="dashboard-reports">
-      <p className="mt-3 text-muted">No reports yet</p>
+      {data.reports.length === 0 ? (
+        <p className="mt-3 text-muted">No reports yet</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-line text-sm">
+          {data.reports.map((report) => (
+            <li key={report.id} className="py-2">
+              <p className="font-medium">{report.periodLabel}</p>
+              <p className="text-muted">{report.createdLabel}</p>
+              <Link
+                href={report.href}
+                className="text-brand-blue hover:underline"
+                aria-label={`View ${report.formatLabel} for ${report.periodLabel}`}
+              >
+                View
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

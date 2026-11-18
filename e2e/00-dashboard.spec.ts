@@ -33,7 +33,8 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("link", { name: "11-A", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example pump service", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example car park gate service", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Management reports" }).getByText("No reports yet")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Management reports" }).getByText("1 Oct 2026 to 31 Oct 2026")).toBeVisible();
+  await expect(page.getByRole("link", { name: "View PDF for 1 Oct 2026 to 31 Oct 2026" })).toBeVisible();
   await expect(page.getByRole("link", { name: "02 0000 0000" })).toBeVisible();
   await expect(page.getByText("Plant room access")).toBeVisible();
   await expect(page.getByRole("region", { name: "Recent activity" }).getByText("Example Admin").first()).toBeVisible();

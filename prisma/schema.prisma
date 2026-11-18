@@ -16,6 +16,11 @@ enum UserRole {
   staff
 }
 
+enum ReportFormat {
+  pdf
+  xlsx
+}
+
 enum ContractorStatus {
   pending
   approved
@@ -52,6 +57,7 @@ model User {
   occurrenceRecords  MaintenanceOccurrence[]
   inspectionRuns     InspectionRun[]
   buildingNotes      BuildingNote[]
+  generatedReports   GeneratedReport[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -76,6 +82,7 @@ model Building {
   inspectionRuns       InspectionRun[]
   notes                BuildingNote[]
   usefulNumbers        UsefulNumber[]
+  generatedReports     GeneratedReport[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -915,6 +922,25 @@ model UsefulNumber {
   updatedAt  DateTime @updatedAt
 
   @@index([buildingId, label])
+}
+
+// A stored management report for one building and period.
+model GeneratedReport {
+  id          String       @id @default(cuid())
+  buildingId  String
+  building    Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  periodFrom  DateTime
+  periodTo    DateTime
+  optionsJson String
+  format      ReportFormat
+  fileName    String
+  storedName  String
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime     @default(now())
+
+  @@index([buildingId, createdAt])
+  @@index([createdById])
 }
 
 model InspectionPhoto {

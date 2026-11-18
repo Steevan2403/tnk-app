@@ -1,4 +1,4 @@
-import { formatIsoDate } from "./contractors";
+import { formatDateTime, formatIsoDate } from "./contractors";
 import {
   actionCounts,
   casesByType,
@@ -15,6 +15,7 @@ import {
 import { prisma } from "./db";
 import { calendarTitle, monthCells, sydneyToday } from "./maintenance";
 import { loadCalendar, overdueVisitsForBuilding, visibleRange } from "./maintenance-data";
+import { periodLabel } from "./reports";
 import { sentRange, workOrderNumber } from "./work-orders";
 
 export async function loadDashboard(
@@ -48,6 +49,7 @@ export async function loadDashboard(
     caseActivity,
     occurrences,
     runs,
+    reports,
   ] = await Promise.all([
     prisma.case.findMany({
       where: { buildingId },
@@ -150,6 +152,12 @@ export async function loadDashboard(
         status: true,
         inspector: { select: { name: true } },
       },
+    }),
+    prisma.generatedReport.findMany({
+      where: { buildingId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 5,
+      select: { id: true, periodFrom: true, periodTo: true, format: true, createdAt: true },
     }),
   ]);
 
@@ -276,6 +284,13 @@ export async function loadDashboard(
     notes,
     numbers,
     activity: groupActivityByDay(latestActivity(activity)),
+    reports: reports.map((report) => ({
+      id: report.id,
+      periodLabel: periodLabel(report.periodFrom, report.periodTo),
+      createdLabel: formatDateTime(report.createdAt),
+      formatLabel: report.format === "pdf" ? "PDF" : "Excel",
+      href: `/api/reports/${report.id}/file`,
+    })),
   };
 }
 

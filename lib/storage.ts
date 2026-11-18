@@ -21,6 +21,7 @@ const CONTENT_TYPES: Record<string, string> = {
   ".txt": "text/plain",
   ".doc": "application/msword",
   ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ".mp4": "video/mp4",
   ".webm": "video/webm",
   ".mov": "video/quicktime",
@@ -64,8 +65,8 @@ export function fileBaseName(name: string): string {
   return base.slice(0, 180);
 }
 
-export async function saveBytes(bytes: Uint8Array, extension: ".pdf"): Promise<string> {
-  if (extension !== ".pdf") throw new Error("Could not store that file.");
+export async function saveBytes(bytes: Uint8Array, extension: ".pdf" | ".xlsx"): Promise<string> {
+  if (extension !== ".pdf" && extension !== ".xlsx") throw new Error("Could not store that file.");
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) throw new Error("Could not store that file.");
   const storedName = `${randomBytes(16).toString("hex")}${extension}`;
   await mkdir(uploadDir(), { recursive: true });

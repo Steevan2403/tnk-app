@@ -1,6 +1,8 @@
 import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
+import { createGeneratedReport } from "../lib/report-data";
+import { defaultSections, monthPeriod } from "../lib/reports";
 import { occurrencesBetween, scheduleOf, sydneyToday } from "../lib/maintenance";
 import { hashPassword } from "../lib/password";
 import { copyStoredFile, removeUpload, saveBytes, saveUpload } from "../lib/storage";
@@ -316,6 +318,7 @@ async function main() {
   await seedMaintenance(admin.id);
   await seedInspections(admin.id, staff.id);
   await seedDashboard(admin.id, staff.id);
+  await seedManagementReport(admin.id, admin.name);
 }
 
 const apartmentPlan = [
@@ -2008,6 +2011,30 @@ async function seedDashboard(adminId: string, staffId: string) {
     };
     await prisma.usefulNumber.upsert({ where: { id: entry.id }, update: data, create: { id: entry.id, ...data } });
   }
+}
+
+async function seedManagementReport(userId: string, userName: string) {
+  const period = monthPeriod(new Date(), -1);
+  await createGeneratedReport({
+    id: "seed_report_last_month",
+    buildingId: "seed_example_tower",
+    userId,
+    userName,
+    selection: {
+      from: period.from,
+      to: period.to,
+      includeOpen: false,
+      typeIds: [],
+      statuses: [],
+      companyIds: [],
+      priorities: [],
+      assetIds: [],
+      apartmentIds: [],
+      excludedIds: [],
+    },
+    sections: defaultSections(),
+    format: "pdf",
+  });
 }
 
 function onMonth(today: Date, monthOffset: number, dayOfMonth: number): Date {
