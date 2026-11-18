@@ -74,7 +74,7 @@ export type CaseFormContext = {
 };
 
 export type CaseActivityEntry = {
-  kind: "created" | "status_changed" | "field_changed" | "file_added" | "comment_added";
+  kind: "created" | "status_changed" | "field_changed" | "file_added" | "comment_added" | "work_order_sent";
   summary: string;
 };
 

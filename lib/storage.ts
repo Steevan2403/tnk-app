@@ -64,6 +64,17 @@ export function fileBaseName(name: string): string {
   return base.slice(0, 180);
 }
 
+export async function saveBytes(bytes: Uint8Array, extension: ".pdf"): Promise<string> {
+  if (extension !== ".pdf") throw new Error("Could not store that file.");
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) throw new Error("Could not store that file.");
+  const storedName = `${randomBytes(16).toString("hex")}${extension}`;
+  await mkdir(uploadDir(), { recursive: true });
+  const full = resolveStoredFile(storedName);
+  if (!full) throw new Error("Could not store that file.");
+  await writeFile(full, bytes);
+  return storedName;
+}
+
 export async function saveUpload(
   file: File,
   kind: "file" | "image" | "video" = "file",

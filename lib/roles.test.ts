@@ -5,9 +5,12 @@ import {
   canManageAssetCategories,
   canManageAssets,
   canManageBuildings,
+  canCancelWorkOrders,
   canManageCaseTypes,
   canManageContractors,
   canManageResidents,
+  canSendWorkOrders,
+  canViewOutbox,
 } from "./roles";
 
 describe("canManageBuildings", () => {
@@ -71,6 +74,26 @@ describe("case permissions", () => {
     expect(canManageCaseTypes("admin")).toBe(true);
     expect(canManageCaseTypes("manager")).toBe(false);
     expect(canManageCaseTypes("staff")).toBe(false);
+  });
+});
+
+describe("work order permissions", () => {
+  it("lets admin, manager, and staff send work orders", () => {
+    expect(canSendWorkOrders("admin")).toBe(true);
+    expect(canSendWorkOrders("manager")).toBe(true);
+    expect(canSendWorkOrders("staff")).toBe(true);
+  });
+
+  it("lets an admin or a manager cancel a work order", () => {
+    expect(canCancelWorkOrders("admin")).toBe(true);
+    expect(canCancelWorkOrders("manager")).toBe(true);
+    expect(canCancelWorkOrders("staff")).toBe(false);
+  });
+
+  it("lets only an admin view the outbox", () => {
+    expect(canViewOutbox("admin")).toBe(true);
+    expect(canViewOutbox("manager")).toBe(false);
+    expect(canViewOutbox("staff")).toBe(false);
   });
 });
 

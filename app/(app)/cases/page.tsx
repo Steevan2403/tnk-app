@@ -5,6 +5,7 @@ import { CaseBoard } from "@/components/case-board";
 import { CaseTypes } from "@/components/case-types";
 import { SelectAll } from "@/components/case-select";
 import { FilesMark } from "@/components/files-mark";
+import { WorkOrderMark } from "@/components/work-order-mark";
 import { SelectField, TextField } from "@/components/field";
 import { PriorityBadge } from "@/components/priority-badge";
 import { parseDateOnly } from "@/lib/contractors";
@@ -288,6 +289,7 @@ function CaseResults({
               <PriorityBadge priority={row.priority} />
               <span className="text-sm">{formatStatus(row.status)}</span>
               {row.hasFiles ? <FilesMark /> : null}
+              {row.hasWorkOrders ? <WorkOrderMark /> : null}
             </div>
           </li>
         ))}
@@ -335,7 +337,12 @@ function CaseResults({
                   <PriorityBadge priority={row.priority} />
                 </td>
                 <td className="px-4 py-3">{formatStatus(row.status)}</td>
-                <td className="px-4 py-3">{row.hasFiles ? <FilesMark /> : null}</td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center gap-2">
+                    {row.hasFiles ? <FilesMark /> : null}
+                    {row.hasWorkOrders ? <WorkOrderMark /> : null}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   <StarButton row={row} returnTo={returnTo} />
                 </td>

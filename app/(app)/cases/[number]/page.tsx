@@ -21,6 +21,7 @@ import {
   parseCaseNumber,
   type CaseFileKind,
 } from "@/lib/cases";
+import { formatWorkOrderStatus, workOrderNumber } from "@/lib/work-orders";
 import { caseNeighbors, caseStarred, getCaseByNumber, requireUser, type CaseDetail } from "@/lib/data";
 import { canDeleteCases, canEditCases } from "@/lib/roles";
 
@@ -113,6 +114,11 @@ export default async function CasePage({
             </button>
           </form>
           {canEdit ? (
+            <Link href={`/cases/${record.number}/work-order`} className="text-sm text-brand-blue hover:underline">
+              Send work order
+            </Link>
+          ) : null}
+          {canEdit ? (
             <Link href={`/cases/${record.number}/edit`} className="text-sm text-brand-blue hover:underline">
               Edit
             </Link>
@@ -201,6 +207,46 @@ export default async function CasePage({
           ) : (
             <p className="mt-3 text-muted">No internal notes.</p>
           )}
+        </Panel>
+      </div>
+
+      <div className="mt-6">
+        <Panel title="Work orders">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted">
+              {record.workOrders.length === 0
+                ? "No work orders yet."
+                : record.workOrders.length === 1
+                  ? "1 sent"
+                  : `${record.workOrders.length} sent`}
+            </p>
+            {canEdit ? (
+              <Link href={`/cases/${record.number}/work-order`} className="text-sm text-brand-blue hover:underline">
+                Send work order
+              </Link>
+            ) : null}
+          </div>
+          {record.workOrders.length > 0 ? (
+            <ul className="mt-2 divide-y divide-line">
+              {record.workOrders.map((order) => {
+                const number = workOrderNumber(record.number, order.suffix);
+                return (
+                  <li key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div>
+                      <p className="font-medium">{number}</p>
+                      <p className="text-sm text-muted">
+                        {order.company?.name ?? order.companyName} · {order.contact?.name ?? order.contactName} ·{" "}
+                        {formatWorkOrderStatus(order.status)} · {formatDateTime(order.sentAt)}
+                      </p>
+                    </div>
+                    <a href={`/api/work-orders/${order.id}/pdf`} className="text-sm text-brand-blue hover:underline">
+                      PDF
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
         </Panel>
       </div>
 

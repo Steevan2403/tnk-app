@@ -1,5 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import { formatAddress } from "../lib/buildings";
 import { hashPassword } from "../lib/password";
+import { removeUpload, saveBytes } from "../lib/storage";
+import { buildWorkOrderPdf } from "../lib/work-order-pdf";
+import { workOrderEmailBody, workOrderPdfName, workOrderSentSummary } from "../lib/work-orders";
 
 const prisma = new PrismaClient();
 
@@ -306,6 +310,7 @@ async function main() {
   await seedApartments(admin.id);
   await seedAssets();
   await seedCases(admin.id);
+  await seedWorkOrders(admin.id);
 }
 
 const apartmentPlan = [
@@ -1095,6 +1100,226 @@ async function seedCases(authorId: string) {
     update: {},
     create: { userId: authorId, caseId: "seed_case_01" },
   });
+}
+
+const exampleWorkOrders = [
+  {
+    id: "seed_wo_01a",
+    caseId: "seed_case_01",
+    caseNumber: 1,
+    suffix: "A",
+    companyId: "seed_co_fire",
+    companyName: "Fictional Fire Services",
+    contactId: "seed_contact_avery",
+    contactName: "Avery Sample",
+    contactEmail: "avery.sample@example.com",
+    status: "new" as const,
+    sentAt: "2026-10-02T01:00:00.000Z",
+    subject: "Work order 1-A: Example fire pump drip",
+    message: "Example drip at the seal. Please inspect before the next run.",
+    purchaseOrderNumber: "PO-EX-1001",
+    attendingAt: "2026-10-03T00:00:00.000Z",
+    accessNotes: "Example: plant room key is at the concierge desk.",
+    caseSubject: "Example fire pump drip",
+    caseType: "Repair & maintenance",
+    jobArea: "Fire pump 1",
+  },
+  {
+    id: "seed_wo_01b",
+    caseId: "seed_case_01",
+    caseNumber: 1,
+    suffix: "B",
+    companyId: "seed_co_fire",
+    companyName: "Fictional Fire Services",
+    contactId: "seed_contact_avery",
+    contactName: "Avery Sample",
+    contactEmail: "avery.sample@example.com",
+    status: "accepted" as const,
+    sentAt: "2026-10-03T02:00:00.000Z",
+    subject: "Work order 1-B: Example fire pump drip",
+    message: "Example follow-up after the first look at the pump seal.",
+    purchaseOrderNumber: "PO-EX-1001",
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example fire pump drip",
+    caseType: "Repair & maintenance",
+    jobArea: "Fire pump 1",
+  },
+  {
+    id: "seed_wo_08a",
+    caseId: "seed_case_08",
+    caseNumber: 8,
+    suffix: "A",
+    companyId: "seed_co_plumbing",
+    companyName: "Sample Plumbing Co",
+    contactId: "seed_contact_casey",
+    contactName: "Casey Placeholder",
+    contactEmail: "casey.placeholder@example.com",
+    status: "in_progress" as const,
+    sentAt: "2026-11-12T03:00:00.000Z",
+    subject: "Work order 8-A: Example hot water leak",
+    message: "Example leak reported under the hot water plant.",
+    purchaseOrderNumber: null,
+    attendingAt: "2026-11-13T01:00:00.000Z",
+    accessNotes: "Example: the plant room is on the roof.",
+    caseSubject: "Example hot water leak",
+    caseType: "Repair & maintenance",
+    jobArea: "Hot water plant",
+  },
+  {
+    id: "seed_wo_04a",
+    caseId: "seed_case_04",
+    caseNumber: 4,
+    suffix: "A",
+    companyId: "seed_co_cleaning",
+    companyName: "Placeholder Cleaning",
+    contactId: "seed_contact_jordan",
+    contactName: "Jordan Example",
+    contactEmail: "jordan.example@example.com",
+    status: "awaiting_contractor" as const,
+    sentAt: "2026-11-06T01:00:00.000Z",
+    subject: "Work order 4-A: Example pest treatment for apartment 201",
+    message: "Example pest treatment requested for apartment 201.",
+    purchaseOrderNumber: null,
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example pest treatment for apartment 201",
+    caseType: "Pest control",
+    jobArea: "Apartment 201",
+  },
+  {
+    id: "seed_wo_11a",
+    caseId: "seed_case_11",
+    caseNumber: 11,
+    suffix: "A",
+    companyId: "seed_co_electrical",
+    companyName: "Example Electrical Pty Ltd",
+    contactId: "seed_contact_pat",
+    contactName: "Pat Example",
+    contactEmail: "pat.example@example.com",
+    status: "completed" as const,
+    sentAt: "2026-11-15T04:00:00.000Z",
+    subject: "Work order 11-A: Example switchboard check",
+    message: "Example check of the main switchboard after a flicker.",
+    purchaseOrderNumber: null,
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example switchboard check",
+    caseType: "Repair & maintenance",
+    jobArea: "Main switchboard",
+  },
+  {
+    id: "seed_wo_14a",
+    caseId: "seed_case_14",
+    caseNumber: 14,
+    suffix: "A",
+    companyId: "seed_co_electrical",
+    companyName: "Example Electrical Pty Ltd",
+    contactId: "seed_contact_sam",
+    contactName: "Sam Sample",
+    contactEmail: "sam.sample@example.com",
+    status: "cancelled" as const,
+    sentAt: "2026-08-02T01:00:00.000Z",
+    subject: "Work order 14-A: Example basement lamp replacement",
+    message: "Example lamp replacement on basement B1.",
+    purchaseOrderNumber: "PO-EX-1014",
+    attendingAt: null,
+    accessNotes: null,
+    caseSubject: "Example basement lamp replacement",
+    caseType: "Repair & maintenance",
+    jobArea: "Basement lights",
+  },
+];
+
+async function seedWorkOrders(authorId: string) {
+  const building = await prisma.building.findUniqueOrThrow({ where: { id: "seed_example_tower" } });
+  const address = formatAddress(building);
+  for (const item of exampleWorkOrders) {
+    const sentAt = new Date(item.sentAt);
+    const pdfName = workOrderPdfName(item.caseNumber, item.suffix);
+    const number = `${item.caseNumber}-${item.suffix}`;
+    const previous = await prisma.workOrder.findUnique({ where: { id: item.id }, select: { pdfStoredName: true } });
+    const pdf = await buildWorkOrderPdf({
+      number,
+      sentAt,
+      buildingName: building.name,
+      buildingAddress: address,
+      companyName: item.companyName,
+      contactName: item.contactName,
+      contactEmail: item.contactEmail,
+      caseNumber: item.caseNumber,
+      caseSubject: item.caseSubject,
+      caseType: item.caseType,
+      jobArea: item.jobArea,
+      instructions: item.message,
+      purchaseOrderNumber: item.purchaseOrderNumber,
+      attendingAt: item.attendingAt ? new Date(item.attendingAt) : null,
+      accessNotes: item.accessNotes,
+      attachmentNames: [],
+    });
+    const pdfStoredName = await saveBytes(pdf, ".pdf");
+    const data = {
+      caseId: item.caseId,
+      suffix: item.suffix,
+      companyId: item.companyId,
+      companyName: item.companyName,
+      contactId: item.contactId,
+      contactName: item.contactName,
+      contactEmail: item.contactEmail,
+      subject: item.subject,
+      message: item.message,
+      attendingAt: item.attendingAt ? new Date(item.attendingAt) : null,
+      purchaseOrderNumber: item.purchaseOrderNumber,
+      accessNotes: item.accessNotes,
+      status: item.status,
+      sentAt,
+      sentById: authorId,
+      pdfStoredName,
+      pdfName,
+    };
+    await prisma.workOrder.upsert({ where: { id: item.id }, update: data, create: { id: item.id, ...data } });
+    if (previous) await removeUpload(previous.pdfStoredName);
+
+    const summary = workOrderSentSummary(number, item.companyName, item.contactName);
+    await prisma.caseActivity.upsert({
+      where: { id: `${item.id}_sent` },
+      update: { summary },
+      create: {
+        id: `${item.id}_sent`,
+        caseId: item.caseId,
+        actorId: authorId,
+        kind: "work_order_sent",
+        summary,
+        createdAt: sentAt,
+      },
+    });
+
+    const messageId = item.id.replace("seed_wo_", "seed_mail_");
+    const body = workOrderEmailBody({
+      number,
+      buildingName: building.name,
+      companyName: item.companyName,
+      contactName: item.contactName,
+      message: item.message,
+      pdfName,
+    });
+    await prisma.outboxMessage.upsert({
+      where: { id: messageId },
+      update: { toAddress: item.contactEmail, subject: item.subject, body, workOrderId: item.id, createdAt: sentAt },
+      create: {
+        id: messageId,
+        toAddress: item.contactEmail,
+        subject: item.subject,
+        body,
+        workOrderId: item.id,
+        createdAt: sentAt,
+      },
+    });
+    await prisma.outboxAttachment.deleteMany({ where: { messageId } });
+    await prisma.outboxAttachment.create({
+      data: { messageId, name: pdfName, storedName: pdfStoredName },
+    });
+  }
 }
 
 function onDay(value: string): Date {

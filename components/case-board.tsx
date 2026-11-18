@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useTransition } from "react";
 import { setCaseStatus } from "@/app/actions/cases";
 import { FilesMark } from "@/components/files-mark";
+import { WorkOrderMark } from "@/components/work-order-mark";
 import { PriorityBadge } from "@/components/priority-badge";
 import { CASE_STATUSES, formatStatus, isCaseOverdue } from "@/lib/cases";
 import type { CaseRow } from "@/lib/data";
@@ -70,6 +71,7 @@ export function CaseBoard({ rows, returnTo }: { rows: CaseRow[]; returnTo: strin
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <PriorityBadge priority={row.priority} />
                       {row.hasFiles ? <FilesMark /> : null}
+                      {row.hasWorkOrders ? <WorkOrderMark /> : null}
                       {isCaseOverdue(row) ? <span className="text-xs font-medium text-danger">Overdue</span> : null}
                     </div>
                   </article>

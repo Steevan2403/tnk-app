@@ -47,12 +47,13 @@ model User {
   caseComments       CaseComment[]
   caseActivities     CaseActivity[]
   caseStars          CaseStar[]
+  workOrdersSent     WorkOrder[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
 
 model Building {
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
   name       String
   address    String
   suburb     String
@@ -60,8 +61,8 @@ model Building {
   postcode   String
   photoUrl   String?
   lotCount   Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
   selectedBy User[]
   apartments Apartment[]
   assets     Asset[]
@@ -77,42 +78,44 @@ model ContractorCategory {
 }
 
 model ContractorCompany {
-  id         String               @id @default(cuid())
+  id         String                @id @default(cuid())
   name       String
   abn        String?
   address    String?
   phone      String?
   email      String?
   website    String?
-  status     ContractorStatus     @default(approved)
+  status     ContractorStatus      @default(approved)
   categoryId String
-  category   ContractorCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category   ContractorCategory    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   contacts   ContractorContact[]
   notes      ContractorNote[]
   documents  ContractorDocument[]
   insurances ContractorInsurance[]
   assets     Asset[]
   caseLinks  CaseCompany[]
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
+  workOrders WorkOrder[]
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
 
   @@index([categoryId])
   @@index([status])
 }
 
 model ContractorContact {
-  id        String            @id @default(cuid())
-  companyId String
-  company   ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  name      String
-  title     String?
-  phone     String?
-  mobile    String?
-  email     String?
-  assets    Asset[]
-  caseLinks CaseContact[]
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  id         String            @id @default(cuid())
+  companyId  String
+  company    ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name       String
+  title      String?
+  phone      String?
+  mobile     String?
+  email      String?
+  assets     Asset[]
+  caseLinks  CaseContact[]
+  workOrders WorkOrder[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@index([companyId])
 }
@@ -159,22 +162,22 @@ model ContractorInsurance {
 
 // Apartments and the people, vehicles, and files on them belong to one building.
 model Apartment {
-  id          String            @id @default(cuid())
-  buildingId  String
-  building    Building          @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  number      String
-  lotNumber   String
-  occupancy   Occupancy         @default(owner_occupied)
-  residents   Resident[]
-  vehicles    Vehicle[]
-  documents   ApartmentDocument[]
-  images      ApartmentImage[]
-  notes       ApartmentNote[]
-  owners      ApartmentOwner[]
-  agent       ManagingAgent?
-  cases       Case[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id         String              @id @default(cuid())
+  buildingId String
+  building   Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  number     String
+  lotNumber  String
+  occupancy  Occupancy           @default(owner_occupied)
+  residents  Resident[]
+  vehicles   Vehicle[]
+  documents  ApartmentDocument[]
+  images     ApartmentImage[]
+  notes      ApartmentNote[]
+  owners     ApartmentOwner[]
+  agent      ManagingAgent?
+  cases      Case[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@unique([buildingId, number])
   @@unique([buildingId, lotNumber])
@@ -222,13 +225,13 @@ model Vehicle {
 }
 
 model ApartmentDocument {
-  id         String    @id @default(cuid())
+  id          String    @id @default(cuid())
   apartmentId String
-  apartment  Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
-  name       String
-  storedName String
-  expiresOn  DateTime?
-  uploadedAt DateTime  @default(now())
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  name        String
+  storedName  String
+  expiresOn   DateTime?
+  uploadedAt  DateTime  @default(now())
 
   @@index([apartmentId])
 }
@@ -365,8 +368,8 @@ model AssetWarranty {
   @@index([expiresOn])
 }
 
-// Cases belong to one building. Work orders are a later feature: the model is
-// here so a case can have many, lettered from the case number (12-A, 12-B).
+// Cases belong to one building. A work order is a job sheet sent from a case.
+// Suffixes letter the case number: 12-A, 12-B, then 12-Z, 12-AA.
 enum CasePriority {
   urgent
   high
@@ -404,6 +407,16 @@ enum CaseActivityKind {
   field_changed
   file_added
   comment_added
+  work_order_sent
+}
+
+enum WorkOrderStatus {
+  new
+  accepted
+  in_progress
+  awaiting_contractor
+  completed
+  cancelled
 }
 
 model CaseType {
@@ -487,15 +500,16 @@ model CaseContact {
 }
 
 model CaseFile {
-  id           String       @id @default(cuid())
-  caseId       String
-  case         Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  kind         CaseFileKind
-  name         String
-  storedName   String
-  uploadedById String
-  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
-  uploadedAt   DateTime     @default(now())
+  id             String          @id @default(cuid())
+  caseId         String
+  case           Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  kind           CaseFileKind
+  name           String
+  storedName     String
+  uploadedById   String
+  uploadedBy     User            @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  workOrderFiles WorkOrderFile[]
+  uploadedAt     DateTime        @default(now())
 
   @@index([caseId])
   @@index([uploadedById])
@@ -544,11 +558,72 @@ model CaseStar {
 }
 
 model WorkOrder {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  suffix    String
-  createdAt DateTime @default(now())
+  id                  String             @id @default(cuid())
+  caseId              String
+  case                Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  suffix              String
+  companyId           String?
+  company             ContractorCompany? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyName         String
+  contactId           String?
+  contact             ContractorContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactName         String
+  contactEmail        String
+  subject             String
+  message             String             @default("")
+  attendingAt         DateTime?
+  purchaseOrderNumber String?
+  accessNotes         String?
+  status              WorkOrderStatus    @default(new)
+  sentAt              DateTime
+  sentById            String
+  sentBy              User               @relation(fields: [sentById], references: [id], onDelete: Restrict)
+  pdfStoredName       String
+  pdfName             String
+  files               WorkOrderFile[]
+  messages            OutboxMessage[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@unique([caseId, suffix])
+  @@index([companyId])
+  @@index([contactId])
+  @@index([sentById])
+  @@index([sentAt])
+  @@index([status])
+}
+
+model WorkOrderFile {
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  caseFileId  String
+  caseFile    CaseFile  @relation(fields: [caseFileId], references: [id], onDelete: Cascade)
+
+  @@id([workOrderId, caseFileId])
+  @@index([caseFileId])
+}
+
+// Local copy of outgoing mail. Development and tests write here. SMTP is off unless configured.
+model OutboxMessage {
+  id          String             @id @default(cuid())
+  toAddress   String
+  subject     String
+  body        String
+  workOrderId String?
+  workOrder   WorkOrder?         @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  attachments OutboxAttachment[]
+  createdAt   DateTime           @default(now())
+
+  @@index([workOrderId])
+  @@index([createdAt])
+}
+
+model OutboxAttachment {
+  id         String        @id @default(cuid())
+  messageId  String
+  message    OutboxMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  name       String
+  storedName String
+
+  @@index([messageId])
 }
