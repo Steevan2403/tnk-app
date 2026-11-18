@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { deleteAsset, deleteAssetDocument, deleteAssetPhoto, deleteWarranty } from "@/app/actions/assets";
 import { AssetDocumentForm, AssetPhotoForm, WarrantyForm } from "@/components/asset-record-forms";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { PriorityBadge } from "@/components/priority-badge";
 import { assetQrDataUrl } from "@/lib/asset-qr";
 import {
   formatCalendarDate,
@@ -13,6 +14,7 @@ import {
   isWarrantyExpired,
   MAX_ASSET_PHOTOS,
 } from "@/lib/assets";
+import { formatStatus } from "@/lib/cases";
 import { getAsset, requireUser, type AssetDetail } from "@/lib/data";
 import { canManageAssets } from "@/lib/roles";
 
@@ -195,7 +197,25 @@ export default async function AssetPage({
             </Link>
           </Panel>
           <Panel title="Linked cases">
-            <Empty>No cases yet.</Empty>
+            {asset.caseLinks.length === 0 ? (
+              <Empty>No cases yet.</Empty>
+            ) : (
+              <ul className="mt-2 divide-y divide-line">
+                {[...asset.caseLinks]
+                  .sort((a, b) => b.case.number - a.case.number)
+                  .map((link) => (
+                    <li key={link.case.number} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                      <Link href={`/cases/${link.case.number}`} className="font-medium text-brand-blue hover:underline">
+                        #{link.case.number} {link.case.subject}
+                      </Link>
+                      <span className="flex items-center gap-2">
+                        <PriorityBadge priority={link.case.priority} />
+                        <span className="text-sm">{formatStatus(link.case.status)}</span>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            )}
           </Panel>
         </div>
       </div>

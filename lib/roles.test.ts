@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  canDeleteCases,
+  canEditCases,
   canManageAssetCategories,
   canManageAssets,
   canManageBuildings,
+  canManageCaseTypes,
   canManageContractors,
   canManageResidents,
 } from "./roles";
@@ -48,6 +51,26 @@ describe("canManageAssets", () => {
 
   it("blocks staff", () => {
     expect(canManageAssets("staff")).toBe(false);
+  });
+});
+
+describe("case permissions", () => {
+  it("lets admin, manager, and staff create and edit cases", () => {
+    expect(canEditCases("admin")).toBe(true);
+    expect(canEditCases("manager")).toBe(true);
+    expect(canEditCases("staff")).toBe(true);
+  });
+
+  it("lets an admin or a manager delete cases", () => {
+    expect(canDeleteCases("admin")).toBe(true);
+    expect(canDeleteCases("manager")).toBe(true);
+    expect(canDeleteCases("staff")).toBe(false);
+  });
+
+  it("lets only an admin manage case types", () => {
+    expect(canManageCaseTypes("admin")).toBe(true);
+    expect(canManageCaseTypes("manager")).toBe(false);
+    expect(canManageCaseTypes("staff")).toBe(false);
   });
 });
 

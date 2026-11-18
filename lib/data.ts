@@ -17,6 +17,16 @@ import {
   type ResidentType,
 } from "@/lib/residents";
 import { PAGE_SIZE as ASSET_PAGE_SIZE, latestWarrantyExpiry } from "@/lib/assets";
+import {
+  PAGE_SIZE as CASE_PAGE_SIZE,
+  compareCases,
+  isCasePriority,
+  isCaseStatus,
+  parseCaseNumber,
+  type CaseListQuery,
+  type CasePriority,
+  type CaseStatus,
+} from "@/lib/cases";
 import { prisma } from "@/lib/db";
 
 export type CurrentUser = {
@@ -467,6 +477,13 @@ const assetDetailInclude = {
   photos: { orderBy: { uploadedAt: "desc" as const } },
   documents: { orderBy: { uploadedAt: "desc" as const } },
   warranties: { orderBy: [{ expiresOn: "desc" as const }, { provider: "asc" as const }] },
+  caseLinks: {
+    include: {
+      case: {
+        select: { number: true, subject: true, status: true, priority: true, dueDate: true },
+      },
+    },
+  },
 } satisfies Prisma.AssetInclude;
 
 export type AssetDetail = Prisma.AssetGetPayload<{ include: typeof assetDetailInclude }>;
@@ -476,6 +493,202 @@ export async function getAsset(buildingId: string, id: string): Promise<AssetDet
     where: { id, buildingId },
     include: assetDetailInclude,
   });
+}
+
+export type CaseRow = {
+  id: string;
+  number: number;
+  startDate: Date;
+  dueDate: Date;
+  subject: string;
+  typeName: string;
+  priority: CasePriority;
+  status: CaseStatus;
+  hasFiles: boolean;
+  starred: boolean;
+};
+
+const caseListSelect = (userId: string) =>
+  ({
+    id: true,
+    number: true,
+    startDate: true,
+    dueDate: true,
+    subject: true,
+    priority: true,
+    status: true,
+    type: { select: { name: true } },
+    _count: { select: { files: true } },
+    stars: { where: { userId }, select: { userId: true } },
+  }) satisfies Prisma.CaseSelect;
+
+function mapCaseRow(
+  item: Prisma.CaseGetPayload<{ select: ReturnType<typeof caseListSelect> }>,
+): CaseRow {
+  return {
+    id: item.id,
+    number: item.number,
+    startDate: item.startDate,
+    dueDate: item.dueDate,
+    subject: item.subject,
+    typeName: item.type.name,
+    priority: item.priority,
+    status: item.status,
+    hasFiles: item._count.files > 0,
+    starred: item.stars.length > 0,
+  };
+}
+
+export async function listCases(query: CaseListQuery): Promise<{ total: number; rows: CaseRow[] }> {
+  const cases = await prisma.case.findMany({
+    where: caseWhere(query),
+    select: caseListSelect(query.userId),
+  });
+  const rows = cases
+    .map(mapCaseRow)
+    .sort((a, b) => compareCases(a, b, query.sort, query.dir));
+  const start = (query.page - 1) * CASE_PAGE_SIZE;
+  return { total: rows.length, rows: rows.slice(start, start + CASE_PAGE_SIZE) };
+}
+
+export async function listCaseBoard(query: Omit<CaseListQuery, "sort" | "dir" | "page">): Promise<CaseRow[]> {
+  const cases = await prisma.case.findMany({
+    where: caseWhere({ ...query, sort: "number", dir: "asc", page: 1 }),
+    select: caseListSelect(query.userId),
+  });
+  return cases.map(mapCaseRow).sort((a, b) => b.number - a.number);
+}
+
+export const listCaseTypes = cache(async () => {
+  return prisma.caseType.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, _count: { select: { cases: true } } },
+  });
+});
+
+export async function listApprovedCompanies() {
+  return prisma.contractorCompany.findMany({
+    where: { status: "approved" },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
+export async function listCaseFormOptions(buildingId: string, includeCompanyIds: string[] = []) {
+  const [types, assets, apartments, companies] = await Promise.all([
+    prisma.caseType.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.asset.findMany({
+      where: { buildingId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, categoryId: true, category: { select: { name: true } } },
+    }),
+    prisma.apartment.findMany({
+      where: { buildingId },
+      orderBy: { number: "asc" },
+      select: { id: true, number: true },
+    }),
+    prisma.contractorCompany.findMany({
+      where: includeCompanyIds.length
+        ? { OR: [{ status: "approved" }, { id: { in: includeCompanyIds } }] }
+        : { status: "approved" },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        contacts: { orderBy: { name: "asc" }, select: { id: true, name: true } },
+      },
+    }),
+  ]);
+
+  return {
+    types,
+    assets: assets.map((asset) => ({
+      id: asset.id,
+      name: asset.name,
+      categoryId: asset.categoryId,
+      categoryName: asset.category.name,
+    })),
+    apartments,
+    companies,
+  };
+}
+
+const caseDetailInclude = {
+  type: { select: { id: true, name: true } },
+  apartment: { select: { id: true, number: true } },
+  createdBy: { select: { name: true } },
+  assets: { include: { asset: { select: { id: true, name: true } } } },
+  companies: { include: { company: { select: { id: true, name: true } } } },
+  contacts: { include: { contact: { select: { id: true, name: true, companyId: true } } } },
+  files: { orderBy: { uploadedAt: "desc" as const }, include: { uploadedBy: { select: { name: true } } } },
+  comments: { orderBy: { createdAt: "asc" as const }, include: { author: { select: { name: true } } } },
+  activities: { orderBy: { createdAt: "desc" as const }, include: { actor: { select: { name: true } } } },
+} satisfies Prisma.CaseInclude;
+
+export type CaseDetail = Prisma.CaseGetPayload<{ include: typeof caseDetailInclude }>;
+
+export async function getCaseByNumber(buildingId: string, number: number): Promise<CaseDetail | null> {
+  return prisma.case.findFirst({
+    where: { buildingId, number },
+    include: caseDetailInclude,
+  });
+}
+
+export async function caseNeighbors(buildingId: string, number: number) {
+  const [previous, next] = await Promise.all([
+    prisma.case.findFirst({
+      where: { buildingId, number: { lt: number } },
+      orderBy: { number: "desc" },
+      select: { number: true },
+    }),
+    prisma.case.findFirst({
+      where: { buildingId, number: { gt: number } },
+      orderBy: { number: "asc" },
+      select: { number: true },
+    }),
+  ]);
+  return { previousNumber: previous?.number ?? null, nextNumber: next?.number ?? null };
+}
+
+export async function caseStarred(userId: string, caseId: string): Promise<boolean> {
+  const star = await prisma.caseStar.findUnique({
+    where: { userId_caseId: { userId, caseId } },
+    select: { userId: true },
+  });
+  return star != null;
+}
+
+export async function listApartmentCases(buildingId: string, apartmentId: string) {
+  return prisma.case.findMany({
+    where: { buildingId, apartmentId },
+    orderBy: { number: "desc" },
+    select: { number: true, subject: true, status: true, priority: true, startDate: true },
+  });
+}
+
+function caseWhere(query: CaseListQuery): Prisma.CaseWhereInput {
+  const filters: Prisma.CaseWhereInput[] = [{ buildingId: query.buildingId }];
+  if (query.typeId) filters.push({ typeId: query.typeId });
+  if (isCasePriority(query.priority)) filters.push({ priority: query.priority });
+  if (isCaseStatus(query.status)) filters.push({ status: query.status });
+  if (query.companyId) filters.push({ companies: { some: { companyId: query.companyId } } });
+  if (query.starred) filters.push({ stars: { some: { userId: query.userId } } });
+  if (query.from || query.to) {
+    filters.push({
+      startDate: {
+        ...(query.from ? { gte: query.from } : {}),
+        ...(query.to ? { lte: query.to } : {}),
+      },
+    });
+  }
+  const q = query.q.trim();
+  if (q) {
+    const or: Prisma.CaseWhereInput[] = [{ subject: { contains: q } }, { descriptionHtml: { contains: q } }];
+    const number = parseCaseNumber(q);
+    if (number) or.push({ number });
+    filters.push({ OR: or });
+  }
+  return { AND: filters };
 }
 
 function assetWhere(query: AssetListQuery): Prisma.AssetWhereInput {

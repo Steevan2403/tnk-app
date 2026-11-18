@@ -42,6 +42,11 @@ model User {
   selectedBuilding   Building?        @relation(fields: [selectedBuildingId], references: [id], onDelete: SetNull)
   contractorNotes    ContractorNote[]
   apartmentNotes     ApartmentNote[]
+  casesCreated       Case[]
+  caseFiles          CaseFile[]
+  caseComments       CaseComment[]
+  caseActivities     CaseActivity[]
+  caseStars          CaseStar[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -60,6 +65,7 @@ model Building {
   selectedBy User[]
   apartments Apartment[]
   assets     Asset[]
+  cases      Case[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -86,6 +92,7 @@ model ContractorCompany {
   documents  ContractorDocument[]
   insurances ContractorInsurance[]
   assets     Asset[]
+  caseLinks  CaseCompany[]
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
@@ -103,6 +110,7 @@ model ContractorContact {
   mobile    String?
   email     String?
   assets    Asset[]
+  caseLinks CaseContact[]
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 
@@ -164,6 +172,7 @@ model Apartment {
   notes       ApartmentNote[]
   owners      ApartmentOwner[]
   agent       ManagingAgent?
+  cases       Case[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -309,6 +318,7 @@ model Asset {
   photos         AssetPhoto[]
   documents      AssetDocument[]
   warranties     AssetWarranty[]
+  caseLinks      CaseAsset[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -353,4 +363,192 @@ model AssetWarranty {
 
   @@index([assetId])
   @@index([expiresOn])
+}
+
+// Cases belong to one building. Work orders are a later feature: the model is
+// here so a case can have many, lettered from the case number (12-A, 12-B).
+enum CasePriority {
+  urgent
+  high
+  medium
+  low
+}
+
+enum CaseStatus {
+  new
+  in_progress
+  awaiting_contractor
+  awaiting_quote
+  awaiting_invoice
+  completed
+  closed
+}
+
+enum CaseArea {
+  asset
+  apartment
+  none
+}
+
+enum CaseFileKind {
+  photo
+  video
+  quote
+  invoice
+  document
+}
+
+enum CaseActivityKind {
+  created
+  status_changed
+  field_changed
+  file_added
+  comment_added
+}
+
+model CaseType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  cases     Case[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Case {
+  id                  String         @id @default(cuid())
+  buildingId          String
+  building            Building       @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  number              Int
+  typeId              String
+  type                CaseType       @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  purchaseOrderNumber String?
+  startDate           DateTime
+  dueDate             DateTime
+  priority            CasePriority   @default(low)
+  status              CaseStatus     @default(new)
+  completedAt         DateTime?
+  subject             String
+  descriptionHtml     String         @default("")
+  internalNotes       String?
+  includeInReport     Boolean        @default(true)
+  area                CaseArea       @default(none)
+  apartmentId         String?
+  apartment           Apartment?     @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  createdById         String
+  createdBy           User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  assets              CaseAsset[]
+  companies           CaseCompany[]
+  contacts            CaseContact[]
+  files               CaseFile[]
+  comments            CaseComment[]
+  activities          CaseActivity[]
+  stars               CaseStar[]
+  workOrders          WorkOrder[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@unique([buildingId, number])
+  @@index([buildingId, status])
+  @@index([buildingId, startDate])
+  @@index([typeId])
+  @@index([apartmentId])
+  @@index([createdById])
+  @@index([dueDate])
+}
+
+model CaseAsset {
+  caseId  String
+  case    Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, assetId])
+  @@index([assetId])
+}
+
+model CaseCompany {
+  caseId    String
+  case      Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  companyId String
+  company   ContractorCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, companyId])
+  @@index([companyId])
+}
+
+model CaseContact {
+  caseId    String
+  case      Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   ContractorContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, contactId])
+  @@index([contactId])
+}
+
+model CaseFile {
+  id           String       @id @default(cuid())
+  caseId       String
+  case         Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  kind         CaseFileKind
+  name         String
+  storedName   String
+  uploadedById String
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  uploadedAt   DateTime     @default(now())
+
+  @@index([caseId])
+  @@index([uploadedById])
+}
+
+model CaseComment {
+  id        String        @id @default(cuid())
+  caseId    String
+  case      Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    CaseComment?  @relation("CaseCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   CaseComment[] @relation("CaseCommentReplies")
+  body      String
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  createdAt DateTime      @default(now())
+
+  @@index([caseId])
+  @@index([parentId])
+  @@index([authorId])
+}
+
+model CaseActivity {
+  id        String           @id @default(cuid())
+  caseId    String
+  case      Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User             @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  kind      CaseActivityKind
+  summary   String
+  createdAt DateTime         @default(now())
+
+  @@index([caseId])
+  @@index([actorId])
+}
+
+model CaseStar {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, caseId])
+  @@index([caseId])
+}
+
+model WorkOrder {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  suffix    String
+  createdAt DateTime @default(now())
+
+  @@unique([caseId, suffix])
 }
