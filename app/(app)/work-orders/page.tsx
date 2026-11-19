@@ -13,6 +13,7 @@ import {
   formatWorkOrderStatus,
   isWorkOrderStatus,
   sentRange,
+  sentRangeError,
 } from "@/lib/work-orders";
 
 export const metadata: Metadata = { title: "Work Orders" };
@@ -46,6 +47,7 @@ export default async function WorkOrdersPage({
   const companies = await listWorkOrderCompanies();
   const companyId = companies.some((company) => company.id === filters.companyId) ? filters.companyId : "";
   const status = isWorkOrderStatus(filters.status) ? filters.status : "";
+  const rangeError = sentRangeError(filters.from, filters.to);
   const range = sentRange(filters.from, filters.to);
   const active: Filters = {
     ...filters,
@@ -54,19 +56,21 @@ export default async function WorkOrdersPage({
     from: range.from ? filters.from : "",
     to: range.to ? filters.to : "",
   };
-  const listed = await listWorkOrders({
-    buildingId: user.selectedBuildingId,
-    q: active.q,
-    status: active.status,
-    companyId: active.companyId,
-    sentFrom: range.from,
-    sentTo: range.to,
-    page: active.page,
-  });
+  const listed = rangeError
+    ? { total: 0, rows: [] }
+    : await listWorkOrders({
+        buildingId: user.selectedBuildingId,
+        q: active.q,
+        status: active.status,
+        companyId: active.companyId,
+        sentFrom: range.from,
+        sentTo: range.to,
+        page: active.page,
+      });
   const totalPages = Math.max(1, Math.ceil(listed.total / PAGE_SIZE));
   const page = Math.min(active.page, totalPages);
   const rows =
-    page === active.page
+    rangeError || page === active.page
       ? listed.rows
       : (
           await listWorkOrders({
@@ -118,8 +122,14 @@ export default async function WorkOrdersPage({
           Clear filters
         </Link>
       ) : null}
-      <p className="mt-4 text-sm text-muted">{listed.total === 1 ? "1 work order" : `${listed.total} work orders`}</p>
-      {rows.length === 0 ? (
+      {rangeError ? (
+        <p role="alert" className="mt-4 text-sm text-danger">
+          {rangeError}
+        </p>
+      ) : (
+        <p className="mt-4 text-sm text-muted">{listed.total === 1 ? "1 work order" : `${listed.total} work orders`}</p>
+      )}
+      {rangeError ? null : rows.length === 0 ? (
         <EmptyState>{filtered ? "No work orders match." : "No work orders yet."}</EmptyState>
       ) : (
         <>

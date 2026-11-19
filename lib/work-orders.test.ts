@@ -4,6 +4,7 @@ import {
   defaultWorkOrderSubject,
   nextWorkOrderSuffix,
   parseWorkOrderForm,
+  sentRangeError,
   resolveWorkOrderContact,
   suffixFromRank,
   sydneyDateTimeToUtc,
@@ -190,6 +191,18 @@ describe("work order email", () => {
     );
     expect(omittedAttachmentNotice("305-A", [])).toBeNull();
     expect(omittedAttachmentNotice("", ["clip.mp4"])).toBeNull();
+  });
+});
+
+describe("sent date range", () => {
+  it("rejects a from date that is after the to date", () => {
+    expect(sentRangeError("2026-12-01", "2026-11-01")).toBe(
+      "Sent from is after sent to. Choose a from date on or before the to date.",
+    );
+    expect(sentRangeError("2026-11-01", "2026-12-01")).toBeNull();
+    expect(sentRangeError("2026-11-01", "2026-11-01")).toBeNull();
+    expect(sentRangeError("", "2026-11-01")).toBeNull();
+    expect(sentRangeError("not-a-date", "2026-11-01")).toBeNull();
   });
 });
 
