@@ -150,7 +150,12 @@ async function sendWorkOrderBody(_prev: WorkOrderFormState, formData: FormData):
             title: `Work order ${number} was sent to ${draft.companyName}.`,
             link: `/work-orders/${created.id}`,
           });
-          await mailboxFor(tx).save({ ...mail, attachmentNames: mail.attachments.map((item) => item.name), workOrderId: created.id });
+          await mailboxFor(tx).save({
+            ...mail,
+            attachmentNames: mail.attachments.map((item) => item.name),
+            workOrderId: created.id,
+            buildingId,
+          });
         });
         outgoing = mail;
         saved = true;

@@ -41,6 +41,7 @@ export type OutgoingMail = {
   body: string;
   attachments: MailAttachment[];
   workOrderId?: string;
+  buildingId?: string;
 };
 
 export type SavedMail = {
@@ -50,6 +51,7 @@ export type SavedMail = {
   attachmentNames: string[];
   attachments: MailAttachment[];
   workOrderId?: string;
+  buildingId?: string;
 };
 
 export type Mailbox = {
@@ -76,6 +78,7 @@ export async function deliverMail(
     attachmentNames: mail.attachments.map((attachment) => attachment.name),
     attachments: mail.attachments,
     workOrderId: mail.workOrderId,
+    ...(mail.buildingId ? { buildingId: mail.buildingId } : {}),
   });
   if (mailTransport(options.env ?? process.env) === "smtp") {
     await (options.smtp ?? sendSmtp)(mail);

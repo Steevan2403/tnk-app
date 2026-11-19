@@ -103,6 +103,7 @@ model Building {
   generatedReports     GeneratedReport[]
   activities           BuildingActivity[]
   notifications        Notification[]
+  outboxMessages       OutboxMessage[]
 }
 
 // Which buildings a manager or a staff member can open. Admins are not listed here.
@@ -850,11 +851,14 @@ model OutboxMessage {
   toAddress   String
   subject     String
   body        String
+  buildingId  String?
+  building    Building?          @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   workOrderId String?
   workOrder   WorkOrder?         @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
   attachments OutboxAttachment[]
   createdAt   DateTime           @default(now())
 
+  @@index([buildingId])
   @@index([workOrderId])
   @@index([createdAt])
 }

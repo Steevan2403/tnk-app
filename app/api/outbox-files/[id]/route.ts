@@ -1,5 +1,4 @@
-import { requireUser } from "@/lib/data";
-import { prisma } from "@/lib/db";
+import { getOutboxAttachment, requireUser } from "@/lib/data";
 import { canViewOutbox } from "@/lib/roles";
 import { contentDisposition, contentTypeFor, readStoredFile } from "@/lib/storage";
 
@@ -7,10 +6,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const user = await requireUser();
   if (!canViewOutbox(user.role)) return new Response("Not found", { status: 404 });
   const { id } = await params;
-  const attachment = await prisma.outboxAttachment.findUnique({
-    where: { id },
-    select: { name: true, storedName: true },
-  });
+  const attachment = await getOutboxAttachment(user, id);
   if (!attachment) return new Response("Not found", { status: 404 });
   const bytes = await readStoredFile(attachment.storedName);
   if (!bytes) return new Response("Not found", { status: 404 });

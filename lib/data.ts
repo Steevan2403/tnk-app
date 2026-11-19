@@ -945,10 +945,20 @@ export async function getWorkOrderMessage(buildingId: string, id: string) {
   });
 }
 
-export async function listOutbox(page: number) {
+function outboxMessageWhere(buildingId: string): Prisma.OutboxMessageWhereInput {
+  return {
+    OR: [{ buildingId }, { workOrder: { case: { buildingId } } }],
+  };
+}
+
+export async function listOutbox(page: number, user: CurrentUser) {
+  const buildingId = selectedBuildingForUser(user.role, user.selectedBuildingId, user.buildingIds);
+  if (!buildingId) return { total: 0, rows: [] };
+  const where = outboxMessageWhere(buildingId);
   const [total, rows] = await Promise.all([
-    prisma.outboxMessage.count(),
+    prisma.outboxMessage.count({ where }),
     prisma.outboxMessage.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * WORK_ORDER_PAGE_SIZE,
       take: WORK_ORDER_PAGE_SIZE,
@@ -956,6 +966,15 @@ export async function listOutbox(page: number) {
     }),
   ]);
   return { total, rows };
+}
+
+export async function getOutboxAttachment(user: CurrentUser, id: string) {
+  const buildingId = selectedBuildingForUser(user.role, user.selectedBuildingId, user.buildingIds);
+  if (!buildingId) return null;
+  return prisma.outboxAttachment.findFirst({
+    where: { id, message: outboxMessageWhere(buildingId) },
+    select: { name: true, storedName: true },
+  });
 }
 
 function workOrderWhere(query: WorkOrderListQuery): Prisma.WorkOrderWhereInput {

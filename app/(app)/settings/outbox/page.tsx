@@ -25,12 +25,21 @@ export default async function OutboxPage({
     );
   }
 
+  if (!user.selectedBuildingId) {
+    return (
+      <section>
+        <h1 className="font-serif text-3xl">Outbox</h1>
+        <p className="mt-4 text-muted">Select a building to see its mail.</p>
+      </section>
+    );
+  }
+
   const params = await searchParams;
   const requested = parsePage(first(params.page));
-  const listed = await listOutbox(requested);
+  const listed = await listOutbox(requested, user);
   const totalPages = Math.max(1, Math.ceil(listed.total / PAGE_SIZE));
   const page = Math.min(requested, totalPages);
-  const rows = page === requested ? listed.rows : (await listOutbox(page)).rows;
+  const rows = page === requested ? listed.rows : (await listOutbox(page, user)).rows;
   const messages = await Promise.all(
     rows.map(async (message) => ({ ...message, attachments: await withStoredSizes(message.attachments) })),
   );

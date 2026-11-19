@@ -1433,12 +1433,20 @@ async function seedWorkOrders(authorId: string) {
     });
     await prisma.outboxMessage.upsert({
       where: { id: messageId },
-      update: { toAddress: item.contactEmail, subject: item.subject, body, workOrderId: item.id, createdAt: sentAt },
+      update: {
+        toAddress: item.contactEmail,
+        subject: item.subject,
+        body,
+        buildingId: "seed_example_tower",
+        workOrderId: item.id,
+        createdAt: sentAt,
+      },
       create: {
         id: messageId,
         toAddress: item.contactEmail,
         subject: item.subject,
         body,
+        buildingId: "seed_example_tower",
         workOrderId: item.id,
         createdAt: sentAt,
       },

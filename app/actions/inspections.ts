@@ -452,6 +452,7 @@ export async function emailInspectionReport(_prev: ReportEmailState, formData: F
     await mailboxFor(prisma).save({
       ...mail,
       attachmentNames: mail.attachments.map((attachment) => attachment.name),
+      buildingId: user.buildingId,
     });
     if (mailTransport() === "smtp") {
       try {
