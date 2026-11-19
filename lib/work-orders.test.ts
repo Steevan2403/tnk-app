@@ -92,6 +92,42 @@ describe("work order contacts", () => {
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.errors.contactId).toBe("Choose a contact of that company with an email.");
   });
+
+  it("rejects the form when no contact is chosen", () => {
+    const data = new FormData();
+    data.set("companyId", "plumbing");
+    data.set("subject", "Example subject");
+    data.set("message", "Example instructions.");
+    const parsed = parseWorkOrderForm(data, context);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.errors.contactId).toBe("Choose a contact of that company with an email.");
+  });
+
+  it("rejects a contact who has no email", () => {
+    const data = new FormData();
+    data.set("companyId", "fire");
+    data.set("contactId", "blank");
+    data.set("subject", "Example subject");
+    const parsed = parseWorkOrderForm(data, context);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.errors.contactId).toBe("Choose a contact of that company with an email.");
+  });
+
+  it("accepts a contact of that company who has an email", () => {
+    const data = new FormData();
+    data.set("companyId", "plumbing");
+    data.set("contactId", "casey");
+    data.set("subject", "Example subject");
+    data.set("message", "Example instructions.");
+    const parsed = parseWorkOrderForm(data, context);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.contactId).toBe("casey");
+      expect(parsed.value.contactEmail).toBe("casey.placeholder@example.com");
+      expect(parsed.value.subject).toBe("Example subject");
+      expect(parsed.value.message).toBe("Example instructions.");
+    }
+  });
 });
 
 describe("file sizes", () => {

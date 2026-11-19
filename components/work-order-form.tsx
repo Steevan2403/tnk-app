@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { sendWorkOrder, type WorkOrderFormState } from "@/app/actions/work-orders";
 import { SelectField, TextArea, TextField } from "@/components/field";
 
@@ -50,8 +50,21 @@ export function WorkOrderForm({
     return sum + file.size;
   }, 0);
 
+  function submitWorkOrder(form: HTMLFormElement) {
+    const data = new FormData(form);
+    startTransition(() => {
+      action(data);
+    });
+  }
+
   return (
-    <form action={action} className="form-card mt-6 max-w-3xl space-y-4">
+    <form
+      className="form-card mt-6 max-w-3xl space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submitWorkOrder(event.currentTarget);
+      }}
+    >
       <input type="hidden" name="number" value={caseNumber} />
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
       {previewError ? <p className="text-sm text-danger">{previewError}</p> : null}
@@ -63,10 +76,8 @@ export function WorkOrderForm({
           error={state.errors?.companyId}
           required
           onChange={(event) => {
-            const next = event.target.value;
-            setCompanyId(next);
-            const people = contractors.find((contractor) => contractor.id === next)?.contacts ?? [];
-            setContactId(people[0]?.id ?? "");
+            setCompanyId(event.target.value);
+            setContactId("");
           }}
         >
           <option value="">Choose a contractor</option>
