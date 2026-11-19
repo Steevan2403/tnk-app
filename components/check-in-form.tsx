@@ -5,7 +5,7 @@ import { recordSiteVisit, type CheckInFormState } from "@/app/actions/check-in";
 import type { SiteAction } from "@/lib/check-in";
 
 const controlClass =
-  "w-full rounded-md border border-line bg-white px-3 py-3 text-base text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40";
+  "w-full rounded-lg border border-line bg-white px-3 py-3 text-base text-ink shadow-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30";
 
 export function CheckInForm({
   token,
@@ -55,7 +55,7 @@ export function CheckInForm({
       <button
         type="submit"
         disabled={busy}
-        className="w-full rounded-md bg-brand-navy px-4 py-3 text-base font-medium text-white hover:bg-brand-blue disabled:opacity-60"
+        className="w-full rounded-lg bg-brand-navy px-4 py-3 text-base font-medium text-white hover:bg-brand-blue disabled:opacity-60"
       >
         {busy ? "Saving…" : action === "check_in" ? "Check in" : "Check out"}
       </button>

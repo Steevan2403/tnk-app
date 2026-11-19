@@ -29,7 +29,7 @@ export function CompanyForm({
   const [state, action, pending] = useActionState(saveCompany, initial);
 
   return (
-    <form action={action} className="mt-6 max-w-xl space-y-4">
+    <form action={action} className="form-card mt-6 max-w-xl space-y-4">
       {company ? <input type="hidden" name="id" value={company.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">

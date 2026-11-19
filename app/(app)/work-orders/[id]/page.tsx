@@ -6,6 +6,7 @@ import { formatDuration, formatLocation, openSiteVisit } from "@/lib/check-in";
 import { formatDateTime } from "@/lib/contractors";
 import { getWorkOrderDetail, requireUser } from "@/lib/data";
 import { workOrderLinks } from "@/lib/work-order-terms";
+import { StatusBadge } from "@/components/ui";
 import { formatWorkOrderStatus, workOrderNumber } from "@/lib/work-orders";
 
 export const metadata: Metadata = { title: "Work order" };
@@ -41,8 +42,10 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         <div>
           <h1 className="font-serif text-3xl">Work order {number}</h1>
           <p className="mt-2 text-muted">{record.case.subject}</p>
+          <div className="mt-3">
+            <StatusBadge status={record.status} label={formatWorkOrderStatus(record.status)} />
+          </div>
         </div>
-        <p className="text-sm">{formatWorkOrderStatus(record.status)}</p>
       </div>
       {open ? (
         <p role="status" className="mt-4 rounded-lg border border-brand-green/40 bg-brand-green/10 px-4 py-3">
@@ -51,7 +54,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
       ) : (
         <p className="mt-4 text-muted">No contractor is on site.</p>
       )}
-      <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+      <dl className="mt-6 grid gap-4 rounded-xl border border-line bg-card p-4 sm:grid-cols-2 md:p-5">
         <Detail label="Building" value={record.case.building.name} />
         <Detail label="Address" value={address} />
         <Detail label="Contractor" value={record.companyName} />
@@ -77,8 +80,8 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
       </p>
 
       <section className="mt-8 rounded-xl border border-line bg-card p-4">
-        <h2 className="font-serif text-2xl text-brand-navy">On-site history</h2>
-        {record.visits.length === 0 ? <p className="mt-3 text-muted">No one has checked in yet.</p> : null}
+        <h2 className="text-lg font-semibold tracking-tight text-brand-navy">On-site history</h2>
+        {record.visits.length === 0 ? <p className="mt-4 rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">No one has checked in yet.</p> : null}
         <ul className="mt-2 divide-y divide-line">
           {record.visits.map((visit) => {
             const checkInLocation = formatLocation(visit.checkInLatitude, visit.checkInLongitude);

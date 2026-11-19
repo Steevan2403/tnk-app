@@ -49,7 +49,7 @@ export function InspectionTemplateForm({
   }
 
   return (
-    <form action={action} className="mt-6 max-w-3xl space-y-6">
+    <form action={action} className="form-card mt-6 max-w-3xl space-y-6">
       {template ? <input type="hidden" name="id" value={template.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">

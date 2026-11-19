@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { approveCompany } from "@/app/actions/contractors";
 import { ContractorCategories } from "@/components/contractor-categories";
+import { EmptyState } from "@/components/ui";
 import { SelectField, TextField } from "@/components/field";
 import { InsuranceBadge } from "@/components/insurance-badge";
 import {
@@ -82,7 +83,7 @@ export default async function ContractorsPage({
       <form
         method="get"
         action="/contractors"
-        className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
+        className="filter-card mt-4 grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
       >
         <input type="hidden" name="tab" value={tab} />
         <TextField
@@ -127,7 +128,7 @@ export default async function ContractorsPage({
       <p className="mt-4 text-sm text-muted">{countLabel(result.total, result.kind)}</p>
 
       {result.rows.length === 0 ? (
-        <p className="mt-4 text-muted">{emptyMessage(tab)}</p>
+        <EmptyState>{emptyMessage(tab)}</EmptyState>
       ) : result.kind === "contacts" ? (
         <ContactResults rows={result.rows} />
       ) : (
@@ -179,7 +180,7 @@ function ContactResults({ rows }: { rows: ContactRow[] }) {
           </li>
         ))}
       </ul>
-      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-4 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>
@@ -239,7 +240,7 @@ function CompanyResults({
           </li>
         ))}
       </ul>
-      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-4 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>

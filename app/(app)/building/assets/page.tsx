@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AssetCategories } from "@/components/asset-categories";
+import { EmptyState } from "@/components/ui";
 import { SelectField, TextField } from "@/components/field";
 import {
   formatCalendarDate,
@@ -59,7 +60,7 @@ export default async function AssetsPage({
         ) : null}
       </div>
 
-      <form method="get" action="/building/assets" className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
+      <form method="get" action="/building/assets" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
         <TextField
           label="Search assets"
           name="q"
@@ -91,7 +92,7 @@ export default async function AssetsPage({
 
       <p className="mt-4 text-sm text-muted">{result.total === 1 ? "1 asset" : `${result.total} assets`}</p>
       {result.rows.length === 0 ? (
-        <p className="mt-4 text-muted">{q || selectedCategory || warranty ? "No assets match." : "No assets yet."}</p>
+        <EmptyState>{q || selectedCategory || warranty ? "No assets match." : "No assets yet."}</EmptyState>
       ) : (
         <AssetResults rows={result.rows} />
       )}
@@ -158,7 +159,7 @@ function AssetResults({ rows }: { rows: AssetRow[] }) {
           </li>
         ))}
       </ul>
-      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-4 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>

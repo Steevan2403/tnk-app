@@ -37,10 +37,10 @@ export default async function DashboardPage({
 
   return (
     <section>
-      <p className="text-sm font-medium tracking-wide text-muted uppercase">Dashboard</p>
+      <p className="text-xs font-semibold tracking-[0.16em] text-brand-blue uppercase">Dashboard</p>
       <h1 className="mt-2 font-serif text-4xl">{building.name}</h1>
-      <p className="mt-3 text-lg">{formatAddress(building)}</p>
-      <p className="mt-6 text-muted">
+      <p className="mt-2 text-lg text-ink">{formatAddress(building)}</p>
+      <p className="mt-4 inline-flex rounded-full bg-card px-3 py-1 text-sm text-muted shadow-sm ring-1 ring-line">
         {building.lotCount} {building.lotCount === 1 ? "lot" : "lots"}
       </p>
       <DashboardView data={data} user={{ id: user.id, role: user.role }} editNoteId={first(params.editNote)} editNumberId={first(params.editNumber)} />

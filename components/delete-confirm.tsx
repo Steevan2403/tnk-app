@@ -23,13 +23,13 @@ export function DeleteConfirm({
     );
   }
   return (
-    <div role="dialog" aria-labelledby={titleId} className="rounded-md border border-line bg-page p-3">
-      <h3 id={titleId} className="font-medium text-brand-navy">
+    <div role="dialog" aria-labelledby={titleId} className="rounded-xl border border-line bg-card p-4 shadow-lg">
+      <h3 id={titleId} className="text-base font-semibold text-brand-navy">
         {title}
       </h3>
-      <p className="mt-2 whitespace-pre-wrap text-sm">{message}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-3">{children}</div>
-      <button type="button" className="mt-3 text-sm text-brand-blue hover:underline" onClick={() => setOpen(false)}>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{message}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">{children}</div>
+      <button type="button" className="mt-3 text-sm font-medium text-brand-blue hover:underline" onClick={() => setOpen(false)}>
         Cancel
       </button>
     </div>

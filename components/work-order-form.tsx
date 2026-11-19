@@ -51,7 +51,7 @@ export function WorkOrderForm({
   }, 0);
 
   return (
-    <form action={action} className="mt-6 max-w-3xl space-y-4">
+    <form action={action} className="form-card mt-6 max-w-3xl space-y-4">
       <input type="hidden" name="number" value={caseNumber} />
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
       {previewError ? <p className="text-sm text-danger">{previewError}</p> : null}

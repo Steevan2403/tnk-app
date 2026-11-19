@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { EmptyState } from "@/components/ui";
 import { formatDateTime } from "@/lib/contractors";
 import { parsePage } from "@/lib/cases";
 import { listOutbox, requireUser } from "@/lib/data";
@@ -52,7 +53,7 @@ export default async function OutboxPage({
       <h1 className="mt-3 font-serif text-3xl">Outbox</h1>
       <p className="mt-2 text-muted">Mail written on this server. Nothing here is sent to a real inbox.</p>
       <p className="mt-4 text-sm text-muted">{listed.total === 1 ? "1 message" : `${listed.total} messages`}</p>
-      {rows.length === 0 ? <p className="mt-4 text-muted">No messages yet.</p> : null}
+      {rows.length === 0 ? <EmptyState>No messages yet.</EmptyState> : null}
       <ul className="mt-4 space-y-4">
         {messages.map((message) => (
           <li key={message.id}>

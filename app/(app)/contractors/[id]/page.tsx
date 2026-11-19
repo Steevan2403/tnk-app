@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
 import { approveCompany, deleteCompany, deleteContact, deleteDocument, deleteInsurance } from "@/app/actions/contractors";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { ContactForm, DocumentForm, InsuranceForm, NoteForm } from "@/components/contractor-forms";
 import { InsuranceBadge } from "@/components/insurance-badge";
+import { EmptyState, Panel } from "@/components/ui";
 import { getContractorCompany, requireUser, type ContractorCompanyDetail } from "@/lib/data";
 import {
   formatAbn,
@@ -123,7 +123,7 @@ export default async function CompanyPage({
         </div>
       </dl>
 
-      <Panel title="Notes">
+      <Panel className="mt-8" title="Notes">
         {company.notes.length === 0 ? <Empty>No notes yet.</Empty> : null}
         <ul className="mt-4 space-y-3">
           {company.notes.map((note) => (
@@ -138,7 +138,7 @@ export default async function CompanyPage({
         {canManage ? <NoteForm companyId={company.id} /> : null}
       </Panel>
 
-      <Panel title="Contacts">
+      <Panel className="mt-8" title="Contacts">
         {company.contacts.length === 0 ? <Empty>No contacts yet.</Empty> : null}
         <ul className="mt-2 divide-y divide-line">
           {company.contacts.map((contact) => (
@@ -154,7 +154,7 @@ export default async function CompanyPage({
         {canManage && !editingContact ? <ContactForm companyId={company.id} /> : null}
       </Panel>
 
-      <Panel title="Documents">
+      <Panel className="mt-8" title="Documents">
         {company.documents.length === 0 ? <Empty>No documents yet.</Empty> : null}
         <ul className="mt-2 divide-y divide-line">
           {company.documents.map((document) => (
@@ -186,7 +186,7 @@ export default async function CompanyPage({
         {canManage ? <DocumentForm companyId={company.id} /> : null}
       </Panel>
 
-      <Panel title="Insurances">
+      <Panel className="mt-8" title="Insurances">
         {company.insurances.length === 0 ? <Empty>No insurance yet.</Empty> : null}
         <ul className="mt-2 divide-y divide-line">
           {company.insurances.map((insurance) => (
@@ -322,15 +322,6 @@ function InsuranceRow({
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="mt-8 rounded-xl border border-line bg-card p-4 md:p-6">
-      <h2 className="font-serif text-2xl text-brand-navy">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
 function Fact({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
@@ -341,7 +332,7 @@ function Fact({ label, value }: { label: string; value: string | null }) {
 }
 
 function Empty({ children }: { children: string }) {
-  return <p className="mt-4 text-muted">{children}</p>;
+  return <EmptyState>{children}</EmptyState>;
 }
 
 function blank(value: string | null): string {

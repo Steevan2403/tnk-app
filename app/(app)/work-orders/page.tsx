@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { EmptyState, StatusBadge } from "@/components/ui";
 import { WorkOrderStatusSelect } from "@/components/work-order-status";
 import { SelectField, TextField } from "@/components/field";
 import { parsePage } from "@/lib/cases";
@@ -86,7 +87,7 @@ export default async function WorkOrdersPage({
   return (
     <section>
       <h1 className="font-serif text-3xl">Work Orders</h1>
-      <form method="get" className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <form method="get" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <TextField label="Search work orders" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, or contractor" />
         <SelectField label="Status" name="status" defaultValue={active.status}>
           <option value="">All statuses</option>
@@ -119,7 +120,7 @@ export default async function WorkOrdersPage({
       ) : null}
       <p className="mt-4 text-sm text-muted">{listed.total === 1 ? "1 work order" : `${listed.total} work orders`}</p>
       {rows.length === 0 ? (
-        <p className="mt-4 text-muted">{filtered ? "No work orders match." : "No work orders yet."}</p>
+        <EmptyState>{filtered ? "No work orders match." : "No work orders yet."}</EmptyState>
       ) : (
         <>
           <ul className="mt-4 space-y-3 md:hidden">
@@ -143,13 +144,13 @@ export default async function WorkOrdersPage({
                   {canChange ? (
                     <WorkOrderStatusSelect id={row.id} number={row.number} status={row.status} canCancel={canCancel} returnTo={returnTo} />
                   ) : (
-                    <span className="text-sm">{formatWorkOrderStatus(row.status)}</span>
+                    <StatusBadge status={row.status} label={formatWorkOrderStatus(row.status)} />
                   )}
                 </div>
               </li>
             ))}
           </ul>
-          <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+          <div className="mt-4 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
             <table className="w-full min-w-[72rem] text-left text-sm">
               <thead className="border-b border-line text-muted">
                 <tr>
@@ -188,7 +189,7 @@ export default async function WorkOrdersPage({
                           returnTo={returnTo}
                         />
                       ) : (
-                        formatWorkOrderStatus(row.status)
+                        <StatusBadge status={row.status} label={formatWorkOrderStatus(row.status)} />
                       )}
                     </td>
                     <td className="px-4 py-3">{row.caseType}</td>

@@ -69,25 +69,25 @@ export function CalendarScreen({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-serif text-3xl">Calendar</h1>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Link href={todayHref} className="rounded-md border border-line bg-card px-3 py-2 hover:border-brand-blue">
+            <Link href={todayHref} className="rounded-lg border border-line bg-card px-3 py-2 font-medium shadow-sm hover:border-brand-blue">
               Today
             </Link>
-            <Link href={prevHref} className="rounded-md border border-line bg-card px-3 py-2 hover:border-brand-blue">
+            <Link href={prevHref} className="rounded-lg border border-line bg-card px-3 py-2 font-medium shadow-sm hover:border-brand-blue">
               Previous
             </Link>
-            <Link href={nextHref} className="rounded-md border border-line bg-card px-3 py-2 hover:border-brand-blue">
+            <Link href={nextHref} className="rounded-lg border border-line bg-card px-3 py-2 font-medium shadow-sm hover:border-brand-blue">
               Next
             </Link>
           </div>
         </div>
-        <p className="mt-4 text-lg font-medium text-brand-navy">{title}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <p className="mt-4 text-lg font-semibold tracking-tight text-brand-navy">{title}</p>
+        <div className="mt-4 inline-flex flex-wrap gap-1 rounded-lg bg-white p-1 shadow-sm ring-1 ring-line">
           {viewLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
               aria-current={link.current ? "page" : undefined}
-              className={`rounded-md px-3 py-1 text-sm ${link.current ? "bg-brand-navy text-white" : "bg-card text-ink ring-1 ring-line"}`}
+              className={`rounded-md px-3 py-1 text-sm font-medium ${link.current ? "bg-brand-navy text-white" : "text-ink hover:text-brand-blue"}`}
             >
               {link.label}
             </Link>
@@ -105,23 +105,23 @@ export function CalendarScreen({
             </Link>
           ))}
         </div>
-        <ul className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
-          <li className="rounded bg-brand-blue/10 px-2 py-1 text-brand-navy">Upcoming</li>
-          <li className="rounded bg-red-50 px-2 py-1 text-danger">Overdue</li>
-          <li className="rounded bg-brand-green/15 px-2 py-1 text-brand-navy">Completed</li>
-          <li className="rounded bg-brand-navy/10 px-2 py-1 text-brand-navy">Case</li>
-          <li className="rounded border border-line bg-page px-2 py-1">Work order</li>
+        <ul className="mt-3 flex flex-wrap gap-2 text-xs">
+          <li className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-medium text-brand-navy">Upcoming</li>
+          <li className="rounded-full bg-red-50 px-2.5 py-1 font-medium text-danger">Overdue</li>
+          <li className="rounded-full bg-[#d1fae5] px-2.5 py-1 font-medium text-[#065f46]">Completed</li>
+          <li className="rounded-full bg-brand-navy/10 px-2.5 py-1 font-medium text-brand-navy">Case</li>
+          <li className="rounded-full border border-line bg-card px-2.5 py-1 font-medium">Work order</li>
         </ul>
 
         {view === "agenda" ? (
           <Agenda days={days} todayIso={todayIso} canManage={canManage} />
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className={`w-full min-w-[46rem] border-collapse text-sm ${view === "week" ? "min-w-[64rem]" : ""}`}>
+          <div className="mt-4 overflow-x-auto rounded-xl border border-line bg-card">
+            <table className={`calendar-grid w-full min-w-[46rem] border-collapse text-sm ${view === "week" ? "min-w-[64rem]" : ""}`}>
               <thead>
                 <tr>
                   {WEEKDAYS.map((day) => (
-                    <th key={day} scope="col" className="border border-line bg-card px-2 py-2 text-left font-medium text-muted">
+                    <th key={day} scope="col" className="border border-line bg-[#f6f7fb] px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
                       {day}
                     </th>
                   ))}

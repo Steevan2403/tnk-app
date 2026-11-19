@@ -11,7 +11,7 @@ export function WorkOrderTermsForm({ settings }: { settings: CompanySettingsInpu
   const [state, action, pending] = useActionState(saveWorkOrderTerms, initial);
 
   return (
-    <form action={action} className="mt-6 max-w-3xl space-y-4">
+    <form action={action} className="form-card mt-6 max-w-3xl space-y-4">
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">
           {state.error}

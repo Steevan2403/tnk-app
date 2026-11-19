@@ -50,7 +50,7 @@ export function MaintenanceForm({
   const [remind, setRemind] = useState(event?.remindContractor ?? false);
 
   return (
-    <form action={action} className="mt-6 max-w-3xl space-y-8">
+    <form action={action} className="form-card mt-6 max-w-3xl space-y-8">
       {event ? <input type="hidden" name="id" value={event.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">

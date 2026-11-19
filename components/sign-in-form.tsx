@@ -16,7 +16,7 @@ export function SignInForm() {
         </p>
       ) : null}
       <div>
-        <label htmlFor="email" className="mb-1 block text-sm font-medium">
+        <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
           Email
         </label>
         <input
@@ -25,11 +25,11 @@ export function SignInForm() {
           type="email"
           autoComplete="username"
           required
-          className="w-full rounded-md border border-line bg-white px-3 py-2 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40"
+          className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30"
         />
       </div>
       <div>
-        <label htmlFor="password" className="mb-1 block text-sm font-medium">
+        <label htmlFor="password" className="mb-1.5 block text-sm font-medium">
           Password
         </label>
         <input
@@ -38,7 +38,7 @@ export function SignInForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="w-full rounded-md border border-line bg-white px-3 py-2 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40"
+          className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30"
         />
       </div>
       <button

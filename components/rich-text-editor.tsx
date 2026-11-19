@@ -44,7 +44,7 @@ export function RichTextEditor({
       <p id="case-description-label" className="mb-1 text-sm font-medium">
         Description
       </p>
-      <div className="case-editor overflow-hidden rounded-md border border-line bg-white focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/40">
+      <div className="case-editor overflow-hidden rounded-lg border border-line bg-white shadow-sm focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/30">
         <div className="flex flex-wrap gap-1 border-b border-line p-2">
           <EditorButton label="Bold" pressed={editor?.isActive("bold") ?? false} disabled={!editor} onClick={() => editor?.chain().focus().toggleBold().run()} />
           <EditorButton label="Italic" pressed={editor?.isActive("italic") ?? false} disabled={!editor} onClick={() => editor?.chain().focus().toggleItalic().run()} />
@@ -82,7 +82,7 @@ function EditorButton({
       disabled={disabled}
       aria-pressed={pressed}
       onClick={onClick}
-      className={`rounded px-2 py-1 text-sm disabled:opacity-50 ${pressed ? "bg-brand-navy text-white" : "hover:bg-page"}`}
+      className={`rounded-md px-2 py-1 text-sm font-medium disabled:opacity-50 ${pressed ? "bg-brand-navy text-white" : "text-ink hover:bg-page"}`}
     >
       {label}
     </button>

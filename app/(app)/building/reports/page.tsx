@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { deleteGeneratedReport, emailGeneratedReport } from "@/app/actions/reports";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { ReportBuilder } from "@/components/report-builder";
+import { EmptyState } from "@/components/ui";
 import { CASE_PRIORITIES, CASE_STATUSES, formatPriority, formatStatus } from "@/lib/cases";
 import { monthPeriod } from "@/lib/reports";
 import { formatIsoDate } from "@/lib/contractors";
@@ -63,7 +64,7 @@ export default async function ReportsPage({
           Generated reports
         </h2>
         {catalog.reports.length === 0 ? (
-          <p className="mt-3 text-muted">No reports yet</p>
+          <EmptyState>No reports yet</EmptyState>
         ) : (
           <ul className="mt-4 divide-y divide-line rounded-xl border border-line bg-card">
             {catalog.reports.map((report) => (

@@ -6,6 +6,7 @@ import { deleteAsset, deleteAssetDocument, deleteAssetPhoto, deleteWarranty } fr
 import { AssetDocumentForm, AssetPhotoForm, WarrantyForm } from "@/components/asset-record-forms";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { PriorityBadge } from "@/components/priority-badge";
+import { EmptyState, Panel } from "@/components/ui";
 import { assetQrDataUrl } from "@/lib/asset-qr";
 import {
   formatCalendarDate,
@@ -273,15 +274,6 @@ function Field({ label, value, children }: { label: string; value?: string; chil
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-line bg-card p-4">
-      <h2 className="font-serif text-2xl text-brand-navy">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
 function GalleryImage({ name, src }: { name: string; src: string }) {
   return (
     // The file route checks the signed-in user, which the image optimizer does not.
@@ -291,7 +283,7 @@ function GalleryImage({ name, src }: { name: string; src: string }) {
 }
 
 function Empty({ children }: { children: string }) {
-  return <p className="mt-4 text-muted">{children}</p>;
+  return <EmptyState>{children}</EmptyState>;
 }
 
 function first(value: string | string[] | undefined): string {

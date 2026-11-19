@@ -45,7 +45,7 @@ export default async function StartInspectionPage({
         </p>
       ) : null}
       {itemCount === 0 ? null : (
-        <form action={startInspection} className="mt-6 max-w-xl space-y-4">
+        <form action={startInspection} className="form-card mt-6 max-w-xl space-y-4">
           <input type="hidden" name="templateId" value={template.id} />
           <TextField
             label="Inspection date"
