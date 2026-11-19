@@ -38,6 +38,10 @@ export function canSendWorkOrders(role: string): boolean {
   return role === "admin" || role === "manager" || role === "staff";
 }
 
+export function canEditWorkOrderTerms(role: string): boolean {
+  return role === "admin" || role === "manager";
+}
+
 export function canCancelWorkOrders(role: string): boolean {
   return role === "admin" || role === "manager";
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -8,8 +9,9 @@ import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
 import { canCancelWorkOrders, canSendWorkOrders } from "@/lib/roles";
 import { removeUpload, saveBytes } from "@/lib/storage";
-import { mailboxFor, prepareWorkOrderDraft, toPdfInput } from "@/lib/work-order-draft";
+import { mailboxFor, prepareWorkOrderDraft, toPdfInput, workOrderPhotoBytes } from "@/lib/work-order-draft";
 import { buildWorkOrderPdf } from "@/lib/work-order-pdf";
+import { workOrderLinks } from "@/lib/work-order-terms";
 import {
   isWorkOrderStatus,
   nextWorkOrderSuffix,
@@ -59,7 +61,9 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
       const number = workOrderNumber(draft.caseNumber, suffix);
       const pdfName = workOrderPdfName(draft.caseNumber, suffix);
       const sentAt = new Date();
-      const bytes = await buildWorkOrderPdf(toPdfInput({ ...draft, subject }, suffix, sentAt));
+      const id = randomUUID();
+      const photos = await workOrderPhotoBytes(draft.files);
+      const bytes = await buildWorkOrderPdf(toPdfInput({ ...draft, subject }, suffix, workOrderLinks(id), photos));
       storedName = await saveBytes(bytes, ".pdf");
       const mail: OutgoingMail = {
         to: draft.contactEmail,
@@ -78,6 +82,7 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
         await prisma.$transaction(async (tx) => {
           const created = await tx.workOrder.create({
             data: {
+              id,
               caseId: draft.caseId,
               suffix,
               companyId: draft.companyId,

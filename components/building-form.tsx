@@ -87,6 +87,41 @@ export function BuildingForm({ building }: { building?: BuildingRecord }) {
         error={state.errors?.photoUrl}
         placeholder="Optional"
       />
+      <TextField
+        label="Strata plan"
+        name="strataPlan"
+        defaultValue={building?.strataPlan ?? ""}
+        error={state.errors?.strataPlan}
+        maxLength={40}
+        placeholder="Optional"
+      />
+      <TextField
+        label="Site contact"
+        name="siteContactName"
+        defaultValue={building?.siteContactName ?? ""}
+        error={state.errors?.siteContactName}
+        maxLength={120}
+        placeholder="Optional"
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          label="Site contact mobile"
+          name="siteContactMobile"
+          defaultValue={building?.siteContactMobile ?? ""}
+          error={state.errors?.siteContactMobile}
+          maxLength={40}
+          placeholder="Optional"
+        />
+        <TextField
+          label="Site contact email"
+          name="siteContactEmail"
+          type="email"
+          defaultValue={building?.siteContactEmail ?? ""}
+          error={state.errors?.siteContactEmail}
+          maxLength={200}
+          placeholder="Optional"
+        />
+      </div>
       <div className="flex items-center gap-3 pt-2">
         <button
           type="submit"

@@ -14,6 +14,7 @@ import {
   canRecordOccurrence,
   canManageReports,
   canRunInspections,
+  canEditWorkOrderTerms,
   canSendWorkOrders,
   canViewOutbox,
 } from "./roles";
@@ -93,6 +94,12 @@ describe("work order permissions", () => {
     expect(canCancelWorkOrders("admin")).toBe(true);
     expect(canCancelWorkOrders("manager")).toBe(true);
     expect(canCancelWorkOrders("staff")).toBe(false);
+  });
+
+  it("lets an admin or a manager edit work order terms", () => {
+    expect(canEditWorkOrderTerms("admin")).toBe(true);
+    expect(canEditWorkOrderTerms("manager")).toBe(true);
+    expect(canEditWorkOrderTerms("staff")).toBe(false);
   });
 
   it("lets only an admin view the outbox", () => {
