@@ -10,10 +10,7 @@ export function useSubmittedValues(): SubmittedValues | undefined {
 }
 
 function fieldsNamed(form: HTMLFormElement, name: string): Element[] {
-  const named = form.elements.namedItem(name);
-  if (!named) return [];
-  if (named instanceof Element) return [named];
-  return Array.from(named);
+  return Array.from(form.elements).filter((element) => element instanceof HTMLElement && element.getAttribute("name") === name);
 }
 
 function restoreForm(form: HTMLFormElement, values: SubmittedValues) {

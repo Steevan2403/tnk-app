@@ -25,8 +25,8 @@ test("new case keeps typed values when the due date is before the start date", a
   await expect(page.getByText("Due date cannot be before the start date.")).toBeVisible();
 
   await expect(caseType).toHaveValue(typeValue);
-  await expect(page.getByLabel("Start date")).toHaveValue("2026-11-18");
-  await expect(page.getByLabel("Due date")).toHaveValue("2026-11-01");
+  await expect(page.getByLabel("Start date")).toHaveValue("18/11/2026");
+  await expect(page.getByLabel("Due date")).toHaveValue("01/11/2026");
   await expect(page.getByLabel("Subject")).toHaveValue("Example leaking tap");
   await expect(page.getByRole("radio", { name: "Apartment", exact: true })).toBeChecked();
   await expect(page.getByRole("radio", { name: "Not applicable" })).not.toBeChecked();

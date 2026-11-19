@@ -1,6 +1,7 @@
 "use client";
 
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type { ChangeEvent, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { AuDateField } from "@/components/au-date-field";
 import { checkedValue, textValue } from "@/lib/form-values";
 import { useSubmittedValues } from "@/components/retained-form";
 
@@ -13,6 +14,7 @@ export function TextField({
   error,
   defaultValue,
   value,
+  onChange,
   ...props
 }: {
   label: string;
@@ -21,20 +23,45 @@ export function TextField({
 } & InputHTMLAttributes<HTMLInputElement>) {
   const id = props.id ?? name;
   const submitted = useSubmittedValues();
+  const describedBy = error ? `${id}-error` : undefined;
+  const raw = value === undefined ? textValue(submitted, name, defaultValue) : value;
+  const current = raw == null ? "" : String(raw);
+  const { type, ...rest } = props;
+  const dateKind = type === "datetime-local" ? "datetime-local" : type === "date" ? "date" : null;
+
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
         {label}
       </label>
-      <input
-        {...props}
-        id={id}
-        name={name}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={controlClass}
-        {...(value === undefined ? { defaultValue: textValue(submitted, name, defaultValue) } : { value })}
-      />
+      {dateKind ? (
+        <AuDateField
+          {...rest}
+          kind={dateKind}
+          id={id}
+          name={name}
+          iso={dateKind === "date" ? current.slice(0, 10) : current}
+          controlled={value !== undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          aria-required={rest.required ? true : undefined}
+          className={controlClass}
+          onIso={(iso) => onChange?.({ target: { value: iso, name } } as ChangeEvent<HTMLInputElement>)}
+        />
+      ) : (
+        <input
+          {...rest}
+          type={type}
+          id={id}
+          name={name}
+          onChange={onChange}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          aria-required={rest.required ? true : undefined}
+          className={controlClass}
+          {...(value === undefined ? { defaultValue: current } : { value: current })}
+        />
+      )}
       {error ? (
         <p id={`${id}-error`} className="mt-1 text-sm text-danger">
           {error}

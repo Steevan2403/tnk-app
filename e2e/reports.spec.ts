@@ -18,8 +18,8 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
   await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "This month", exact: true }).click();
-  await expect(page.getByRole("textbox", { name: "From", exact: true })).toHaveValue("2026-11-01");
-  await expect(page.getByRole("textbox", { name: "To", exact: true })).toHaveValue("2026-11-30");
+  await expect(page.getByRole("textbox", { name: "From", exact: true })).toHaveValue("01/11/2026");
+  await expect(page.getByRole("textbox", { name: "To", exact: true })).toHaveValue("30/11/2026");
   await page.getByLabel("Case type", { exact: true }).selectOption({ label: "Repair & maintenance" });
 
   await expect(page.getByRole("checkbox", { name: "Include case 307", exact: true })).toBeVisible();
