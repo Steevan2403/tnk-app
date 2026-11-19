@@ -121,6 +121,12 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
               files: draft.files.length ? { create: draft.files.map((file) => ({ caseFileId: file.id })) } : undefined,
             },
           });
+          // A sent work order assigns that company to the case. Sending again keeps the one row.
+          await tx.caseCompany.upsert({
+            where: { caseId_companyId: { caseId: draft.caseId, companyId: draft.companyId } },
+            update: {},
+            create: { caseId: draft.caseId, companyId: draft.companyId },
+          });
           await tx.caseActivity.create({
             data: {
               caseId: draft.caseId,
