@@ -66,7 +66,7 @@ async function send(page: Page, number: string) {
   await expect(page.getByRole("heading", { name: "Send work order" })).toBeVisible();
   await page.getByLabel("Contractor").selectOption({ label: company });
   await page.getByLabel("Contact").selectOption({ label: contact });
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page.getByRole("button", { name: "Email work order to contractor" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Example rooftop filter service" })).toBeVisible();
   await expect(page.getByText(`Sent work order ${number} to Sample Plumbing Co (Casey Placeholder).`)).toBeVisible();
 }

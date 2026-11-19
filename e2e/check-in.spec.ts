@@ -47,7 +47,7 @@ test("contractor checks in and out, and staff see the visit history", async ({ p
   await page.getByRole("link", { name: "Send work order" }).first().click();
   await page.getByLabel("Contractor").selectOption({ label: "Fictional Fire Services" });
   await page.getByLabel("Contact").selectOption({ label: "Avery Sample · avery.sample@example.com" });
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page.getByRole("button", { name: "Email work order to contractor" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Example move in for apartment 101" })).toBeVisible();
 
   await page.goto("/work-orders");

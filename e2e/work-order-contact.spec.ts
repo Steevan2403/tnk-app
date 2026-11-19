@@ -24,7 +24,7 @@ test("sending a work order requires a contact and keeps the rest of the form", a
   await page.getByLabel("Access notes").fill("Example: the gate remote is at reception.");
 
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page.getByRole("button", { name: "Email work order to contractor" }).click();
   await expect(contact).toHaveJSProperty("validity.valueMissing", true);
   await expect(page).toHaveURL(/\/cases\/308\/work-order$/);
   await expect(page.getByLabel("Subject")).toHaveValue("Example subject that should stay.");
@@ -57,7 +57,7 @@ test("sending a work order requires a contact and keeps the rest of the form", a
   await expect(page.getByLabel("Contact")).toHaveValue("");
   await page.getByLabel("Contact").selectOption({ label: "Casey Placeholder · casey.placeholder@example.com" });
   await page.getByLabel("Subject").fill("Example subject that should stay.");
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page.getByRole("button", { name: "Email work order to contractor" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Example car park gate fault" })).toBeVisible();
   await expect(page.getByText("Sent work order 308-A to Sample Plumbing Co (Casey Placeholder).")).toBeVisible();

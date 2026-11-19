@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { sendWorkOrder, type WorkOrderFormState } from "@/app/actions/work-orders";
 import { SelectField, TextArea, TextField } from "@/components/field";
@@ -46,6 +47,7 @@ export function WorkOrderForm({
   const [previewing, setPreviewing] = useState(false);
   const selectedContractor = contractors.find((contractor) => contractor.id === companyId);
   const contacts = selectedContractor?.contacts ?? [];
+  const contractorChosen = companyId.length > 0;
   const selectedBytes = files.reduce((sum, file) => {
     if (!picked.includes(file.id) || file.size == null) return sum;
     return sum + file.size;
@@ -99,9 +101,12 @@ export function WorkOrderForm({
         value={contactId}
         error={state.errors?.contactId}
         required
+        disabled={!contractorChosen}
         onChange={(event) => setContactId(event.target.value)}
       >
-        <option value="">{contacts.length ? "Choose a contact" : "No contact with an email"}</option>
+        <option value="">
+          {contractorChosen ? (contacts.length ? "Choose a contact" : "No contact with an email") : "Choose a contractor first"}
+        </option>
         {contacts.map((contact) => (
           <option key={contact.id} value={contact.id}>
             {contact.name} · {contact.email}
@@ -180,8 +185,14 @@ export function WorkOrderForm({
           {previewing ? "Preparing…" : "Preview PDF"}
         </button>
         <button type="submit" disabled={pending} className={buttonClass}>
-          {pending ? "Sending…" : "Send"}
+          {pending ? "Sending…" : "Email work order to contractor"}
         </button>
+        <Link
+          href={`/cases/${caseNumber}`}
+          className="rounded-md border border-line bg-card px-4 py-2 text-sm font-medium text-brand-navy hover:border-brand-blue"
+        >
+          Cancel
+        </Link>
       </div>
     </RetainedForm>
   );
