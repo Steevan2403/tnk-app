@@ -7,6 +7,7 @@ import { SelectField, TextArea, TextField } from "@/components/field";
 export type WorkOrderContractorOption = {
   id: string;
   name: string;
+  categoryName: string;
   pending: boolean;
   contacts: { id: string; name: string; email: string }[];
 };
@@ -42,7 +43,8 @@ export function WorkOrderForm({
   const [picked, setPicked] = useState<string[]>([]);
   const [previewError, setPreviewError] = useState("");
   const [previewing, setPreviewing] = useState(false);
-  const contacts = contractors.find((contractor) => contractor.id === companyId)?.contacts ?? [];
+  const selectedContractor = contractors.find((contractor) => contractor.id === companyId);
+  const contacts = selectedContractor?.contacts ?? [];
   const selectedBytes = files.reduce((sum, file) => {
     if (!picked.includes(file.id) || file.size == null) return sum;
     return sum + file.size;
@@ -53,26 +55,31 @@ export function WorkOrderForm({
       <input type="hidden" name="number" value={caseNumber} />
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
       {previewError ? <p className="text-sm text-danger">{previewError}</p> : null}
-      <SelectField
-        label="Contractor"
-        name="companyId"
-        value={companyId}
-        error={state.errors?.companyId}
-        required
-        onChange={(event) => {
-          const next = event.target.value;
-          setCompanyId(next);
-          const people = contractors.find((contractor) => contractor.id === next)?.contacts ?? [];
-          setContactId(people[0]?.id ?? "");
-        }}
-      >
-        <option value="">Choose a contractor</option>
-        {contractors.map((contractor) => (
-          <option key={contractor.id} value={contractor.id}>
-            {contractor.pending ? `${contractor.name} (pending)` : contractor.name}
-          </option>
-        ))}
-      </SelectField>
+      <div>
+        <SelectField
+          label="Contractor"
+          name="companyId"
+          value={companyId}
+          error={state.errors?.companyId}
+          required
+          onChange={(event) => {
+            const next = event.target.value;
+            setCompanyId(next);
+            const people = contractors.find((contractor) => contractor.id === next)?.contacts ?? [];
+            setContactId(people[0]?.id ?? "");
+          }}
+        >
+          <option value="">Choose a contractor</option>
+          {contractors.map((contractor) => (
+            <option key={contractor.id} value={contractor.id}>
+              {contractor.pending ? `${contractor.name} (pending)` : contractor.name}
+            </option>
+          ))}
+        </SelectField>
+        {selectedContractor ? (
+          <p className="mt-1 text-sm text-muted">Category: {selectedContractor.categoryName}</p>
+        ) : null}
+      </div>
       <SelectField
         label="Contact"
         name="contactId"

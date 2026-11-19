@@ -32,6 +32,7 @@ export default async function SendWorkOrderPage({ params }: { params: Promise<{ 
     .map((company) => ({
       id: company.id,
       name: company.name,
+      categoryName: company.category.name,
       pending: company.status !== "approved",
       contacts: company.contacts.flatMap((contact) => {
         const email = contactEmail(contact.email);

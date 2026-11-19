@@ -301,6 +301,37 @@ export function formatDateTime(date: Date): string {
   }).format(date);
 }
 
+export const CONTRACTOR_CATEGORY_NAME_MAX = 80;
+
+export function parseContractorCategoryName(
+  value: string,
+): { ok: true; name: string } | { ok: false; error: string } {
+  const name = value.trim();
+  if (!name) return { ok: false, error: "Enter a category name." };
+  if (name.length > CONTRACTOR_CATEGORY_NAME_MAX) {
+    return { ok: false, error: `Use ${CONTRACTOR_CATEGORY_NAME_MAX} characters or fewer.` };
+  }
+  return { ok: true, name };
+}
+
+export function contractorCategoryNameTaken(
+  name: string,
+  categories: { id: string; name: string }[],
+  ignoreId?: string,
+): boolean {
+  const key = name.toLowerCase();
+  return categories.some((category) => category.id !== ignoreId && category.name.toLowerCase() === key);
+}
+
+// A company keeps one category. Removal is refused while any company still uses it.
+export function contractorCategoryInUseMessage(companyCount: number): string | null {
+  if (!Number.isInteger(companyCount) || companyCount <= 0) return null;
+  if (companyCount === 1) {
+    return "1 contractor uses this category. Move that contractor to another category before removing it.";
+  }
+  return `${companyCount} contractors use this category. Move them to another category before removing it.`;
+}
+
 function stringValue(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
 }
