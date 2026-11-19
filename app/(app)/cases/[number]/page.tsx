@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { addCaseToCalendar, deleteCase, deleteCaseFile, setCaseStatus, toggleCaseStar } from "@/app/actions/cases";
 import { CaseFileForm, CommentForm } from "@/components/case-record-forms";
+import { ImageThumb } from "@/components/image-thumb";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SelectField } from "@/components/field";
 import { MoreActions } from "@/components/more-actions";
@@ -444,9 +445,7 @@ function FileSection({
         <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {files.map((file) => (
             <li key={file.id}>
-              <a href={`/api/case-files/${file.id}`}>
-                <GalleryImage name={file.name} src={`/api/case-files/${file.id}`} />
-              </a>
+              <ImageThumb name={file.name} src={`/api/case-files/${file.id}`} />
               <p className="mt-2 truncate text-sm">{file.name}</p>
               {canDelete ? <RemoveFile caseNumber={record.number} fileId={file.id} name={file.name} /> : null}
             </li>
@@ -555,14 +554,6 @@ function CaseActivity({ record }: { record: CaseDetail }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function GalleryImage({ name, src }: { name: string; src: string }) {
-  return (
-    // The file route checks the signed-in user, which the image optimizer does not.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={name} className="aspect-square w-full rounded-md object-cover" />
   );
 }
 

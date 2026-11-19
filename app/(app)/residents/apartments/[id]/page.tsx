@@ -12,6 +12,7 @@ import {
   deleteVehicle,
   setOccupancy,
 } from "@/app/actions/residents";
+import { ImageThumb } from "@/components/image-thumb";
 import {
   AgentForm,
   ApartmentDocumentForm,
@@ -502,9 +503,7 @@ function ImageTab({ apartment, canManage }: { apartment: ApartmentDetail; canMan
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {apartment.images.map((image) => (
           <li key={image.id} className="rounded-lg border border-line p-2">
-            <a href={`/api/resident-files/images/${image.id}`} target="_blank" rel="noreferrer">
-              <GalleryImage name={image.name} src={`/api/resident-files/images/${image.id}`} />
-            </a>
+            <ImageThumb name={image.name} src={`/api/resident-files/images/${image.id}`} />
             <p className="mt-2 truncate text-sm">{image.name}</p>
             {canManage ? (
               <form action={deleteApartmentImage} className="mt-1">
@@ -596,14 +595,6 @@ function AgentRow({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function GalleryImage({ name, src }: { name: string; src: string }) {
-  return (
-    // The file route checks the signed-in user, which the image optimizer does not.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={name} className="aspect-square w-full rounded-md object-cover" />
   );
 }
 
