@@ -1,4 +1,8 @@
+"use client";
+
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { checkedValue, textValue } from "@/lib/form-values";
+import { useSubmittedValues } from "@/components/retained-form";
 
 const controlClass =
   "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30";
@@ -7,6 +11,8 @@ export function TextField({
   label,
   name,
   error,
+  defaultValue,
+  value,
   ...props
 }: {
   label: string;
@@ -14,6 +20,7 @@ export function TextField({
   error?: string;
 } & InputHTMLAttributes<HTMLInputElement>) {
   const id = props.id ?? name;
+  const submitted = useSubmittedValues();
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
@@ -26,6 +33,7 @@ export function TextField({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         className={controlClass}
+        {...(value === undefined ? { defaultValue: textValue(submitted, name, defaultValue) } : { value })}
       />
       {error ? (
         <p id={`${id}-error`} className="mt-1 text-sm text-danger">
@@ -41,6 +49,8 @@ export function SelectField({
   name,
   error,
   children,
+  defaultValue,
+  value,
   ...props
 }: {
   label: string;
@@ -49,6 +59,7 @@ export function SelectField({
   children: ReactNode;
 } & SelectHTMLAttributes<HTMLSelectElement>) {
   const id = props.id ?? name;
+  const submitted = useSubmittedValues();
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
@@ -61,6 +72,7 @@ export function SelectField({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         className={controlClass}
+        {...(value === undefined ? { defaultValue: textValue(submitted, name, defaultValue) } : { value })}
       >
         {children}
       </select>
@@ -77,6 +89,8 @@ export function TextArea({
   label,
   name,
   error,
+  defaultValue,
+  value,
   ...props
 }: {
   label: string;
@@ -84,6 +98,7 @@ export function TextArea({
   error?: string;
 } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const id = props.id ?? name;
+  const submitted = useSubmittedValues();
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
@@ -96,6 +111,7 @@ export function TextArea({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         className={controlClass}
+        {...(value === undefined ? { defaultValue: textValue(submitted, name, defaultValue) } : { value })}
       />
       {error ? (
         <p id={`${id}-error`} className="mt-1 text-sm text-danger">
@@ -110,6 +126,8 @@ export function CheckField({
   label,
   name,
   error,
+  defaultChecked,
+  checked,
   ...props
 }: {
   label: string;
@@ -117,6 +135,7 @@ export function CheckField({
   error?: string;
 } & InputHTMLAttributes<HTMLInputElement>) {
   const id = props.id ?? name;
+  const submitted = useSubmittedValues();
   return (
     <div>
       <label htmlFor={id} className="flex items-center gap-2 text-sm font-medium">
@@ -128,6 +147,7 @@ export function CheckField({
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
           className="size-4 accent-brand-navy"
+          {...(checked === undefined ? { defaultChecked: checkedValue(submitted, name, defaultChecked) } : { checked })}
         />
         {label}
       </label>

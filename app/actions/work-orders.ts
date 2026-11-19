@@ -9,6 +9,7 @@ import { mailTransport, packEmailAttachments, sendSmtp, type OutgoingMail } from
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
 import { canCancelWorkOrders, canSendWorkOrders } from "@/lib/roles";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { removeUpload, saveBytes, storedFileSize } from "@/lib/storage";
 import { mailboxFor, prepareWorkOrderDraft, toPdfInput, workOrderPhotoBytes } from "@/lib/work-order-draft";
 import { buildWorkOrderPdf } from "@/lib/work-order-pdf";
@@ -28,6 +29,7 @@ import {
 export type WorkOrderFormState = {
   error?: string;
   errors?: Partial<Record<WorkOrderField, string>>;
+  values?: SubmittedValues;
 };
 
 const denied = "You do not have permission to send work orders.";
@@ -40,7 +42,11 @@ function isUniqueConflict(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormData): Promise<WorkOrderFormState> {
+export async function sendWorkOrder(prev: WorkOrderFormState, formData: FormData): Promise<WorkOrderFormState> {
+  return attachSubmitted(formData, await sendWorkOrderBody(prev, formData));
+}
+
+async function sendWorkOrderBody(_prev: WorkOrderFormState, formData: FormData): Promise<WorkOrderFormState> {
   const user = await requireUser();
   if (!canSendWorkOrders(user.role) || !user.selectedBuildingId) return { error: denied };
 

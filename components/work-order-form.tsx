@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useState } from "react";
 import { sendWorkOrder, type WorkOrderFormState } from "@/app/actions/work-orders";
 import { SelectField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 
 export type WorkOrderContractorOption = {
   id: string;
@@ -58,8 +59,9 @@ export function WorkOrderForm({
   }
 
   return (
-    <form
+    <RetainedForm
       className="form-card mt-6 max-w-3xl space-y-4"
+      values={state.values}
       onSubmit={(event) => {
         event.preventDefault();
         submitWorkOrder(event.currentTarget);
@@ -128,6 +130,7 @@ export function WorkOrderForm({
                   type="checkbox"
                   name="fileId"
                   value={file.id}
+                  checked={picked.includes(file.id)}
                   className="size-4 accent-brand-navy"
                   onChange={(event) => {
                     const id = file.id;
@@ -180,7 +183,7 @@ export function WorkOrderForm({
           {pending ? "Sending…" : "Send"}
         </button>
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 

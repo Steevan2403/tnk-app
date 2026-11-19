@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sanitizeCaseHtml } from "@/lib/case-html";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import {
   caseCreatedActivity,
   changedFieldLabels,
@@ -34,6 +35,7 @@ import { fileBaseName, imageUploadProblem, removeUpload, saveUpload, uploadProbl
 export type CaseFormState = {
   error?: string;
   errors?: Partial<Record<CaseField, string>>;
+  values?: SubmittedValues;
 };
 
 export type CaseFileFormState = {
@@ -77,7 +79,11 @@ function casePath(number: number): string {
   return `/cases/${number}`;
 }
 
-export async function saveCase(_prev: CaseFormState, formData: FormData): Promise<CaseFormState> {
+export async function saveCase(prev: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  return attachSubmitted(formData, await saveCaseBody(prev, formData));
+}
+
+async function saveCaseBody(_prev: CaseFormState, formData: FormData): Promise<CaseFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useActionState } from "react";
 import { saveTemplate, type TemplateFormState } from "@/app/actions/inspections";
 import { SelectField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 import { formatInspectionType, INSPECTION_TYPES, type InspectionType } from "@/lib/inspections";
 
 const primaryButton =
@@ -49,7 +50,7 @@ export function InspectionTemplateForm({
   }
 
   return (
-    <form action={action} className="form-card mt-6 max-w-3xl space-y-6">
+    <RetainedForm action={action} className="form-card mt-6 max-w-3xl space-y-6" values={state.values}>
       {template ? <input type="hidden" name="id" value={template.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">
@@ -189,7 +190,7 @@ export function InspectionTemplateForm({
       <button type="submit" className={primaryButton} disabled={pending}>
         {pending ? "Saving…" : "Save template"}
       </button>
-    </form>
+    </RetainedForm>
   );
 }
 

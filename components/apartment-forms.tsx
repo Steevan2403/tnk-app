@@ -17,6 +17,7 @@ import {
   type VehicleFormState,
 } from "@/app/actions/residents";
 import { CheckField, FileField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 
 const buttonClass =
   "rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue disabled:opacity-60";
@@ -58,7 +59,7 @@ export function VehicleForm({
 }) {
   const [state, action, pending] = useActionState(saveVehicle, {} as VehicleFormState);
   return (
-    <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2">
+    <RetainedForm action={action} className="mt-4 grid gap-4 sm:grid-cols-2" values={state.values}>
       <input type="hidden" name="apartmentId" value={apartmentId} />
       {vehicle ? <input type="hidden" name="vehicleId" value={vehicle.id} /> : null}
       {state.error ? (
@@ -113,7 +114,7 @@ export function VehicleForm({
           </Link>
         ) : null}
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 
@@ -193,7 +194,7 @@ export function OwnerForm({
 }) {
   const [state, action, pending] = useActionState(saveOwner, {} as OwnerFormState);
   return (
-    <form action={action} className="mt-4 grid gap-4">
+    <RetainedForm action={action} className="mt-4 grid gap-4" values={state.values}>
       <input type="hidden" name="apartmentId" value={apartmentId} />
       {owner ? <input type="hidden" name="ownerId" value={owner.id} /> : null}
       {state.error ? <Alert>{state.error}</Alert> : null}
@@ -231,7 +232,7 @@ export function OwnerForm({
           </Link>
         ) : null}
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 
@@ -250,7 +251,7 @@ export function AgentForm({
 }) {
   const [state, action, pending] = useActionState(saveAgent, {} as AgentFormState);
   return (
-    <form action={action} className="mt-4 grid gap-4">
+    <RetainedForm action={action} className="mt-4 grid gap-4" values={state.values}>
       <input type="hidden" name="apartmentId" value={apartmentId} />
       {state.error ? <Alert>{state.error}</Alert> : null}
       <TextField
@@ -294,7 +295,7 @@ export function AgentForm({
           </Link>
         ) : null}
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 

@@ -31,10 +31,12 @@ import { mailTransport, sendSmtp, type OutgoingMail } from "@/lib/mail";
 import { canEditCases, canManageInspectionTemplates, canRunInspections } from "@/lib/roles";
 import { copyStoredFile, imageUploadProblem, removeUpload, saveBytes, saveUpload } from "@/lib/storage";
 import { mailboxFor } from "@/lib/work-order-draft";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 
 export type TemplateFormState = {
   error?: string;
   errors?: Partial<Record<TemplateField, string>>;
+  values?: SubmittedValues;
 };
 
 export type ReportEmailState = {
@@ -74,7 +76,11 @@ function uniqueFields(error: unknown): string[] {
     .filter(Boolean);
 }
 
-export async function saveTemplate(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
+export async function saveTemplate(prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
+  return attachSubmitted(formData, await saveTemplateBody(prev, formData));
+}
+
+async function saveTemplateBody(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
   const user = await templateEditor();
   if (!user) return { error: templateDenied };
 

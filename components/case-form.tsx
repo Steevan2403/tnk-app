@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { saveCase, type CaseFormState } from "@/app/actions/cases";
 import { CheckField, SelectField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 import { AssigneePicker, JobAreaPicker, type PickerAsset, type PickerCompany } from "@/components/job-pickers";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { CASE_PRIORITIES, CASE_STATUSES, formatPriority, formatStatus, type CaseArea } from "@/lib/cases";
@@ -60,7 +61,7 @@ export function CaseForm({
   const back = caseRecord ? `/cases/${caseRecord.number}` : "/cases";
 
   return (
-    <form action={action} className="form-card mt-6 max-w-3xl space-y-8">
+    <RetainedForm action={action} className="form-card mt-6 max-w-3xl space-y-8" values={state.values}>
       {caseRecord ? <input type="hidden" name="number" value={caseRecord.number} /> : null}
       {source ? (
         <>
@@ -166,6 +167,6 @@ export function CaseForm({
           Cancel
         </Link>
       </div>
-    </form>
+    </RetainedForm>
   );
 }

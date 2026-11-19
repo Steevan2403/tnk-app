@@ -18,16 +18,19 @@ import {
 } from "@/lib/assets";
 import { parseDocumentName } from "@/lib/contractors";
 import { canManageAssetCategories, canManageAssets } from "@/lib/roles";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { fileBaseName, imageUploadProblem, removeUpload, saveUpload, uploadProblem } from "@/lib/storage";
 
 export type AssetFormState = {
   error?: string;
   errors?: Partial<Record<AssetField, string>>;
+  values?: SubmittedValues;
 };
 
 export type WarrantyFormState = {
   error?: string;
   errors?: Partial<Record<WarrantyField, string>>;
+  values?: SubmittedValues;
 };
 
 export type PhotoFormState = {
@@ -75,7 +78,11 @@ function money(value: string | null): Prisma.Decimal | null {
   return value == null ? null : new Prisma.Decimal(value);
 }
 
-export async function saveAsset(_prev: AssetFormState, formData: FormData): Promise<AssetFormState> {
+export async function saveAsset(prev: AssetFormState, formData: FormData): Promise<AssetFormState> {
+  return attachSubmitted(formData, await saveAssetBody(prev, formData));
+}
+
+async function saveAssetBody(_prev: AssetFormState, formData: FormData): Promise<AssetFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -275,7 +282,11 @@ export async function deleteAssetDocument(formData: FormData) {
   redirect(assetPath(assetId));
 }
 
-export async function saveWarranty(_prev: WarrantyFormState, formData: FormData): Promise<WarrantyFormState> {
+export async function saveWarranty(prev: WarrantyFormState, formData: FormData): Promise<WarrantyFormState> {
+  return attachSubmitted(formData, await saveWarrantyBody(prev, formData));
+}
+
+async function saveWarrantyBody(_prev: WarrantyFormState, formData: FormData): Promise<WarrantyFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 

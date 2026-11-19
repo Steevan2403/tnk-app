@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { saveResident, type ResidentFormState } from "@/app/actions/residents";
 import { CheckField, SelectField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 import { formatLotNumber } from "@/lib/residents";
 
 const buttonClass =
@@ -40,7 +41,7 @@ export function ResidentForm({
   const back = resident ? `/residents/apartments/${resident.apartmentId}` : "/residents";
 
   return (
-    <form action={action} className="form-card mt-6 max-w-2xl space-y-4">
+    <RetainedForm action={action} className="form-card mt-6 max-w-2xl space-y-4" values={state.values}>
       {resident ? <input type="hidden" name="residentId" value={resident.id} /> : null}
       {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {state.error ? (
@@ -136,6 +137,6 @@ export function ResidentForm({
           Cancel
         </Link>
       </div>
-    </form>
+    </RetainedForm>
   );
 }
