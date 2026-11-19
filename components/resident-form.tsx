@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { saveResident, type ResidentFormState } from "@/app/actions/residents";
 import { CheckField, SelectField, TextArea, TextField } from "@/components/field";
+import { formatLotNumber } from "@/lib/residents";
 
 const buttonClass =
   "rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue disabled:opacity-60";
@@ -30,7 +31,7 @@ export function ResidentForm({
   apartmentId = "",
   returnTo = "",
 }: {
-  apartments: { id: string; number: string; lotNumber: string }[];
+  apartments: { id: string; number: string; lotNumber: string | null }[];
   resident?: ResidentFormValues;
   apartmentId?: string;
   returnTo?: string;
@@ -57,7 +58,7 @@ export function ResidentForm({
         <option value="">Choose an apartment</option>
         {apartments.map((apartment) => (
           <option key={apartment.id} value={apartment.id}>
-            {apartment.number} · Lot {apartment.lotNumber}
+            {apartment.number} · Lot {formatLotNumber(apartment.lotNumber)}
           </option>
         ))}
       </SelectField>

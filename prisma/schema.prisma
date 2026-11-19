@@ -184,7 +184,7 @@ model Apartment {
   buildingId String
   building   Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   number     String
-  lotNumber  String
+  lotNumber  String?
   occupancy  Occupancy           @default(owner_occupied)
   residents  Resident[]
   vehicles   Vehicle[]

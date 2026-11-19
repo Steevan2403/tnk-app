@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseApartmentForm, parseResidentForm, type ApartmentIdentity } from "./residents";
+import { compareLabel, formatLotNumber, parseApartmentForm, parseResidentForm, type ApartmentIdentity } from "./residents";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -38,6 +38,60 @@ describe("apartment and lot numbers", () => {
     ], "tower");
     expect(clash.ok).toBe(false);
     if (!clash.ok) expect(clash.errors.number).toBe("That apartment number is already used in this building.");
+  });
+
+  it("creates an apartment when the lot number is left blank", () => {
+    const blank = parseApartmentForm(form({ number: "201" }), apartments, "tower");
+    expect(blank).toEqual({ ok: true, value: { number: "201", lotNumber: null } });
+
+    const spaces = parseApartmentForm(form({ number: "202", lotNumber: "   " }), apartments, "tower");
+    expect(spaces).toEqual({ ok: true, value: { number: "202", lotNumber: null } });
+
+    const another = parseApartmentForm(form({ number: "203" }), [
+      ...apartments,
+      { id: "tower-201", buildingId: "tower", number: "201", lotNumber: null },
+    ], "tower");
+    expect(another).toEqual({ ok: true, value: { number: "203", lotNumber: null } });
+  });
+
+  it("still limits a lot number that is entered", () => {
+    const result = parseApartmentForm(form({ number: "201", lotNumber: "123456789012345678901" }), apartments, "tower");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.lotNumber).toBe("Use 20 characters or fewer.");
+  });
+
+  it("still rejects a missing apartment number", () => {
+    const missing = parseApartmentForm(form({ number: " ", lotNumber: "9" }), apartments, "tower");
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) {
+      expect(missing.errors.number).toBe("Enter an apartment number.");
+      expect(missing.errors.lotNumber).toBeUndefined();
+    }
+
+    const empty = parseApartmentForm(form({ lotNumber: "" }), apartments, "tower");
+    expect(empty.ok).toBe(false);
+    if (!empty.ok) expect(empty.errors.number).toBe("Enter an apartment number.");
+  });
+
+  it("lets an edit clear the lot number and still rejects a lot that is already used", () => {
+    const cleared = parseApartmentForm(form({ number: "101", lotNumber: "" }), apartments, "tower", "tower-101");
+    expect(cleared).toEqual({ ok: true, value: { number: "101", lotNumber: null } });
+
+    const duplicate = parseApartmentForm(form({ number: "201", lotNumber: "1" }), [
+      ...apartments,
+      { id: "tower-201", buildingId: "tower", number: "201", lotNumber: null },
+    ], "tower");
+    expect(duplicate.ok).toBe(false);
+    if (!duplicate.ok) expect(duplicate.errors.lotNumber).toBe("That lot number is already used in this building.");
+  });
+
+  it("shows a dash for a blank lot and sorts it without throwing", () => {
+    expect(formatLotNumber(null)).toBe("—");
+    expect(formatLotNumber("")).toBe("—");
+    expect(formatLotNumber("  ")).toBe("—");
+    expect(formatLotNumber("4")).toBe("4");
+    expect(compareLabel(null, "2")).toBeLessThan(0);
+    expect(compareLabel(null, null)).toBe(0);
   });
 });
 

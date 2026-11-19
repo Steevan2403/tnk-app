@@ -5,6 +5,7 @@ import { SelectField, TextField } from "@/components/field";
 import { listApartments, listResidents, requireUser, type ApartmentRow, type ResidentRow } from "@/lib/data";
 import {
   PAGE_SIZE,
+  formatLotNumber,
   formatOccupancy,
   formatResidentType,
   initials,
@@ -177,7 +178,7 @@ function ResidentResults({ rows }: { rows: ResidentRow[] }) {
                   {row.primaryContact ? <PrimaryStar /> : null}
                 </p>
                 <p className="mt-1 text-sm text-muted">
-                  Lot {row.lotNumber} · Apartment {row.apartmentNumber}
+                  Lot {formatLotNumber(row.lotNumber)} · Apartment {row.apartmentNumber}
                 </p>
                 <p className="mt-1 text-sm">{formatResidentType(row.type)}</p>
                 <p className="mt-1 text-sm">{blank(row.phone)}</p>
@@ -213,7 +214,7 @@ function ResidentResults({ rows }: { rows: ResidentRow[] }) {
                     <ResidentLink row={row} />
                   </span>
                 </td>
-                <td className="px-4 py-3">{row.lotNumber}</td>
+                <td className="px-4 py-3">{formatLotNumber(row.lotNumber)}</td>
                 <td className="px-4 py-3">
                   <Link href={`/residents/apartments/${row.apartmentId}`} className="text-brand-blue hover:underline">
                     {row.apartmentNumber}
@@ -243,7 +244,7 @@ function ApartmentResults({ rows }: { rows: ApartmentRow[] }) {
             className="block rounded-xl border border-line bg-card p-4 hover:border-brand-blue"
           >
             <p className="font-serif text-2xl text-brand-navy">{row.number}</p>
-            <p className="mt-1 text-sm text-muted">Lot {row.lotNumber}</p>
+            <p className="mt-1 text-sm text-muted">Lot {formatLotNumber(row.lotNumber)}</p>
             <p className="mt-2 text-sm">{row.residentCount === 1 ? "1 resident" : `${row.residentCount} residents`}</p>
             {row.occupancy === "investment" ? (
               <p className="mt-2 text-sm font-medium text-brand-blue">{formatOccupancy(row.occupancy)}</p>

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { expiredBefore, normalizeEmail, parseDateOnly } from "./contractors";
 
 export { formatCalendarDate, formatDateTime, formatIsoDate } from "./contractors";
@@ -24,13 +25,21 @@ export type ApartmentIdentity = {
   id: string;
   buildingId: string;
   number: string;
-  lotNumber: string;
+  lotNumber: string | null;
 };
 
 export type ApartmentInput = {
   number: string;
-  lotNumber: string;
+  lotNumber: string | null;
 };
+
+const apartmentFormSchema = z.object({
+  number: z.string().min(1, "Enter an apartment number.").max(20, "Use 20 characters or fewer."),
+  lotNumber: z
+    .string()
+    .max(20, "Use 20 characters or fewer.")
+    .transform((value) => (value.length === 0 ? null : value)),
+});
 
 export type ApartmentField = keyof ApartmentInput;
 
@@ -118,8 +127,13 @@ export function parseOccupancy(value: string): Occupancy | null {
   return OCCUPANCIES.includes(value as Occupancy) ? (value as Occupancy) : null;
 }
 
-export function compareLabel(a: string, b: string): number {
-  return a.localeCompare(b, "en", { numeric: true, sensitivity: "base" });
+export function compareLabel(a: string | null | undefined, b: string | null | undefined): number {
+  return (a ?? "").localeCompare(b ?? "", "en", { numeric: true, sensitivity: "base" });
+}
+
+export function formatLotNumber(lotNumber: string | null | undefined): string {
+  const value = lotNumber?.trim() ?? "";
+  return value ? value : "—";
 }
 
 export function residentName(firstName: string, lastName: string): string {
@@ -155,7 +169,7 @@ export function apartmentIdentityErrors(
 ): Partial<Record<ApartmentField, string>> {
   const errors: Partial<Record<ApartmentField, string>> = {};
   const numberKey = identityKey(input.number);
-  const lotKey = identityKey(input.lotNumber);
+  const lotKey = identityKey(input.lotNumber ?? "");
   const inBuilding = existing.filter((item) => item.buildingId === buildingId && item.id !== ignoreId);
 
   if (numberKey && inBuilding.some((item) => identityKey(item.number) === numberKey)) {
@@ -167,34 +181,36 @@ export function apartmentIdentityErrors(
   return errors;
 }
 
+export function apartmentClientErrors(number: string, lotNumber: string): Partial<Record<ApartmentField, string>> | null {
+  const parsed = apartmentFormSchema.safeParse({ number: number.trim(), lotNumber: lotNumber.trim() });
+  if (parsed.success) return null;
+  return zodFieldErrors(parsed.error.issues);
+}
+
 export function parseApartmentForm(
   formData: FormData,
   existing: ApartmentIdentity[],
   buildingId: string,
   ignoreId?: string,
 ): { ok: true; value: ApartmentInput } | { ok: false; errors: Partial<Record<ApartmentField, string>> } {
-  const errors: Partial<Record<ApartmentField, string>> = {};
-  const number = stringValue(formData, "number");
-  const lotNumber = stringValue(formData, "lotNumber");
+  const parsed = apartmentFormSchema.safeParse({
+    number: stringValue(formData, "number"),
+    lotNumber: stringValue(formData, "lotNumber"),
+  });
+  if (!parsed.success) return { ok: false, errors: zodFieldErrors(parsed.error.issues) };
 
-  if (!number) errors.number = "Enter an apartment number.";
-  else {
-    const length = lengthError(number, 20);
-    if (length) errors.number = length;
-  }
-
-  if (!lotNumber) errors.lotNumber = "Enter a lot number.";
-  else {
-    const length = lengthError(lotNumber, 20);
-    if (length) errors.lotNumber = length;
-  }
-
-  if (!errors.number && !errors.lotNumber) {
-    Object.assign(errors, apartmentIdentityErrors(existing, buildingId, { number, lotNumber }, ignoreId));
-  }
-
+  const errors = apartmentIdentityErrors(existing, buildingId, parsed.data, ignoreId);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { number, lotNumber } };
+  return { ok: true, value: parsed.data };
+}
+
+function zodFieldErrors(issues: { path: PropertyKey[]; message: string }[]): Partial<Record<ApartmentField, string>> {
+  const errors: Partial<Record<ApartmentField, string>> = {};
+  for (const issue of issues) {
+    const field = issue.path[0];
+    if ((field === "number" || field === "lotNumber") && !errors[field]) errors[field] = issue.message;
+  }
+  return errors;
 }
 
 export function parseResidentForm(
@@ -432,8 +448,8 @@ export function normalizeRegistration(
   return { ok: true, registration };
 }
 
-function identityKey(value: string): string {
-  return value.trim().toLowerCase();
+function identityKey(value: string | null): string {
+  return (value ?? "").trim().toLowerCase();
 }
 
 function stringValue(formData: FormData, key: string): string {
