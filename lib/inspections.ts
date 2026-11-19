@@ -1,4 +1,5 @@
 import { plainTextToCaseHtml } from "./maintenance";
+import { canManageInspectionTemplates } from "./roles";
 
 export const INSPECTION_TYPES = ["common_area", "private_lot"] as const;
 
@@ -99,6 +100,48 @@ export function formatSydneyDate(date: Date): string {
     year: "numeric",
     timeZone: "Australia/Sydney",
   }).format(date);
+}
+
+export function planTemplateDelete(role: string): { ok: true } | { ok: false; error: string } {
+  if (!canManageInspectionTemplates(role)) {
+    return { ok: false, error: "You do not have permission to delete inspection templates." };
+  }
+  return { ok: true };
+}
+
+export function templateDeletePrompt(input: { name: string; completedRuns: number; activeRuns: number }): {
+  title: string;
+  message: string;
+} {
+  return {
+    title: `Delete ${input.name}?`,
+    message: `Delete this inspection template?\n${keptInspections(input.completedRuns, input.activeRuns, "present")}`,
+  };
+}
+
+export function templateDeletedActivity(name: string, completedRuns: number, activeRuns: number): string {
+  return `Deleted inspection template ${name}. ${keptInspections(completedRuns, activeRuns, "past")}`;
+}
+
+function keptInspections(completed: number, active: number, tense: "present" | "past"): string {
+  const total = completed + active;
+  if (total === 0) {
+    return tense === "present"
+      ? "No inspections have been started from it. This removes the checklist only."
+      : "No inspections had been started from it.";
+  }
+  const parts: string[] = [];
+  if (completed > 0) parts.push(`${completed} completed`);
+  if (active > 0) parts.push(`${active} in progress`);
+  const list = parts.join(" and ");
+  if (tense === "present") {
+    return total === 1
+      ? `${list} inspection keeps its checklist, answers, photos, and any case raised from it. That record stays.`
+      : `${list} inspections keep their checklists, answers, photos, and any cases raised from them. Those records stay.`;
+  }
+  return total === 1
+    ? `${list} inspection kept its checklist, answers, photos, and any case raised from it.`
+    : `${list} inspections kept their checklists, answers, photos, and any cases raised from them.`;
 }
 
 export function duplicateTemplateName(name: string): string {

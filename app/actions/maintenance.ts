@@ -3,15 +3,18 @@
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { parseDateOnly } from "@/lib/contractors";
+import { formatCalendarDate, formatIsoDate, parseDateOnly } from "@/lib/contractors";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
 import {
   isOccurrenceDate,
   maintenanceTab,
   parseMaintenanceForm,
+  planMaintenanceDelete,
+  removedVisitActivity,
   safeCalendarPath,
   scheduleOf,
+  seriesDeletedActivity,
   sydneyToday,
   type MaintenanceField,
 } from "@/lib/maintenance";
@@ -150,6 +153,85 @@ export async function saveMaintenance(_prev: MaintenanceFormState, formData: For
   const tab = schedule ? maintenanceTab(schedule, existing?.occurrences ?? [], sydneyToday()) : "active";
   refresh();
   redirect(`/maintenance?tab=${tab}`);
+}
+
+export async function deleteMaintenanceEvent(formData: FormData) {
+  const returnTo = safeCalendarPath(String(formData.get("returnTo") ?? "")) || "/maintenance";
+  const user = await manager();
+  if (!user) redirect(returnTo);
+
+  const eventId = String(formData.get("eventId") ?? "").trim();
+  const occursOn = parseDateOnly(String(formData.get("occursOn") ?? ""));
+  const event = await prisma.maintenanceEvent.findFirst({
+    where: { id: eventId, buildingId: user.buildingId },
+    include: {
+      files: { select: { storedName: true } },
+      occurrences: { select: { occursOn: true, state: true, fileStoredName: true } },
+      _count: { select: { cases: true } },
+    },
+  });
+  if (!event) redirect(returnTo);
+  const plan = planMaintenanceDelete({ role: user.role, frequency: event.frequency, scope: String(formData.get("scope") ?? "") });
+  if (!plan.ok) redirect(returnTo);
+
+  if (plan.action === "occurrence") {
+    if (!occursOn) redirect(returnTo);
+    const schedule = scheduleOf(event);
+    if (!schedule || !isOccurrenceDate(schedule, occursOn)) redirect(returnTo);
+    const iso = formatIsoDate(occursOn);
+    const existing = event.occurrences.find((record) => formatIsoDate(record.occursOn) === iso);
+    if (existing?.state === "removed") redirect(returnTo);
+    await prisma.$transaction(async (tx) => {
+      await tx.maintenanceOccurrence.upsert({
+        where: { eventId_occursOn: { eventId: event.id, occursOn } },
+        create: {
+          eventId: event.id,
+          occursOn,
+          state: "removed",
+          actedAt: new Date(),
+          actedById: user.id,
+        },
+        update: {
+          state: "removed",
+          note: null,
+          fileName: null,
+          fileStoredName: null,
+          actedAt: new Date(),
+          actedById: user.id,
+        },
+      });
+      await tx.buildingActivity.create({
+        data: {
+          buildingId: user.buildingId,
+          actorId: user.id,
+          summary: removedVisitActivity(event.subject, formatCalendarDate(occursOn)),
+          href: `/calendar?date=${iso}`,
+        },
+      });
+    });
+    if (existing?.fileStoredName) await removeUpload(existing.fileStoredName);
+    refresh();
+    redirect(returnTo);
+  }
+
+  const storedNames = [
+    ...event.files.map((file) => file.storedName),
+    ...event.occurrences.flatMap((record) => (record.fileStoredName ? [record.fileStoredName] : [])),
+  ];
+  await prisma.$transaction(async (tx) => {
+    await tx.buildingActivity.create({
+      data: {
+        buildingId: user.buildingId,
+        actorId: user.id,
+        summary: seriesDeletedActivity(event.subject, event._count.cases),
+        href: "/maintenance",
+      },
+    });
+    await tx.maintenanceEvent.delete({ where: { id: event.id } });
+  });
+  await Promise.all(storedNames.map((storedName) => removeUpload(storedName)));
+  refresh();
+  redirect("/maintenance");
 }
 
 export async function deleteMaintenanceFile(formData: FormData) {

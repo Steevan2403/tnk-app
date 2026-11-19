@@ -5,7 +5,7 @@ import { resultCounts } from "./inspections";
 import {
   occurrencesBetween,
   scheduleOf,
-  visitStatus,
+  shownVisitStatus,
   type OccurrenceState,
   type Schedule,
   type StoredOccurrence,
@@ -221,9 +221,8 @@ export function reportVisits(
   for (const event of events) {
     const recorded = new Map(event.records.map((record) => [formatIsoDate(record.occursOn), record.state]));
     for (const occursOn of occurrencesBetween(event.schedule, from, to)) {
-      const state = recorded.get(formatIsoDate(occursOn)) ?? null;
-      const status = visitStatus(occursOn, state, today);
-      if (status === "upcoming") continue;
+      const status = shownVisitStatus(occursOn, recorded.get(formatIsoDate(occursOn)) ?? null, today);
+      if (!status || status === "upcoming") continue;
       visits.push({ subject: event.subject, occursOn, status });
     }
   }

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { duplicateTemplate } from "@/app/actions/inspections";
+import { deleteInspectionTemplate, duplicateTemplate } from "@/app/actions/inspections";
+import { deleteConfirmButtonClass, DeleteConfirm } from "@/components/delete-confirm";
 import { InspectionTemplateForm } from "@/components/inspection-template-form";
 import { requireUser } from "@/lib/data";
-import { getTemplate } from "@/lib/inspection-data";
+import { getTemplate, templateRunCounts } from "@/lib/inspection-data";
+import { templateDeletePrompt } from "@/lib/inspections";
 import { canManageInspectionTemplates } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Edit inspection template" };
@@ -14,6 +16,8 @@ export default async function EditInspectionTemplatePage({ params }: { params: P
   if (!canManageInspectionTemplates(user.role) || !user.selectedBuildingId) redirect("/building/inspections");
   const template = await getTemplate(user.selectedBuildingId, (await params).id);
   if (!template) notFound();
+  const counts = await templateRunCounts(user.selectedBuildingId, template.id);
+  const prompt = templateDeletePrompt({ name: template.name, ...counts });
 
   return (
     <section>
@@ -42,6 +46,16 @@ export default async function EditInspectionTemplatePage({ params }: { params: P
           })),
         }}
       />
+      <div className="mt-8 max-w-3xl">
+        <DeleteConfirm label="Delete" title={prompt.title} message={prompt.message}>
+          <form action={deleteInspectionTemplate}>
+            <input type="hidden" name="id" value={template.id} />
+            <button type="submit" className={deleteConfirmButtonClass}>
+              Delete template
+            </button>
+          </form>
+        </DeleteConfirm>
+      </div>
     </section>
   );
 }

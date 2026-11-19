@@ -52,6 +52,7 @@ export async function loadDashboard(
     occurrences,
     runs,
     reports,
+    buildingActivity,
   ] = await Promise.all([
     prisma.case.findMany({
       where: { buildingId },
@@ -142,7 +143,7 @@ export async function loadDashboard(
       },
     }),
     prisma.maintenanceOccurrence.findMany({
-      where: { event: { buildingId } },
+      where: { event: { buildingId }, state: { not: "removed" } },
       orderBy: [{ actedAt: "desc" }, { id: "desc" }],
       take: 20,
       select: {
@@ -172,6 +173,18 @@ export async function loadDashboard(
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 5,
       select: { id: true, periodFrom: true, periodTo: true, format: true, createdAt: true },
+    }),
+    prisma.buildingActivity.findMany({
+      where: { buildingId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 20,
+      select: {
+        id: true,
+        summary: true,
+        href: true,
+        createdAt: true,
+        actor: { select: { name: true } },
+      },
     }),
   ]);
 
@@ -230,6 +243,13 @@ export async function loadDashboard(
       userName: item.actedBy.name,
       action: item.state === "skipped" ? `Skipped ${item.event.subject}.` : `Completed ${item.event.subject}.`,
       href: `/calendar?date=${formatIsoDate(item.occursOn)}&event=${item.event.id}&on=${formatIsoDate(item.occursOn)}`,
+    })),
+    ...buildingActivity.map((item) => ({
+      id: `building-${item.id}`,
+      at: item.createdAt,
+      userName: item.actor.name,
+      action: item.summary,
+      href: item.href,
     })),
     ...runs.flatMap((run) => {
       const href = `/building/inspections/runs/${run.id}`;

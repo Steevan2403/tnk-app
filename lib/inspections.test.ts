@@ -3,8 +3,11 @@ import {
   caseFieldsFromItem,
   completionDecision,
   planCaseCreates,
+  planTemplateDelete,
   progressCount,
   snapshotTemplate,
+  templateDeletePrompt,
+  templateDeletedActivity,
   type TemplateSnapshotSource,
 } from "./inspections";
 
@@ -145,5 +148,33 @@ describe("cases from failed items", () => {
       createIds: ["floor", "lines"],
       alreadyLinked: ["door"],
     });
+  });
+});
+
+describe("inspection template delete", () => {
+  it("lets an admin or a manager delete, and blocks staff", () => {
+    expect(planTemplateDelete("admin")).toEqual({ ok: true });
+    expect(planTemplateDelete("manager")).toEqual({ ok: true });
+    expect(planTemplateDelete("staff")).toEqual({
+      ok: false,
+      error: "You do not have permission to delete inspection templates.",
+    });
+  });
+
+  it("keeps inspections that were already started from the template", () => {
+    expect(templateDeletePrompt({ name: "Example roof inspection", completedRuns: 0, activeRuns: 0 }).message).toBe(
+      "Delete this inspection template?\nNo inspections have been started from it. This removes the checklist only.",
+    );
+    expect(
+      templateDeletePrompt({ name: "Monthly common area inspection", completedRuns: 2, activeRuns: 1 }).message,
+    ).toBe(
+      "Delete this inspection template?\n2 completed and 1 in progress inspections keep their checklists, answers, photos, and any cases raised from them. Those records stay.",
+    );
+    expect(templateDeletedActivity("Monthly common area inspection", 1, 0)).toBe(
+      "Deleted inspection template Monthly common area inspection. 1 completed inspection kept its checklist, answers, photos, and any case raised from it.",
+    );
+    expect(templateDeletedActivity("Example roof inspection", 0, 0)).toBe(
+      "Deleted inspection template Example roof inspection. No inspections had been started from it.",
+    );
   });
 });

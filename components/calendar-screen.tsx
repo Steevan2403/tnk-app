@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { completeOccurrence, skipOccurrence } from "@/app/actions/maintenance";
+import { completeOccurrence, deleteMaintenanceEvent, skipOccurrence } from "@/app/actions/maintenance";
+import { deleteConfirmButtonClass, DeleteConfirm } from "@/components/delete-confirm";
 import { FileField, TextArea, TextField } from "@/components/field";
+import { maintenanceDeletePrompt } from "@/lib/maintenance";
 import { formatCalendarDate } from "@/lib/cases";
 import { formatVisitStatus, type VisitStatus } from "@/lib/maintenance";
 import type { OccurrencePanel } from "@/lib/maintenance-data";
@@ -145,7 +147,7 @@ export function CalendarScreen({
           </div>
         )}
       </div>
-      {panel ? <OccurrenceAside panel={panel} returnTo={returnTo} today={today} /> : null}
+      {panel ? <OccurrenceAside panel={panel} returnTo={returnTo} today={today} canManage={canManage} /> : null}
     </div>
   );
 }
@@ -212,8 +214,26 @@ function NewMenu({ day, canManage }: { day: CalendarDay; canManage: boolean }) {
   );
 }
 
-function OccurrenceAside({ panel, returnTo, today }: { panel: OccurrencePanel; returnTo: string; today: string }) {
+function OccurrenceAside({
+  panel,
+  returnTo,
+  today,
+  canManage,
+}: {
+  panel: OccurrencePanel;
+  returnTo: string;
+  today: string;
+  canManage: boolean;
+}) {
   const open = panel.status === "upcoming" || panel.status === "overdue";
+  const prompt = maintenanceDeletePrompt({
+    subject: panel.subject,
+    dateLabel: panel.dateLabel,
+    recurring: panel.recurring,
+    visitCases: panel.visitCases,
+    seriesCases: panel.seriesCases,
+    fileCount: panel.fileCount,
+  });
   return (
     <aside aria-label="Occurrence" className="mt-6 rounded-xl border border-line bg-card p-4 lg:mt-0">
       <h2 className="text-lg font-medium text-brand-navy">{panel.subject}</h2>
@@ -268,7 +288,38 @@ function OccurrenceAside({ panel, returnTo, today }: { panel: OccurrencePanel; r
           </form>
         </div>
       ) : null}
+      {canManage ? (
+        <div className="mt-4">
+          <DeleteConfirm label="Delete" title={prompt.title} message={prompt.message}>
+            {panel.recurring ? (
+              <form action={deleteMaintenanceEvent}>
+                <DeleteFields panel={panel} returnTo={returnTo} scope="occurrence" />
+                <button type="submit" className={deleteConfirmButtonClass}>
+                  Delete this visit
+                </button>
+              </form>
+            ) : null}
+            <form action={deleteMaintenanceEvent}>
+              <DeleteFields panel={panel} returnTo={returnTo} scope="series" />
+              <button type="submit" className={deleteConfirmButtonClass}>
+                {panel.recurring ? "Delete whole series" : "Delete event"}
+              </button>
+            </form>
+          </DeleteConfirm>
+        </div>
+      ) : null}
     </aside>
+  );
+}
+
+function DeleteFields({ panel, returnTo, scope }: { panel: OccurrencePanel; returnTo: string; scope: "occurrence" | "series" }) {
+  return (
+    <>
+      <input type="hidden" name="eventId" value={panel.eventId} />
+      <input type="hidden" name="occursOn" value={panel.iso} />
+      <input type="hidden" name="returnTo" value={returnTo} />
+      <input type="hidden" name="scope" value={scope} />
+    </>
   );
 }
 

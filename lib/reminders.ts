@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { deliverMail } from "./mail";
 import {
+  asOccurrenceState,
   dueReminders,
   reminderRecipients,
   scheduleOf,
@@ -83,8 +84,5 @@ async function sendReminder(reminder: DueReminder): Promise<boolean> {
 }
 
 function stored(record: { occursOn: Date; state: string }): StoredOccurrence {
-  return {
-    occursOn: record.occursOn,
-    state: record.state === "skipped" ? "skipped" : "completed",
-  };
+  return { occursOn: record.occursOn, state: asOccurrenceState(record.state) };
 }
