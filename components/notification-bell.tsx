@@ -44,7 +44,8 @@ export function NotificationBell({ unread, items }: { unread: number; items: Not
         aria-controls={panelId}
         aria-haspopup="true"
         onClick={() => setOpen((value) => !value)}
-        className={`relative inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-line bg-card text-brand-navy shadow-sm hover:bg-page ${focusRing}`}
+        title={label}
+        className={`touch-target relative inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-line bg-card text-brand-navy shadow-sm hover:bg-page ${focusRing}`}
       >
         <Bell className="size-5" aria-hidden="true" />
         {badge ? (

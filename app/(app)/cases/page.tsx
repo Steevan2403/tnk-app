@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { setCasesStatus, toggleCaseStar } from "@/app/actions/cases";
+import { toggleCaseStar } from "@/app/actions/cases";
 import { CaseBoard } from "@/components/case-board";
+import { CaseBulkBar } from "@/components/case-bulk-bar";
+import { CaseFilters } from "@/components/case-filters";
 import { ColumnMenu } from "@/components/column-menu";
 import { SelectAll } from "@/components/case-select";
 import { FilesMark } from "@/components/files-mark";
@@ -163,7 +165,8 @@ export default async function CasesPage({
         </div>
       </div>
 
-      <form method="get" action="/cases" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <CaseFilters count={activeFilterCount(active)}>
+      <form method="get" action="/cases" className="filter-card grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {active.view === "board" ? <input type="hidden" name="view" value="board" /> : null}
         <TextField label="Search cases" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, asset, or apartment" />
         <SelectField label="Type" name="type" defaultValue={active.typeId}>
@@ -214,6 +217,7 @@ export default async function CasesPage({
           </button>
         </div>
       </form>
+      </CaseFilters>
       {filtered ? (
         <Link href={active.view === "board" ? "/cases?view=board" : "/cases"} className="mt-3 inline-block text-sm text-brand-blue hover:underline">
           Clear filters
@@ -280,25 +284,7 @@ function CaseResults({
 }) {
   return (
     <>
-      {canEdit ? (
-        <form id="case-bulk" action={setCasesStatus} className="mt-4 flex flex-wrap items-end gap-3">
-          <input type="hidden" name="returnTo" value={returnTo} />
-          <label className="flex items-center gap-2 pb-2 text-sm md:hidden">
-            <SelectAll />
-            Select all
-          </label>
-          <SelectField label="Change status" name="status" defaultValue="new">
-            {CASE_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {formatStatus(status)}
-              </option>
-            ))}
-          </SelectField>
-          <button type="submit" className="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue">
-            Update selected
-          </button>
-        </form>
-      ) : null}
+      {canEdit ? <CaseBulkBar returnTo={returnTo} /> : null}
       <ul className="mt-4 space-y-3 md:hidden">
         {rows.map((row) => (
           <li key={row.id} className="rounded-xl border border-line bg-card p-4">
@@ -411,7 +397,8 @@ function StarButton({ row, returnTo }: { row: CaseRow; returnTo: string }) {
         type="submit"
         aria-pressed={row.starred}
         aria-label={row.starred ? `Unstar case ${row.number}` : `Star case ${row.number}`}
-        className={`text-lg leading-none ${row.starred ? "text-amber-500" : "text-muted"}`}
+        title={row.starred ? `Unstar case ${row.number}` : `Star case ${row.number}`}
+        className={`touch-target inline-flex items-center justify-center text-lg leading-none ${row.starred ? "text-amber-500" : "text-muted"}`}
       >
         {row.starred ? "★" : "☆"}
       </button>
@@ -471,6 +458,20 @@ function readFilters(params: Record<string, string | string[] | undefined>): Fil
     page: parsePage(first(params.page)),
     view: first(params.view) === "board" ? "board" : "list",
   };
+}
+
+function activeFilterCount(filters: Filters): number {
+  let count = 0;
+  if (filters.q) count += 1;
+  if (filters.typeId) count += 1;
+  if (filters.priority) count += 1;
+  if (filters.status) count += 1;
+  if (filters.companyId) count += 1;
+  if (filters.from) count += 1;
+  if (filters.to) count += 1;
+  if (filters.starred) count += 1;
+  if (filters.overdue) count += 1;
+  return count;
 }
 
 function first(value: string | string[] | undefined): string {

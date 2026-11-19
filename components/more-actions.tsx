@@ -31,8 +31,9 @@ export function MoreActions({ children }: { children: ReactNode }) {
         aria-expanded={open}
         aria-controls={menuId}
         aria-label="More actions"
+        title="More actions"
         onClick={() => setOpen((current) => !current)}
-        className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue"
+        className="touch-target inline-flex items-center justify-center rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue"
       >
         …
       </button>
