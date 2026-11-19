@@ -28,6 +28,7 @@ import {
   type TemplateField,
 } from "@/lib/inspections";
 import { mailTransport, sendSmtp, type OutgoingMail } from "@/lib/mail";
+import { notifyBuilding } from "@/lib/notifications";
 import { canEditCases, canManageInspectionTemplates, canRunInspections } from "@/lib/roles";
 import { copyStoredFile, imageUploadProblem, removeUpload, saveBytes, saveUpload } from "@/lib/storage";
 import { mailboxFor } from "@/lib/work-order-draft";
@@ -550,6 +551,13 @@ async function createCaseForItem(
                 ],
               },
             },
+          });
+          await notifyBuilding(tx, {
+            buildingId: user.buildingId,
+            actorId: user.id,
+            kind: "case_created",
+            title: `New case ${number}: ${fields.subject}`,
+            link: `/cases/${number}`,
           });
         });
         return true;

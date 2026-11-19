@@ -387,6 +387,7 @@ async function main() {
   await seedInspections(admin.id, staff.id);
   await seedDashboard(admin.id, staff.id);
   await seedManagementReport(admin.id, admin.name);
+  await seedNotifications(admin.id);
 }
 
 const apartmentPlan = [
@@ -2164,6 +2165,52 @@ async function seedDashboard(adminId: string, staffId: string) {
       notes: entry.notes,
     };
     await prisma.usefulNumber.upsert({ where: { id: entry.id }, update: data, create: { id: entry.id, ...data } });
+  }
+}
+
+async function seedNotifications(adminId: string) {
+  const rows = [
+    {
+      id: "seed_notice_tower_case",
+      buildingId: "seed_example_tower",
+      kind: "case_created" as const,
+      title: "New case 300: Example fire pump drip.",
+      link: "/cases/300",
+      createdAt: new Date("2026-11-18T01:00:00.000Z"),
+    },
+    {
+      id: "seed_notice_tower_status",
+      buildingId: "seed_example_tower",
+      kind: "case_status" as const,
+      title: "Case 307 moved to In progress.",
+      link: "/cases/307",
+      createdAt: new Date("2026-11-18T02:00:00.000Z"),
+    },
+    {
+      id: "seed_notice_tower_work_order",
+      buildingId: "seed_example_tower",
+      kind: "work_order_sent" as const,
+      title: "Work order 300-A was sent to Fictional Fire Services.",
+      link: "/work-orders/seed_wo_01a",
+      createdAt: new Date("2026-11-18T03:00:00.000Z"),
+    },
+    {
+      id: "seed_notice_court",
+      buildingId: "seed_sample_court",
+      kind: "case_created" as const,
+      title: "Example notice for Sample Court.",
+      link: "/dashboard",
+      createdAt: new Date("2026-11-17T01:00:00.000Z"),
+    },
+  ];
+  for (const row of rows) {
+    const data = { ...row, userId: adminId, readAt: null };
+    const { id, ...fields } = data;
+    await prisma.notification.upsert({
+      where: { id },
+      update: fields,
+      create: data,
+    });
   }
 }
 

@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { signOutAction } from "@/app/actions/auth";
 import { Shell } from "@/components/shell";
 import { listBuildings, requireUser } from "@/lib/data";
+import { prisma } from "@/lib/db";
+import { notificationPreview } from "@/lib/notifications";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -22,9 +24,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const selected = buildings.find((building) => building.id === user.selectedBuildingId) ?? null;
+  const notifications = await notificationPreview(prisma, user);
 
   return (
-    <Shell user={{ name: user.name, role: user.role }} buildings={buildings} selected={selected}>
+    <Shell
+      user={{ name: user.name, role: user.role }}
+      buildings={buildings}
+      selected={selected}
+      notifications={notifications}
+    >
       {children}
     </Shell>
   );

@@ -13,6 +13,7 @@ import {
   fieldChangeActivity,
   fileAddedActivity,
   formatIsoDate,
+  formatStatus,
   isCaseFileKind,
   isCaseStatus,
   nextCaseNumber,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/cases";
 import { requireUser } from "@/lib/data";
 import { maintenanceLinkFromForm } from "@/lib/maintenance-data";
+import { notifyBuilding } from "@/lib/notifications";
 import { prisma } from "@/lib/db";
 import { canDeleteCases, canEditCases, canManageCaseTypes } from "@/lib/roles";
 import { fileBaseName, imageUploadProblem, removeUpload, saveUpload, uploadProblem, videoUploadProblem } from "@/lib/storage";
@@ -183,6 +185,15 @@ async function saveCaseBody(_prev: CaseFormState, formData: FormData): Promise<C
             })),
           });
         }
+        if (change.activity) {
+          await notifyBuilding(tx, {
+            buildingId: user.buildingId,
+            actorId: user.id,
+            kind: "case_status",
+            title: `Case ${existing.number} moved to ${formatStatus(change.status)}.`,
+            link: casePath(existing.number),
+          });
+        }
       });
     } catch (error) {
       console.error(error);
@@ -235,6 +246,13 @@ async function saveCaseBody(_prev: CaseFormState, formData: FormData): Promise<C
   }
 
   if (!saved) return { error: "The case could not be saved." };
+  await notifyBuilding(prisma, {
+    buildingId: user.buildingId,
+    actorId: user.id,
+    kind: "case_created",
+    title: `New case ${allocated}: ${parsed.value.subject}`,
+    link: casePath(allocated),
+  });
   refresh();
   redirect(casePath(allocated));
 }
@@ -274,16 +292,26 @@ export async function setCaseStatus(formData: FormData) {
     completedAt: existing.completedAt,
     now: new Date(),
   });
-  if (change?.activity) {
-    await prisma.case.update({
-      where: { id: existing.id },
-      data: {
-        status: change.status,
-        completedAt: change.completedAt,
-        activities: {
-          create: { actorId: user.id, kind: change.activity.kind, summary: change.activity.summary },
+  const activity = change?.activity;
+  if (activity) {
+    await prisma.$transaction(async (tx) => {
+      await tx.case.update({
+        where: { id: existing.id },
+        data: {
+          status: change.status,
+          completedAt: change.completedAt,
+          activities: {
+            create: { actorId: user.id, kind: activity.kind, summary: activity.summary },
+          },
         },
-      },
+      });
+      await notifyBuilding(tx, {
+        buildingId: user.buildingId,
+        actorId: user.id,
+        kind: "case_status",
+        title: `Case ${number} moved to ${formatStatus(change.status)}.`,
+        link: casePath(number),
+      });
     });
     refresh();
   }
@@ -310,7 +338,7 @@ export async function setCasesStatus(formData: FormData) {
 
   const cases = await prisma.case.findMany({
     where: { buildingId: user.buildingId, number: { in: numbers } },
-    select: { id: true, status: true, completedAt: true },
+    select: { id: true, number: true, status: true, completedAt: true },
   });
   const now = new Date();
   await prisma.$transaction(async (tx) => {
@@ -326,6 +354,13 @@ export async function setCasesStatus(formData: FormData) {
             create: { actorId: user.id, kind: change.activity.kind, summary: change.activity.summary },
           },
         },
+      });
+      await notifyBuilding(tx, {
+        buildingId: user.buildingId,
+        actorId: user.id,
+        kind: "case_status",
+        title: `Case ${existing.number} moved to ${formatStatus(change.status)}.`,
+        link: casePath(existing.number),
       });
     }
   });

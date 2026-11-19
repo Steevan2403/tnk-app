@@ -25,7 +25,9 @@ import {
 } from "lucide-react";
 import { signOutAction } from "@/app/actions/auth";
 import { selectBuilding } from "@/app/actions/buildings";
+import { NotificationBell } from "@/components/notification-bell";
 import { formatAddress, type BuildingRecord } from "@/lib/buildings";
+import type { NotificationListItem } from "@/lib/notifications";
 import { formatRole } from "@/lib/roles";
 
 const PRIMARY_NAV: { href: string; label: string; icon: LucideIcon }[] = [
@@ -52,11 +54,13 @@ export function Shell({
   user,
   buildings,
   selected,
+  notifications,
   children,
 }: {
   user: { name: string; role: string };
   buildings: BuildingRecord[];
   selected: BuildingRecord | null;
+  notifications: { unread: number; items: NotificationListItem[] };
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -152,6 +156,7 @@ export function Shell({
               className="w-full max-w-xl rounded-lg border border-line bg-page py-2 pr-3 pl-9 text-sm outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/30"
             />
           </div>
+          <NotificationBell key={pathname} unread={notifications.unread} items={notifications.items} />
           <UserMenu name={user.name} role={user.role} />
         </header>
         <main ref={mainRef} className="flex-1 px-4 py-6 md:min-h-0 md:overflow-y-auto md:px-8 md:py-8">

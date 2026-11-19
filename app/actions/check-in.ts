@@ -10,6 +10,8 @@ import {
   optionalLocation,
 } from "@/lib/check-in";
 import { prisma } from "@/lib/db";
+import { notifyBuilding } from "@/lib/notifications";
+import { workOrderNumber } from "@/lib/work-orders";
 
 export type CheckInFormState = { error?: string };
 
@@ -31,9 +33,10 @@ export async function recordSiteVisit(_prev: CheckInFormState, formData: FormDat
         where: { checkInToken: token },
         select: {
           id: true,
+          suffix: true,
           status: true,
-          case: { select: { number: true } },
-          visits: { where: { checkedOutAt: null }, select: { id: true }, take: 1 },
+          case: { select: { number: true, buildingId: true } },
+          visits: { where: { checkedOutAt: null }, select: { id: true, contractorName: true }, take: 1 },
         },
       });
       if (!order) return { error: INVALID_CHECK_IN_LINK };
@@ -47,6 +50,8 @@ export async function recordSiteVisit(_prev: CheckInFormState, formData: FormDat
       if (!decision.ok) return { error: decision.error };
 
       const now = new Date();
+      const number = workOrderNumber(order.case.number, order.suffix);
+      const link = `/work-orders/${order.id}`;
       if (action === "check_in") {
         await tx.workOrderVisit.create({
           data: {
@@ -57,6 +62,13 @@ export async function recordSiteVisit(_prev: CheckInFormState, formData: FormDat
             checkInLongitude: location?.longitude,
             openKey: order.id,
           },
+        });
+        await notifyBuilding(tx, {
+          buildingId: order.case.buildingId,
+          actorId: null,
+          kind: "check_in",
+          title: `${decision.name} checked in on site for work order ${number}.`,
+          link,
         });
       } else {
         const open = order.visits[0];
@@ -69,6 +81,13 @@ export async function recordSiteVisit(_prev: CheckInFormState, formData: FormDat
             checkOutLongitude: location?.longitude,
             openKey: null,
           },
+        });
+        await notifyBuilding(tx, {
+          buildingId: order.case.buildingId,
+          actorId: null,
+          kind: "check_out",
+          title: `${open.contractorName} checked out of work order ${number}.`,
+          link,
         });
       }
 

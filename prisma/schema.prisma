@@ -70,6 +70,7 @@ model User {
   buildingNotes      BuildingNote[]
   buildingActivities BuildingActivity[]
   generatedReports   GeneratedReport[]
+  notifications      Notification[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -101,6 +102,7 @@ model Building {
   usefulNumbers        UsefulNumber[]
   generatedReports     GeneratedReport[]
   activities           BuildingActivity[]
+  notifications        Notification[]
 }
 
 // Which buildings a manager or a staff member can open. Admins are not listed here.
@@ -1024,6 +1026,31 @@ model BuildingActivity {
 
   @@index([buildingId, createdAt])
   @@index([actorId])
+}
+
+enum NotificationKind {
+  check_in
+  check_out
+  case_created
+  case_status
+  work_order_sent
+}
+
+// In-app only. One row is a message for one person about one building.
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buildingId String
+  building   Building         @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  kind       NotificationKind
+  title      String
+  link       String
+  createdAt  DateTime         @default(now())
+  readAt     DateTime?
+
+  @@index([userId, buildingId, createdAt])
+  @@index([buildingId])
 }
 
 // One row for the whole account: company name, fallback site contact, and work order terms.

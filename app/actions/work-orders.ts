@@ -8,6 +8,7 @@ import { newCheckInToken } from "@/lib/check-in";
 import { mailTransport, packEmailAttachments, sendSmtp, type OutgoingMail } from "@/lib/mail";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
+import { notifyBuilding } from "@/lib/notifications";
 import { canCancelWorkOrders, canSendWorkOrders } from "@/lib/roles";
 import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { removeUpload, saveBytes, storedFileSize } from "@/lib/storage";
@@ -49,8 +50,9 @@ export async function sendWorkOrder(prev: WorkOrderFormState, formData: FormData
 async function sendWorkOrderBody(_prev: WorkOrderFormState, formData: FormData): Promise<WorkOrderFormState> {
   const user = await requireUser();
   if (!canSendWorkOrders(user.role) || !user.selectedBuildingId) return { error: denied };
+  const buildingId = user.selectedBuildingId;
 
-  const prepared = await prepareWorkOrderDraft(user.selectedBuildingId, formData);
+  const prepared = await prepareWorkOrderDraft(buildingId, formData);
   if (!prepared.ok) return { error: prepared.error, errors: prepared.errors };
   const draft = prepared.draft;
 
@@ -140,6 +142,13 @@ async function sendWorkOrderBody(_prev: WorkOrderFormState, formData: FormData):
               kind: "work_order_sent",
               summary: workOrderSentSummary(number, draft.companyName, draft.contactName),
             },
+          });
+          await notifyBuilding(tx, {
+            buildingId,
+            actorId: user.id,
+            kind: "work_order_sent",
+            title: `Work order ${number} was sent to ${draft.companyName}.`,
+            link: `/work-orders/${created.id}`,
           });
           await mailboxFor(tx).save({ ...mail, attachmentNames: mail.attachments.map((item) => item.name), workOrderId: created.id });
         });
