@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { signOutAction } from "@/app/actions/auth";
 import { selectBuilding } from "@/app/actions/buildings";
 import { formatAddress, type BuildingRecord } from "@/lib/buildings";
@@ -41,8 +41,13 @@ export function Shell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const mainRef = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +59,7 @@ export function Shell({
   }, [open]);
 
   return (
-    <div className="min-h-dvh bg-page md:flex">
+    <div className="app-shell min-h-dvh bg-page md:fixed md:inset-0 md:flex md:overflow-hidden">
       {open ? (
         <button
           type="button"
@@ -64,7 +69,7 @@ export function Shell({
         />
       ) : null}
       <aside
-        className={`${open ? "fixed inset-y-0 left-0 z-40 flex" : "hidden"} w-72 flex-col bg-brand-navy text-white md:static md:flex`}
+        className={`${open ? "fixed inset-y-0 left-0 z-40 flex" : "hidden"} w-72 min-h-0 flex-col bg-brand-navy text-white md:static md:flex`}
       >
         <div className="flex items-center justify-between gap-3 px-4 py-4">
           <Link href="/dashboard" onClick={close} className="min-w-0">
@@ -88,7 +93,7 @@ export function Shell({
         <div className="px-3 pb-3">
           <BuildingSwitcher buildings={buildings} selected={selected} onNavigate={close} />
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-6" aria-label="Main">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-6" aria-label="Main">
           {PRIMARY_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} onNavigate={close} />
           ))}
@@ -105,7 +110,7 @@ export function Shell({
           </div>
         </nav>
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-page px-4 py-3">
           <button
             type="button"
@@ -124,7 +129,7 @@ export function Shell({
           </div>
           <UserMenu name={user.name} role={user.role} />
         </header>
-        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+        <main ref={mainRef} className="flex-1 px-4 py-6 md:min-h-0 md:overflow-y-auto md:px-8">{children}</main>
       </div>
     </div>
   );
