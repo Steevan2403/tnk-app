@@ -397,6 +397,7 @@ class Sheet {
   }
 
   private labeled(y: number, width: number, label: string, value: string, link?: string): number {
+    if (!value.trim()) return y;
     const size = 10;
     const labelText = `${label}:`;
     const labelWidth = this.bold.widthOfTextAtSize(labelText, size);

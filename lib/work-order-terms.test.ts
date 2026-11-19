@@ -53,9 +53,10 @@ describe("work order contact details", () => {
     expect(siteContactValue(null, "  ")).toBe("");
   });
 
-  it("prints the strata plan or N/A", () => {
+  it("prints the strata plan and leaves the building name alone when there is no plan", () => {
     expect(buildingLine("Example Tower", "SP 10048")).toBe("Example Tower - SP 10048");
-    expect(buildingLine("Sample Court", null)).toBe("Sample Court - N/A");
+    expect(buildingLine("Sample Court", null)).toBe("Sample Court");
+    expect(buildingLine("Sample Court", "  ")).toBe("Sample Court");
   });
 
   it("joins the contractor company, contact, and phone", () => {
