@@ -48,7 +48,7 @@ export function AssetForm({
   const back = asset ? `/building/assets/${asset.id}` : "/building/assets";
 
   return (
-    <form action={action} className="mt-6 max-w-2xl space-y-4">
+    <form action={action} className="form-card mt-6 max-w-2xl space-y-4">
       {asset ? <input type="hidden" name="assetId" value={asset.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">

@@ -40,7 +40,7 @@ export function ResidentForm({
   const back = resident ? `/residents/apartments/${resident.apartmentId}` : "/residents";
 
   return (
-    <form action={action} className="mt-6 max-w-2xl space-y-4">
+    <form action={action} className="form-card mt-6 max-w-2xl space-y-4">
       {resident ? <input type="hidden" name="residentId" value={resident.id} /> : null}
       {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {state.error ? (

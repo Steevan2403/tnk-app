@@ -54,8 +54,8 @@ export default async function CheckInPage({ params }: { params: Promise<{ token:
 
 function CheckInFrame({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-dvh bg-page px-4 py-8">
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-line bg-card px-5 py-6 shadow-sm">
+    <main className="min-h-dvh bg-[radial-gradient(circle_at_top,#e7eefc,#f4f6fb_58%)] px-4 py-8">
+      <div className="mx-auto w-full max-w-md rounded-2xl border border-line bg-card px-5 py-6 shadow-[0_24px_60px_rgb(0_0_128/0.1)]">
         <Image
           src="/brand/tnk-logo-navy.svg"
           alt="TNK Property Services"

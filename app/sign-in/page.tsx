@@ -11,8 +11,8 @@ export default async function SignInPage() {
   if (session?.user) redirect("/dashboard");
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-card px-6 py-8 shadow-sm sm:px-8">
+    <main className="flex min-h-dvh items-center justify-center bg-[radial-gradient(circle_at_top,#e7eefc,#f4f6fb_58%)] px-4 py-12">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card px-6 py-8 shadow-[0_24px_60px_rgb(0_0_128/0.1)] sm:px-8">
         <Image
           src="/brand/tnk-logo-navy.svg"
           alt="TNK Property Services"

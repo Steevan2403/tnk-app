@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 const controlClass =
-  "w-full rounded-md border border-line bg-white px-3 py-2 text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40";
+  "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30";
 
 export function TextField({
   label,
@@ -16,7 +16,7 @@ export function TextField({
   const id = props.id ?? name;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
         {label}
       </label>
       <input
@@ -51,7 +51,7 @@ export function SelectField({
   const id = props.id ?? name;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
         {label}
       </label>
       <select
@@ -86,7 +86,7 @@ export function TextArea({
   const id = props.id ?? name;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
         {label}
       </label>
       <textarea
@@ -153,7 +153,7 @@ export function FileField({
   const id = props.id ?? name;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
         {label}
       </label>
       <input

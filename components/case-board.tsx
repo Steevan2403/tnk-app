@@ -6,8 +6,18 @@ import { setCaseStatus } from "@/app/actions/cases";
 import { FilesMark } from "@/components/files-mark";
 import { WorkOrderMark } from "@/components/work-order-mark";
 import { PriorityBadge } from "@/components/priority-badge";
-import { CASE_STATUSES, formatStatus, isCaseOverdue } from "@/lib/cases";
+import { CASE_STATUSES, formatStatus, isCaseOverdue, type CaseStatus } from "@/lib/cases";
 import type { CaseRow } from "@/lib/data";
+
+const COLUMN_TONE: Record<CaseStatus, string> = {
+  new: "border-t-brand-navy",
+  in_progress: "border-t-brand-blue",
+  awaiting_contractor: "border-t-amber-500",
+  awaiting_quote: "border-t-amber-500",
+  awaiting_invoice: "border-t-orange-500",
+  completed: "border-t-brand-green",
+  closed: "border-t-gray-400",
+};
 
 export function CaseBoard({ rows, returnTo }: { rows: CaseRow[]; returnTo: string }) {
   const dragging = useRef<number | null>(null);
@@ -40,7 +50,7 @@ export function CaseBoard({ rows, returnTo }: { rows: CaseRow[]; returnTo: strin
                 void setCaseStatus(data);
               });
             }}
-            className="flex w-52 shrink-0 flex-col rounded-xl border border-dashed border-line bg-page p-3"
+            className={`flex w-64 shrink-0 flex-col rounded-xl border border-line border-t-4 bg-white/80 p-3 ${COLUMN_TONE[status]}`}
           >
             <h2 className="text-sm font-medium text-brand-navy">
               {formatStatus(status)} <span className="text-muted">({cards.length})</span>
@@ -57,7 +67,7 @@ export function CaseBoard({ rows, returnTo }: { rows: CaseRow[]; returnTo: strin
                       event.dataTransfer.setData("text/plain", String(row.number));
                       event.dataTransfer.effectAllowed = "move";
                     }}
-                    className="cursor-grab rounded-lg border border-line bg-card p-3 active:cursor-grabbing"
+                    className="cursor-grab rounded-lg border border-line bg-card p-3 shadow-sm active:cursor-grabbing"
                   >
                     <p className="text-xs text-muted">#{row.number}</p>
                     <Link

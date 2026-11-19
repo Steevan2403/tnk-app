@@ -53,12 +53,12 @@ export function ApartmentDialog({
       >
         {apartment ? "Edit" : "New apartment"}
       </button>
-      <div className={open ? "fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/40 p-4" : "hidden"}>
+      <div className={open ? "fixed inset-0 z-50 flex items-end justify-center bg-brand-navy/50 p-4 sm:items-center" : "hidden"}>
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby={apartment ? "edit-apartment-title" : "new-apartment-title"}
-          className="w-full max-w-md rounded-xl border border-line bg-card p-6"
+          className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl"
         >
           <form action={action} className="space-y-4" onSubmit={onSubmit}>
             <h2 id={apartment ? "edit-apartment-title" : "new-apartment-title"} className="font-serif text-2xl">

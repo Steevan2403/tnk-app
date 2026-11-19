@@ -7,6 +7,7 @@ import { CaseFileForm, CommentForm } from "@/components/case-record-forms";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SelectField } from "@/components/field";
 import { PriorityBadge } from "@/components/priority-badge";
+import { EmptyState, Panel, StatusBadge } from "@/components/ui";
 import { sanitizeCaseHtml } from "@/lib/case-html";
 import {
   CASE_FILE_KINDS,
@@ -89,7 +90,11 @@ export default async function CasePage({
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-serif text-3xl">{record.subject}</h1>
-          <p className="mt-2 text-muted">Case #{record.number}</p>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-muted">
+            <span>Case #{record.number}</span>
+            <StatusBadge status={record.status} label={formatStatus(record.status)} />
+            <PriorityBadge priority={record.priority} />
+          </p>
           {record.maintenanceEvent && record.occurrenceOn ? (
             <p className="mt-2 text-sm text-muted">
               From maintenance{" "}
@@ -132,17 +137,17 @@ export default async function CasePage({
           <form action={toggleCaseStar}>
             <input type="hidden" name="number" value={record.number} />
             <input type="hidden" name="returnTo" value={`/cases/${record.number}`} />
-            <button type="submit" aria-pressed={starred} className="text-sm text-brand-blue hover:underline">
+            <button type="submit" aria-pressed={starred} className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue">
               {starred ? "Starred" : "Star"}
             </button>
           </form>
           {canEdit ? (
-            <Link href={`/cases/${record.number}/work-order`} className="text-sm text-brand-blue hover:underline">
+            <Link href={`/cases/${record.number}/work-order`} className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue">
               Send work order
             </Link>
           ) : null}
           {canEdit ? (
-            <Link href={`/cases/${record.number}/edit`} className="text-sm text-brand-blue hover:underline">
+            <Link href={`/cases/${record.number}/edit`} className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue">
               Edit
             </Link>
           ) : null}
@@ -197,7 +202,9 @@ export default async function CasePage({
             <Field label="Priority">
               <PriorityBadge priority={record.priority} />
             </Field>
-            <Field label="Status" value={formatStatus(record.status)} />
+            <Field label="Status">
+              <StatusBadge status={record.status} label={formatStatus(record.status)} />
+            </Field>
             <Field label="Management report" value={record.includeInReport ? "Included" : "Not included"} />
             <Field label="Completed" value={record.completedAt ? formatDateTime(record.completedAt) : "—"} />
             <div className="sm:col-span-2">
@@ -297,7 +304,7 @@ export default async function CasePage({
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
         <Panel title="Comments">
-          {topComments.length === 0 ? <p className="mt-3 text-muted">No comments yet.</p> : null}
+          {topComments.length === 0 ? <EmptyState>No comments yet.</EmptyState> : null}
           <ul className="mt-2 divide-y divide-line">
             {topComments.map((comment) => (
               <li key={comment.id} className="py-3">
@@ -403,7 +410,7 @@ function FileSection({
   const title = `${FILE_LABELS[kind]}s`;
   return (
     <Panel title={title}>
-      {files.length === 0 ? <p className="mt-3 text-muted">No {fileKindLabel(kind)}s yet.</p> : null}
+      {files.length === 0 ? <EmptyState>No {fileKindLabel(kind)}s yet.</EmptyState> : null}
       {kind === "photo" && files.length > 0 ? (
         <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {files.map((file) => (
@@ -507,7 +514,7 @@ function CaseActivity({ record }: { record: CaseDetail }) {
     ),
   ].sort((a, b) => b.at.getTime() - a.at.getTime() || a.id.localeCompare(b.id));
 
-  if (lines.length === 0) return <p className="mt-3 text-muted">No activity yet.</p>;
+  if (lines.length === 0) return <EmptyState>No activity yet.</EmptyState>;
   return (
     <ul className="mt-2 divide-y divide-line">
       {lines.map((activity) => (
@@ -519,15 +526,6 @@ function CaseActivity({ record }: { record: CaseDetail }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-line bg-card p-4">
-      <h2 className="font-serif text-2xl text-brand-navy">{title}</h2>
-      {children}
-    </section>
   );
 }
 

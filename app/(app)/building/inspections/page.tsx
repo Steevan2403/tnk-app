@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SelectField, TextField } from "@/components/field";
+import { EmptyState } from "@/components/ui";
 import { parseDateOnly } from "@/lib/contractors";
 import { listRuns, listTemplates, type RunListRow, type TemplateRow } from "@/lib/inspection-data";
 import {
@@ -80,7 +81,7 @@ export default async function InspectionsPage({
       </nav>
 
       {tab === "progress" ? null : (
-        <form method="get" action="/building/inspections" className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <form method="get" action="/building/inspections" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <input type="hidden" name="tab" value={tab} />
           <TextField label="Search" name="q" type="search" defaultValue={q} placeholder="Name" />
           <SelectField label="Type" name="type" defaultValue={type}>
@@ -117,7 +118,7 @@ export default async function InspectionsPage({
 }
 
 function TemplateList({ rows, canEdit }: { rows: TemplateRow[]; canEdit: boolean }) {
-  if (rows.length === 0) return <p className="mt-6 text-muted">No templates yet.</p>;
+  if (rows.length === 0) return <EmptyState>No templates yet.</EmptyState>;
   return (
     <>
       <ul className="mt-6 space-y-3 md:hidden">
@@ -136,7 +137,7 @@ function TemplateList({ rows, canEdit }: { rows: TemplateRow[]; canEdit: boolean
           </li>
         ))}
       </ul>
-      <div className="mt-6 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-6 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full min-w-[64rem] text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>
@@ -171,7 +172,7 @@ function TemplateList({ rows, canEdit }: { rows: TemplateRow[]; canEdit: boolean
 }
 
 function ProgressList({ rows }: { rows: RunListRow[] }) {
-  if (rows.length === 0) return <p className="mt-6 text-muted">No inspections in progress.</p>;
+  if (rows.length === 0) return <EmptyState>No inspections in progress.</EmptyState>;
   return (
     <>
       <ul className="mt-6 space-y-3 md:hidden">
@@ -190,7 +191,7 @@ function ProgressList({ rows }: { rows: RunListRow[] }) {
           </li>
         ))}
       </ul>
-      <div className="mt-6 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-6 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full min-w-[56rem] text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>
@@ -228,7 +229,7 @@ function ProgressList({ rows }: { rows: RunListRow[] }) {
 }
 
 function CompletedList({ rows, canEmail }: { rows: RunListRow[]; canEmail: boolean }) {
-  if (rows.length === 0) return <p className="mt-6 text-muted">No completed inspections.</p>;
+  if (rows.length === 0) return <EmptyState>No completed inspections.</EmptyState>;
   return (
     <>
       <ul className="mt-6 space-y-3 md:hidden">
@@ -253,7 +254,7 @@ function CompletedList({ rows, canEmail }: { rows: RunListRow[]; canEmail: boole
           </li>
         ))}
       </ul>
-      <div className="mt-6 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-6 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full min-w-[72rem] text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>

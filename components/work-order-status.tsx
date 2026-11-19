@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { setWorkOrderStatus } from "@/app/actions/work-orders";
+import { statusClass } from "@/components/ui";
 import { WORK_ORDER_STATUSES, formatWorkOrderStatus, type WorkOrderStatus } from "@/lib/work-orders";
 
 export function WorkOrderStatusSelect({
@@ -23,7 +24,7 @@ export function WorkOrderStatusSelect({
       aria-label={`Status for ${number}`}
       defaultValue={status}
       disabled={pending}
-      className="rounded-md border border-line bg-white px-2 py-1 text-sm"
+      className={`rounded-full border border-transparent px-3 py-1 text-xs font-semibold ${statusClass(status)}`}
       onChange={(event) => {
         const data = new FormData();
         data.set("id", id);

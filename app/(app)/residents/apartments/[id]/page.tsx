@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
 import {
   deleteAgent,
   deleteApartment,
@@ -23,6 +22,7 @@ import {
 import { ApartmentDialog } from "@/components/apartment-dialog";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { PriorityBadge } from "@/components/priority-badge";
+import { EmptyState, Panel } from "@/components/ui";
 import { getApartment, listApartmentCases, listApartmentOptions, requireUser, type ApartmentDetail } from "@/lib/data";
 import { formatStatus } from "@/lib/cases";
 import { prisma } from "@/lib/db";
@@ -518,17 +518,8 @@ function GalleryImage({ name, src }: { name: string; src: string }) {
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-line bg-card p-4">
-      <h2 className="font-serif text-2xl text-brand-navy">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
 function Empty({ children }: { children: string }) {
-  return <p className="mt-4 text-muted">{children}</p>;
+  return <EmptyState>{children}</EmptyState>;
 }
 
 function RequestsTab({

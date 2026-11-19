@@ -15,6 +15,7 @@ import {
   CHART_PERIODS,
 } from "@/lib/dashboard";
 import type { DashboardData } from "@/lib/dashboard-data";
+import { EmptyState, StatusBadge } from "@/components/ui";
 import { formatWorkOrderStatus } from "@/lib/work-orders";
 
 const SLICE_COLOURS = ["#000080", "#0066cc", "#10b981", "#1f2937", "#4b5563", "#38bdf8", "#6ee7b7", "#c7d2fe"];
@@ -35,7 +36,7 @@ export function DashboardView({
   const canNotes = canAddBuildingNote(user.role);
   const canNumbers = canManageUsefulNumbers(user.role);
   return (
-    <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       <ActionCard data={data} />
       <CalendarCard data={data} />
       <CasesCard data={data} />
@@ -62,8 +63,8 @@ function Card({
   children: ReactNode;
 }) {
   return (
-    <section aria-labelledby={id} className={`rounded-xl border border-line bg-card p-4 ${className ?? ""}`}>
-      <h2 id={id} className="text-lg font-medium text-brand-navy">
+    <section aria-labelledby={id} className={`rounded-xl border border-line bg-card p-4 md:p-5 ${className ?? ""}`}>
+      <h2 id={id} className="text-lg font-semibold tracking-tight text-brand-navy">
         {title}
       </h2>
       {children}
@@ -104,9 +105,15 @@ function ActionCard({ data }: { data: DashboardData }) {
       <ul className="mt-3 divide-y divide-line">
         {rows.map((row) => (
           <li key={row.label} className="py-2">
-            <Link href={row.href} className="flex items-baseline justify-between gap-3 hover:underline">
+            <Link href={row.href} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-page">
               <span>{row.label}</span>
-              <span className={row.count > 0 ? "font-medium text-danger" : "text-muted"}>{row.count}</span>
+              <span
+                className={`inline-flex min-w-8 justify-center rounded-full px-2 py-0.5 text-sm font-semibold ${
+                  row.count > 0 ? "bg-red-50 text-danger" : "bg-page text-muted"
+                }`}
+              >
+                {row.count}
+              </span>
             </Link>
             {row.count === 0 ? <p className="text-sm text-muted">{row.zero}</p> : null}
           </li>
@@ -158,7 +165,7 @@ function CasesCard({ data }: { data: DashboardData }) {
   const total = data.slices.reduce((sum, slice) => sum + slice.count, 0);
   return (
     <Card title="Cases by type" id="dashboard-cases">
-      <nav aria-label="Case period" className="mt-3 flex flex-wrap gap-1">
+      <nav aria-label="Case period" className="mt-3 flex flex-wrap gap-1 rounded-lg bg-page p-1">
         {CHART_PERIODS.map((months) => {
           const current = months === data.months;
           return (
@@ -166,7 +173,7 @@ function CasesCard({ data }: { data: DashboardData }) {
               key={months}
               href={dashboardHref({ months, note: data.noteQuery })}
               aria-current={current ? "page" : undefined}
-              className={`rounded px-2 py-1 text-sm ${current ? "bg-brand-navy text-white" : "text-ink hover:text-brand-blue"}`}
+              className={`rounded-md px-2.5 py-1 text-sm font-medium ${current ? "bg-brand-navy text-white" : "text-ink hover:text-brand-blue"}`}
             >
               {months === 1 ? "1 month" : `${months} months`}
             </Link>
@@ -260,8 +267,8 @@ function SummaryCard({ data }: { data: DashboardData }) {
       <ul className="mt-3 grid grid-cols-2 gap-3">
         {items.map((item) => (
           <li key={item.label}>
-            <Link href={item.href} className="block rounded-md px-1 py-1 hover:bg-page">
-              <span className="block text-2xl font-medium text-brand-navy">{item.count}</span>
+            <Link href={item.href} className="block rounded-xl bg-page px-3 py-3 hover:ring-2 hover:ring-brand-blue/30">
+              <span className="block text-2xl font-semibold tracking-tight text-brand-navy">{item.count}</span>
               <span className="text-sm text-muted">{item.label}</span>
             </Link>
           </li>
@@ -275,7 +282,7 @@ function WorkOrdersCard({ data }: { data: DashboardData }) {
   return (
     <Card title="Latest work orders" id="dashboard-work-orders">
       {data.workOrders.length === 0 ? (
-        <p className="mt-3 text-muted">No work orders yet.</p>
+        <EmptyState>No work orders yet.</EmptyState>
       ) : (
         <ul className="mt-3 divide-y divide-line text-sm">
           {data.workOrders.map((order) => (
@@ -284,8 +291,9 @@ function WorkOrdersCard({ data }: { data: DashboardData }) {
                 {order.number}
               </Link>
               <p>{order.companyName}</p>
-              <p className="text-muted">
-                {formatWorkOrderStatus(order.status)} · {sydneyDayLabel(order.sentAt)}
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-muted">
+                <StatusBadge status={order.status} label={formatWorkOrderStatus(order.status)} />
+                <span>{sydneyDayLabel(order.sentAt)}</span>
               </p>
             </li>
           ))}
@@ -302,7 +310,7 @@ function UpcomingCard({ data }: { data: DashboardData }) {
   return (
     <Card title="Upcoming maintenance" id="dashboard-upcoming">
       {data.upcomingVisits.length === 0 ? (
-        <p className="mt-3 text-muted">No visits in the next 7 days.</p>
+        <EmptyState>No visits in the next 7 days.</EmptyState>
       ) : (
         <ul className="mt-3 divide-y divide-line text-sm">
           {data.upcomingVisits.map((visit) => (
@@ -353,7 +361,7 @@ function NotesCard({
         </Link>
       ) : null}
       {data.notes.length === 0 ? (
-        <p className="mt-4 text-muted">{data.noteQuery ? "No notes match." : "No notes yet."}</p>
+        <EmptyState>{data.noteQuery ? "No notes match." : "No notes yet."}</EmptyState>
       ) : (
         <ul className="mt-4 divide-y divide-line">
           {data.notes.map((note) => {
@@ -407,7 +415,7 @@ function NumbersCard({
   return (
     <Card title="Useful numbers" id="dashboard-numbers">
       {data.numbers.length === 0 ? (
-        <p className="mt-3 text-muted">No numbers yet.</p>
+        <EmptyState>No numbers yet.</EmptyState>
       ) : (
         <ul className="mt-3 divide-y divide-line">
           {data.numbers.map((entry) => {
@@ -454,7 +462,7 @@ function ActivityCard({ data, className }: { data: DashboardData; className?: st
   return (
     <Card title="Recent activity" id="dashboard-activity" className={className}>
       {data.activity.length === 0 ? (
-        <p className="mt-3 text-muted">No activity yet.</p>
+        <EmptyState>No activity yet.</EmptyState>
       ) : (
         <div className="mt-3 space-y-4">
           {data.activity.map((group) => (
@@ -482,7 +490,7 @@ function ReportsCard({ data }: { data: DashboardData }) {
   return (
     <Card title="Management reports" id="dashboard-reports">
       {data.reports.length === 0 ? (
-        <p className="mt-3 text-muted">No reports yet</p>
+        <EmptyState>No reports yet</EmptyState>
       ) : (
         <ul className="mt-3 divide-y divide-line text-sm">
           {data.reports.map((report) => (

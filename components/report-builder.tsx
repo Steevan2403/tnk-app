@@ -208,7 +208,7 @@ export function ReportBuilder({
         {matching.length === 0 ? (
           <p className="text-muted">No cases match.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-line bg-card">
+          <div className="table-card overflow-x-auto rounded-xl border border-line bg-card">
             <table className="w-full min-w-[52rem] text-left text-sm">
               <thead className="border-b border-line text-muted">
                 <tr>

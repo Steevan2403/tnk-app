@@ -60,7 +60,7 @@ export function CaseForm({
   const back = caseRecord ? `/cases/${caseRecord.number}` : "/cases";
 
   return (
-    <form action={action} className="mt-6 max-w-3xl space-y-8">
+    <form action={action} className="form-card mt-6 max-w-3xl space-y-8">
       {caseRecord ? <input type="hidden" name="number" value={caseRecord.number} /> : null}
       {source ? (
         <>

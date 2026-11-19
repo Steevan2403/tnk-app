@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ApartmentDialog } from "@/components/apartment-dialog";
+import { EmptyState } from "@/components/ui";
 import { SelectField, TextField } from "@/components/field";
 import { listApartments, listResidents, requireUser, type ApartmentRow, type ResidentRow } from "@/lib/data";
 import {
@@ -89,7 +90,7 @@ export default async function ResidentsPage({
           <form
             method="get"
             action="/residents"
-            className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-end"
+            className="filter-card mt-4 grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-end"
           >
             <TextField
               label="Search residents"
@@ -118,7 +119,7 @@ export default async function ResidentsPage({
           ) : null}
           <p className="mt-4 text-sm text-muted">{residents.total === 1 ? "1 resident" : `${residents.total} residents`}</p>
           {residents.rows.length === 0 ? (
-            <p className="mt-4 text-muted">No residents match.</p>
+            <EmptyState>No residents match.</EmptyState>
           ) : (
             <ResidentResults rows={residents.rows} />
           )}
@@ -154,7 +155,7 @@ export default async function ResidentsPage({
             {apartments.length === 1 ? "1 apartment" : `${apartments.length} apartments`}
           </p>
           {apartments.length === 0 ? (
-            <p className="mt-4 text-muted">No apartments yet.</p>
+            <EmptyState>No apartments yet.</EmptyState>
           ) : (
             <ApartmentResults rows={apartments} />
           )}
@@ -189,7 +190,7 @@ function ResidentResults({ rows }: { rows: ResidentRow[] }) {
           </li>
         ))}
       </ul>
-      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-4 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>

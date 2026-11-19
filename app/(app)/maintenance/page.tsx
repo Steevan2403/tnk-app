@@ -93,7 +93,7 @@ export default async function MaintenancePage({
         ))}
       </nav>
 
-      <form method="get" action="/maintenance" className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <form method="get" action="/maintenance" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <input type="hidden" name="tab" value={active.tab} />
         {active.view === "timeline" ? <input type="hidden" name="view" value="timeline" /> : null}
         <TextField label="Search maintenance" name="q" type="search" defaultValue={active.q} placeholder="Subject or description" />
@@ -174,7 +174,7 @@ function EventList({ rows, canManage }: { rows: MaintenanceRow[]; canManage: boo
           </li>
         ))}
       </ul>
-      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-4 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full min-w-[72rem] text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>

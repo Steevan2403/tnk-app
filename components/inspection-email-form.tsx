@@ -8,7 +8,7 @@ export function EmailReportForm({ runId, subject, body }: { runId: string; subje
   const [state, action, pending] = useActionState(emailInspectionReport, {} as ReportEmailState);
 
   return (
-    <form action={action} className="mt-6 max-w-xl space-y-4">
+    <form action={action} className="form-card mt-6 max-w-xl space-y-4">
       <input type="hidden" name="runId" value={runId} />
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">

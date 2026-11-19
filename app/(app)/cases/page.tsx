@@ -8,6 +8,7 @@ import { FilesMark } from "@/components/files-mark";
 import { WorkOrderMark } from "@/components/work-order-mark";
 import { SelectField, TextField } from "@/components/field";
 import { PriorityBadge } from "@/components/priority-badge";
+import { EmptyState, StatusBadge } from "@/components/ui";
 import { parseDateOnly } from "@/lib/contractors";
 import {
   CASE_PRIORITIES,
@@ -140,7 +141,7 @@ export default async function CasesPage({
         </div>
       </div>
 
-      <form method="get" action="/cases" className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <form method="get" action="/cases" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {active.view === "board" ? <input type="hidden" name="view" value="board" /> : null}
         <TextField label="Search cases" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, or description" />
         <SelectField label="Type" name="type" defaultValue={active.typeId}>
@@ -201,7 +202,7 @@ export default async function CasesPage({
 
       {active.view === "board" && board ? (
         board.length === 0 && filtered ? (
-          <p className="mt-4 text-muted">No cases match.</p>
+          <EmptyState>No cases match.</EmptyState>
         ) : (
           <CaseBoard rows={board} returnTo={returnTo} />
         )
@@ -209,7 +210,7 @@ export default async function CasesPage({
 
       {active.view === "list" && listed ? (
         listed.rows.length === 0 ? (
-          <p className="mt-4 text-muted">{filtered ? "No cases match." : "No cases yet."}</p>
+          <EmptyState>{filtered ? "No cases match." : "No cases yet."}</EmptyState>
         ) : (
           <CaseResults rows={listed.rows} filters={active} returnTo={returnTo} canEdit={canEdit} />
         )
@@ -295,14 +296,14 @@ function CaseResults({
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <PriorityBadge priority={row.priority} />
-              <span className="text-sm">{formatStatus(row.status)}</span>
+              <StatusBadge status={row.status} label={formatStatus(row.status)} />
               {row.hasFiles ? <FilesMark /> : null}
               {row.hasWorkOrders ? <WorkOrderMark /> : null}
             </div>
           </li>
         ))}
       </ul>
-      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card md:block">
+      <div className="mt-4 hidden table-card overflow-x-auto rounded-xl border border-line bg-card md:block">
         <table className="w-full min-w-[56rem] text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>
@@ -344,7 +345,9 @@ function CaseResults({
                 <td className="px-4 py-3">
                   <PriorityBadge priority={row.priority} />
                 </td>
-                <td className="px-4 py-3">{formatStatus(row.status)}</td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={row.status} label={formatStatus(row.status)} />
+                </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex items-center gap-2">
                     {row.hasFiles ? <FilesMark /> : null}
@@ -389,7 +392,7 @@ function ViewLink({ href, current, children }: { href: string; current: boolean;
     <Link
       href={href}
       aria-current={current ? "page" : undefined}
-      className={`rounded px-3 py-1 font-medium ${current ? "bg-brand-navy text-white" : "text-ink hover:text-brand-blue"}`}
+      className={`rounded-md px-3 py-1 font-medium ${current ? "bg-brand-navy text-white" : "text-ink hover:text-brand-blue"}`}
     >
       {children}
     </Link>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { selectBuilding } from "@/app/actions/buildings";
+import { EmptyState } from "@/components/ui";
 import { formatAddress } from "@/lib/buildings";
 import { listBuildings, requireUser } from "@/lib/data";
 import { canManageBuildings } from "@/lib/roles";
@@ -23,7 +24,7 @@ export default async function BuildingsPage() {
         ) : null}
       </div>
       {buildings.length === 0 ? (
-        <p className="mt-6 text-muted">No buildings yet.</p>
+        <EmptyState>No buildings yet.</EmptyState>
       ) : (
         <>
           <ul className="mt-6 space-y-3 md:hidden">
@@ -37,7 +38,7 @@ export default async function BuildingsPage() {
               </li>
             ))}
           </ul>
-          <div className="mt-6 hidden overflow-hidden rounded-xl border border-line bg-card md:block">
+          <div className="mt-6 hidden table-card overflow-hidden rounded-xl border border-line bg-card md:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-line text-muted">
                 <tr>
