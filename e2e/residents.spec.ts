@@ -85,6 +85,31 @@ test("admin adds an apartment, resident, vehicle, and document; staff cannot add
   await expect(page.getByText("Expired")).toBeVisible();
   await shot(page, "apartment-documents-desktop.png");
 
+  await page.getByRole("link", { name: "All apartments" }).click();
+  await page.getByRole("button", { name: "New apartment" }).click();
+  const apartmentNumber = page.getByLabel("Apartment number");
+  await apartmentNumber.fill("");
+  await page.getByRole("button", { name: "Save apartment" }).click();
+  await expect(apartmentNumber).toHaveJSProperty("validity.valueMissing", true);
+
+  await apartmentNumber.fill("402");
+  await page.getByLabel("Lot number").fill("");
+  await page.getByRole("button", { name: "Save apartment" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "402" })).toBeVisible();
+  await expect(page.getByText("Lot —", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "All apartments" }).click();
+  await page.getByRole("button", { name: "New apartment" }).click();
+  await page.getByLabel("Apartment number").fill("403");
+  await page.getByRole("button", { name: "Save apartment" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "403" })).toBeVisible();
+  await expect(page.getByText("Lot —", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "All apartments" }).click();
+  await expect(page.getByRole("link", { name: /^402\b/ })).toContainText("Lot —");
+  await expect(page.getByRole("link", { name: /^403\b/ })).toContainText("Lot —");
+
+  await page.getByRole("link", { name: /^401\b/ }).click();
   await page.getByRole("link", { name: "Images", exact: true }).click();
   await page.getByLabel("Images").setInputFiles(imagePath);
   await page.getByRole("button", { name: "Upload images" }).click();

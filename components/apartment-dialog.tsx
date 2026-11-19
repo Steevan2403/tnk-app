@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, type FormEvent } from "react";
 import { saveApartment, type ApartmentFormState } from "@/app/actions/residents";
 import { TextField } from "@/components/field";
+import { apartmentClientErrors, type ApartmentField } from "@/lib/residents";
 
 const buttonClass =
   "rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue disabled:opacity-60";
@@ -10,10 +11,11 @@ const buttonClass =
 export function ApartmentDialog({
   apartment,
 }: {
-  apartment?: { id: string; number: string; lotNumber: string };
+  apartment?: { id: string; number: string; lotNumber: string | null };
 }) {
   const [state, action, pending] = useActionState(saveApartment, {} as ApartmentFormState);
   const [open, setOpen] = useState(false);
+  const [clientErrors, setClientErrors] = useState<Partial<Record<ApartmentField, string>>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -24,11 +26,25 @@ export function ApartmentDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    const data = new FormData(event.currentTarget);
+    const errors = apartmentClientErrors(String(data.get("number") ?? ""), String(data.get("lotNumber") ?? ""));
+    if (errors) {
+      event.preventDefault();
+      setClientErrors(errors);
+      return;
+    }
+    setClientErrors({});
+  }
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setClientErrors({});
+          setOpen(true);
+        }}
         className={
           apartment
             ? "rounded-md border border-brand-blue px-3 py-2 text-sm text-brand-blue hover:bg-brand-blue hover:text-white"
@@ -44,7 +60,7 @@ export function ApartmentDialog({
           aria-labelledby={apartment ? "edit-apartment-title" : "new-apartment-title"}
           className="w-full max-w-md rounded-xl border border-line bg-card p-6"
         >
-          <form action={action} className="space-y-4">
+          <form action={action} className="space-y-4" onSubmit={onSubmit}>
             <h2 id={apartment ? "edit-apartment-title" : "new-apartment-title"} className="font-serif text-2xl">
               {apartment ? "Edit apartment" : "New apartment"}
             </h2>
@@ -58,15 +74,14 @@ export function ApartmentDialog({
               label="Apartment number"
               name="number"
               defaultValue={apartment?.number}
-              error={state.errors?.number}
+              error={clientErrors.number ?? state.errors?.number}
               required
             />
             <TextField
               label="Lot number"
               name="lotNumber"
-              defaultValue={apartment?.lotNumber}
-              error={state.errors?.lotNumber}
-              required
+              defaultValue={apartment?.lotNumber ?? ""}
+              error={clientErrors.lotNumber ?? state.errors?.lotNumber}
             />
             <div className="flex items-center gap-3">
               <button type="submit" disabled={pending} className={buttonClass}>
@@ -74,7 +89,10 @@ export function ApartmentDialog({
               </button>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setClientErrors({});
+                  setOpen(false);
+                }}
                 className="rounded-md border border-brand-blue px-3 py-2 text-sm text-brand-blue hover:bg-brand-blue hover:text-white"
               >
                 Cancel
