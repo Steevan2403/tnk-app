@@ -3,9 +3,11 @@ import { prisma } from "@/lib/db";
 import { contentDisposition, contentTypeFor, readStoredFile } from "@/lib/storage";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ kind: string; id: string }> }) {
-  await requireUser();
+  const user = await requireUser();
   const { kind, id } = await params;
-  const file = await findFile(kind, id);
+  if (!user.selectedBuildingId) return new Response("Not found", { status: 404 });
+
+  const file = await findFile(kind, id, user.selectedBuildingId);
   if (!file) return new Response("Not found", { status: 404 });
 
   const bytes = await readStoredFile(file.storedName);
@@ -24,25 +26,26 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
 async function findFile(
   kind: string,
   id: string,
+  buildingId: string,
 ): Promise<{ name: string; storedName: string; inline: boolean } | null> {
   if (kind === "documents") {
-    const document = await prisma.apartmentDocument.findUnique({
-      where: { id },
+    const document = await prisma.apartmentDocument.findFirst({
+      where: { id, apartment: { buildingId } },
       select: { name: true, storedName: true },
     });
     return document ? { ...document, inline: false } : null;
   }
   if (kind === "images") {
-    const image = await prisma.apartmentImage.findUnique({
-      where: { id },
+    const image = await prisma.apartmentImage.findFirst({
+      where: { id, apartment: { buildingId } },
       select: { name: true, storedName: true },
     });
     return image ? { ...image, inline: true } : null;
   }
   if (kind === "vehicles") {
-    const vehicle = await prisma.vehicle.findUnique({
-      where: { id },
-      select: { photoName: true, photoStoredName: true, registration: true },
+    const vehicle = await prisma.vehicle.findFirst({
+      where: { id, apartment: { buildingId } },
+      select: { photoName: true, photoStoredName: true },
     });
     if (!vehicle?.photoName || !vehicle.photoStoredName) return null;
     return { name: vehicle.photoName, storedName: vehicle.photoStoredName, inline: true };
