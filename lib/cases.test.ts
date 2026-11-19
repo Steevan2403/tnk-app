@@ -3,6 +3,7 @@ import { sanitizeCaseHtml } from "./case-html";
 import {
   FIRST_CASE_NUMBER,
   caseRankPatch,
+  formatArea,
   compareCases,
   nextCaseNumber,
   overdueCaseWhere,
@@ -51,6 +52,14 @@ const valid = {
   includeInReport: "on",
 };
 
+describe("job area labels", () => {
+  it("renames the options and keeps the stored values behind them", () => {
+    expect(formatArea("asset")).toBe("Common asset");
+    expect(formatArea("apartment")).toBe("Private lot");
+    expect(formatArea("none")).toBe("N/A");
+  });
+});
+
 describe("case numbers per building", () => {
   it("starts at 300 and stays independent for each building", () => {
     expect(FIRST_CASE_NUMBER).toBe(300);
@@ -73,6 +82,16 @@ describe("case numbers per building", () => {
 });
 
 describe("due date", () => {
+  it("uses seven days after the start date when the due date is left blank", () => {
+    const blank = parseCaseForm(form({ ...valid, startDate: "2026-11-01", dueDate: "" }), context);
+    expect(blank.ok).toBe(true);
+    if (blank.ok) expect(blank.value.dueDate.toISOString()).toBe("2026-11-08T00:00:00.000Z");
+
+    const monthEnd = parseCaseForm(form({ ...valid, startDate: "2026-11-28", dueDate: "" }), context);
+    expect(monthEnd.ok).toBe(true);
+    if (monthEnd.ok) expect(monthEnd.value.dueDate.toISOString()).toBe("2026-12-05T00:00:00.000Z");
+  });
+
   it("rejects a due date before the start date and allows the same day", () => {
     const early = parseCaseForm(form({ ...valid, startDate: "2026-11-18", dueDate: "2026-11-17" }), context);
     expect(early.ok).toBe(false);

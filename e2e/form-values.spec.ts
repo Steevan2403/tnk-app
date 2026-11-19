@@ -16,7 +16,7 @@ test("new case keeps typed values when the due date is before the start date", a
   await page.getByLabel("Start date").fill("2026-11-18");
   await page.getByLabel("Due date").fill("2026-11-01");
   await page.getByLabel("Subject").fill("Example leaking tap");
-  await page.getByRole("radio", { name: "Apartment", exact: true }).check();
+  await page.getByRole("radio", { name: "Private lot", exact: true }).check();
   const apartment = page.getByRole("combobox", { name: "Apartment" });
   await apartment.selectOption({ index: 1 });
   const apartmentValue = await apartment.inputValue();
@@ -28,8 +28,8 @@ test("new case keeps typed values when the due date is before the start date", a
   await expect(page.getByLabel("Start date")).toHaveValue("18/11/2026");
   await expect(page.getByLabel("Due date")).toHaveValue("01/11/2026");
   await expect(page.getByLabel("Subject")).toHaveValue("Example leaking tap");
-  await expect(page.getByRole("radio", { name: "Apartment", exact: true })).toBeChecked();
-  await expect(page.getByRole("radio", { name: "Not applicable" })).not.toBeChecked();
+  await expect(page.getByRole("radio", { name: "Private lot", exact: true })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "N/A" })).not.toBeChecked();
   await expect(apartment).toHaveValue(apartmentValue);
 
   mkdirSync(artifacts, { recursive: true });
@@ -47,7 +47,7 @@ test("new case keeps the asset job area when no asset is chosen", async ({ page 
   await caseType.selectOption({ label: "Repair & maintenance" });
   const typeValue = await caseType.inputValue();
   await page.getByLabel("Subject").fill("Example plant room check");
-  await page.getByRole("radio", { name: "Asset", exact: true }).check();
+  await page.getByRole("radio", { name: "Common asset", exact: true }).check();
   await expect(page.getByLabel("Asset category")).toBeVisible();
 
   await page.getByRole("button", { name: "Save case" }).click();
@@ -55,8 +55,8 @@ test("new case keeps the asset job area when no asset is chosen", async ({ page 
 
   await expect(caseType).toHaveValue(typeValue);
   await expect(page.getByLabel("Subject")).toHaveValue("Example plant room check");
-  await expect(page.getByRole("radio", { name: "Asset", exact: true })).toBeChecked();
-  await expect(page.getByRole("radio", { name: "Not applicable" })).not.toBeChecked();
+  await expect(page.getByRole("radio", { name: "Common asset", exact: true })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "N/A" })).not.toBeChecked();
   await expect(page.getByLabel("Asset category")).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Fire pump 1" })).not.toBeChecked();
 });

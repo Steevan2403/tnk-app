@@ -221,7 +221,7 @@ export default async function CasePage({
             <p className="mt-3 text-sm text-muted">{formatArea(record.area)}</p>
             {record.area === "asset" ? <AssetLinks record={record} /> : null}
             {record.area === "apartment" ? <ApartmentLink record={record} /> : null}
-            {record.area === "none" ? <p className="mt-3">Not applicable</p> : null}
+            {record.area === "none" ? <p className="mt-3">{formatArea(record.area)}</p> : null}
           </Panel>
           <Panel title="Assigned contractors">
             <Assigned record={record} />

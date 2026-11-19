@@ -105,9 +105,9 @@ export function CaseForm({
             label="Due date"
             name="dueDate"
             type="date"
-            defaultValue={values?.dueDate ?? dates.dueDate}
+            defaultValue={values?.dueDate ?? ""}
             error={state.errors?.dueDate}
-            required
+            hint="Leave this blank and the due date is set to 7 days after the start date."
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

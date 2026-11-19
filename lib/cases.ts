@@ -211,9 +211,9 @@ export function formatStatus(status: string): string {
 }
 
 export function formatArea(area: string): string {
-  if (area === "asset") return "Asset";
-  if (area === "apartment") return "Apartment";
-  return "Not applicable";
+  if (area === "asset") return "Common asset";
+  if (area === "apartment") return "Private lot";
+  return "N/A";
 }
 
 export function fileKindLabel(kind: string): string {
@@ -383,12 +383,12 @@ export function parseCaseForm(
   const startRaw = stringValue(formData, "startDate");
   const dueRaw = stringValue(formData, "dueDate");
   const startDate = startRaw ? parseDateOnly(startRaw) : null;
-  const dueDate = dueRaw ? parseDateOnly(dueRaw) : null;
+  let dueDate = dueRaw ? parseDateOnly(dueRaw) : null;
   if (!startRaw) errors.startDate = "Enter a start date.";
   else if (!startDate) errors.startDate = "Enter a valid start date.";
-  if (!dueRaw) errors.dueDate = "Enter a due date.";
-  else if (!dueDate) errors.dueDate = "Enter a valid due date.";
-  else if (startDate && dueDate.getTime() < startDate.getTime()) errors.dueDate = DUE_BEFORE_START;
+  if (dueRaw && !dueDate) errors.dueDate = "Enter a valid due date.";
+  else if (startDate && dueDate && dueDate.getTime() < startDate.getTime()) errors.dueDate = DUE_BEFORE_START;
+  else if (!dueRaw && startDate) dueDate = addUtcDays(startDate, 7);
 
   if (!isCasePriority(priorityRaw)) errors.priority = "Choose a priority.";
   if (!isCaseStatus(statusRaw)) errors.status = "Choose a status.";
@@ -467,6 +467,12 @@ function uniqueList(formData: FormData, key: string): string[] {
     values.push(text);
   }
   return values;
+}
+
+function addUtcDays(date: Date, days: number): Date {
+  const next = new Date(date.getTime());
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
 }
 
 function stringValue(formData: FormData, key: string): string {

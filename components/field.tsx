@@ -12,6 +12,7 @@ export function TextField({
   label,
   name,
   error,
+  hint,
   defaultValue,
   value,
   onChange,
@@ -20,10 +21,11 @@ export function TextField({
   label: string;
   name: string;
   error?: string;
+  hint?: string;
 } & InputHTMLAttributes<HTMLInputElement>) {
   const id = props.id ?? name;
   const submitted = useSubmittedValues();
-  const describedBy = error ? `${id}-error` : undefined;
+  const describedBy = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
   const raw = value === undefined ? textValue(submitted, name, defaultValue) : value;
   const current = raw == null ? "" : String(raw);
   const { type, ...rest } = props;
@@ -62,6 +64,11 @@ export function TextField({
           {...(value === undefined ? { defaultValue: current } : { value: current })}
         />
       )}
+      {hint ? (
+        <p id={`${id}-hint`} className="mt-1 text-sm text-muted">
+          {hint}
+        </p>
+      ) : null}
       {error ? (
         <p id={`${id}-error`} className="mt-1 text-sm text-danger">
           {error}
