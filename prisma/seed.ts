@@ -1,7 +1,17 @@
 import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
+import { formatPriority } from "../lib/cases";
+import { formatCalendarDate } from "../lib/contractors";
 import { createGeneratedReport } from "../lib/report-data";
+import {
+  COMPANY_SETTINGS_ID,
+  assignedContractorLine,
+  buildingLine,
+  companyNameOf,
+  siteContactValue,
+  workOrderLinks,
+} from "../lib/work-order-terms";
 import { defaultSections, monthPeriod } from "../lib/reports";
 import { occurrencesBetween, scheduleOf, sydneyToday } from "../lib/maintenance";
 import { hashPassword } from "../lib/password";
@@ -21,6 +31,10 @@ const buildings = [
     postcode: "2000",
     photoUrl: null,
     lotCount: 48,
+    strataPlan: "SP 10048",
+    siteContactName: "Alex Example",
+    siteContactMobile: "0400 000 001",
+    siteContactEmail: "site.tower@example.com",
   },
   {
     id: "seed_sample_court",
@@ -31,8 +45,22 @@ const buildings = [
     postcode: "2009",
     photoUrl: null,
     lotCount: 24,
+    strataPlan: "SP 10024",
+    siteContactName: null,
+    siteContactMobile: null,
+    siteContactEmail: null,
   },
 ];
+
+const placeholderTerms = [
+  "1. Do not start the work until this work order has been authorised.",
+  "",
+  "2. Stop and tell the site contact before you repair any damage you find, or before you do work that is not listed here.",
+  "",
+  "3. Follow the laws that apply to the work, and keep current public liability insurance.",
+  "",
+  "4. Send the invoice to accounts@example.com and include this work order number.",
+].join("\n");
 
 const categories = [
   ["seed_cat_electrical", "Electrical"],
@@ -204,6 +232,19 @@ async function main() {
       create: building,
     });
   }
+
+  const companySettings = {
+    companyName: "TNK Property Services Pty Ltd",
+    siteContactName: "Office Example",
+    siteContactMobile: "02 0000 0000",
+    siteContactEmail: "office@example.com",
+    workOrderTerms: placeholderTerms,
+  };
+  await prisma.companySettings.upsert({
+    where: { id: COMPANY_SETTINGS_ID },
+    update: companySettings,
+    create: { id: COMPANY_SETTINGS_ID, ...companySettings },
+  });
 
   for (const [id, name] of categories) {
     await prisma.contractorCategory.upsert({
@@ -1241,29 +1282,38 @@ const exampleWorkOrders = [
 
 async function seedWorkOrders(authorId: string) {
   const building = await prisma.building.findUniqueOrThrow({ where: { id: "seed_example_tower" } });
+  const settings = await prisma.companySettings.findUniqueOrThrow({ where: { id: COMPANY_SETTINGS_ID } });
   const address = formatAddress(building);
   for (const item of exampleWorkOrders) {
+    const job = exampleCases.find((row) => row.id === item.caseId);
+    if (!job) throw new Error(`Missing case for ${item.id}`);
+    const contact = contacts.find((row) => row.id === item.contactId);
+    const assetNames = job.assetIds
+      .map((id) => assets.find((asset) => asset.id === id)?.name)
+      .filter((name): name is string => Boolean(name));
     const sentAt = new Date(item.sentAt);
     const pdfName = workOrderPdfName(item.caseNumber, item.suffix);
     const number = `${item.caseNumber}-${item.suffix}`;
     const previous = await prisma.workOrder.findUnique({ where: { id: item.id }, select: { pdfStoredName: true } });
     const pdf = await buildWorkOrderPdf({
       number,
-      sentAt,
-      buildingName: building.name,
+      companyName: companyNameOf(settings.companyName),
+      buildingLine: buildingLine(building.name, building.strataPlan),
       buildingAddress: address,
-      companyName: item.companyName,
-      contactName: item.contactName,
-      contactEmail: item.contactEmail,
-      caseNumber: item.caseNumber,
-      caseSubject: item.caseSubject,
-      caseType: item.caseType,
+      siteContactName: siteContactValue(building.siteContactName, settings.siteContactName),
+      siteContactMobile: siteContactValue(building.siteContactMobile, settings.siteContactMobile),
+      siteContactEmail: siteContactValue(building.siteContactEmail, settings.siteContactEmail),
+      ...workOrderLinks(item.id),
+      dateRequested: formatCalendarDate(onDay(job.startDate)),
+      dueBy: formatCalendarDate(onDay(job.dueDate)),
+      priority: formatPriority(job.priority),
+      assignedContractor: assignedContractorLine(item.companyName, item.contactName, contact?.phone || contact?.mobile || ""),
+      subject: item.caseSubject,
+      description: item.message,
       jobArea: item.jobArea,
-      instructions: item.message,
-      purchaseOrderNumber: item.purchaseOrderNumber,
-      attendingAt: item.attendingAt ? new Date(item.attendingAt) : null,
-      accessNotes: item.accessNotes,
-      attachmentNames: [],
+      assets: assetNames.join(", "),
+      photos: [],
+      terms: settings.workOrderTerms,
     });
     const pdfStoredName = await saveBytes(pdf, ".pdf");
     const data = {

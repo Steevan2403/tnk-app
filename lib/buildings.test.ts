@@ -32,6 +32,10 @@ describe("parseBuildingForm", () => {
         postcode: "2000",
         photoUrl: "https://images.example/tower.jpg",
         lotCount: 48,
+        strataPlan: null,
+        siteContactName: null,
+        siteContactMobile: null,
+        siteContactEmail: null,
       },
     });
   });
@@ -68,6 +72,33 @@ describe("parseBuildingForm", () => {
       expect(result.errors.photoUrl).toBeTruthy();
       expect(result.errors.lotCount).toBeTruthy();
     }
+  });
+});
+
+describe("building site contact", () => {
+  it("keeps an optional strata plan and site contact", () => {
+    const result = parseBuildingForm(
+      form({
+        ...valid,
+        strataPlan: " SP 10048 ",
+        siteContactName: " Alex Example ",
+        siteContactMobile: "0400 000 001",
+        siteContactEmail: "site.tower@example.com",
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.strataPlan).toBe("SP 10048");
+      expect(result.value.siteContactName).toBe("Alex Example");
+      expect(result.value.siteContactMobile).toBe("0400 000 001");
+      expect(result.value.siteContactEmail).toBe("site.tower@example.com");
+    }
+  });
+
+  it("rejects a site contact email that is not an email", () => {
+    const result = parseBuildingForm(form({ ...valid, siteContactEmail: "not-an-email" }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.siteContactEmail).toBeTruthy();
   });
 });
 

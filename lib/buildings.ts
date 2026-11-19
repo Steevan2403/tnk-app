@@ -8,6 +8,10 @@ export type BuildingInput = {
   postcode: string;
   photoUrl: string | null;
   lotCount: number;
+  strataPlan: string | null;
+  siteContactName: string | null;
+  siteContactMobile: string | null;
+  siteContactEmail: string | null;
 };
 
 export type BuildingRecord = BuildingInput & { id: string };
@@ -28,6 +32,22 @@ export function parseBuildingForm(
   const postcode = stringValue(formData, "postcode");
   const photoRaw = stringValue(formData, "photoUrl");
   const lotRaw = stringValue(formData, "lotCount");
+  const strataPlan = optionalText(stringValue(formData, "strataPlan"), 40, "strataPlan", errors, "Use 40 characters or fewer.");
+  const siteContactName = optionalText(
+    stringValue(formData, "siteContactName"),
+    120,
+    "siteContactName",
+    errors,
+    "Use 120 characters or fewer.",
+  );
+  const siteContactMobile = optionalText(
+    stringValue(formData, "siteContactMobile"),
+    40,
+    "siteContactMobile",
+    errors,
+    "Use 40 characters or fewer.",
+  );
+  const siteContactEmail = optionalEmail(stringValue(formData, "siteContactEmail"), errors);
 
   if (!name) errors.name = "Enter a name.";
   else if (name.length > 120) errors.name = "Use 120 characters or fewer.";
@@ -68,7 +88,19 @@ export function parseBuildingForm(
 
   return {
     ok: true,
-    value: { name, address, suburb, state, postcode, photoUrl, lotCount },
+    value: {
+      name,
+      address,
+      suburb,
+      state,
+      postcode,
+      photoUrl,
+      lotCount,
+      strataPlan,
+      siteContactName,
+      siteContactMobile,
+      siteContactEmail,
+    },
   };
 }
 
@@ -83,4 +115,24 @@ export function formatAddress(building: {
 
 function stringValue(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
+}
+
+function optionalText(
+  value: string,
+  max: number,
+  field: BuildingField,
+  errors: Partial<Record<BuildingField, string>>,
+  message: string,
+): string | null {
+  if (!value) return null;
+  if (value.length > max) errors[field] = message;
+  return value;
+}
+
+function optionalEmail(value: string, errors: Partial<Record<BuildingField, string>>): string | null {
+  if (!value) return null;
+  if (!/^[^\s@]+@[^\s@]+$/.test(value) || value.length > 200) {
+    errors.siteContactEmail = "Enter a valid email.";
+  }
+  return value;
 }

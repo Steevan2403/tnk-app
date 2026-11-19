@@ -53,6 +53,10 @@ const buildingSelect = {
   postcode: true,
   photoUrl: true,
   lotCount: true,
+  strataPlan: true,
+  siteContactName: true,
+  siteContactMobile: true,
+  siteContactEmail: true,
 } as const;
 
 export const requireUser = cache(async (): Promise<CurrentUser> => {
@@ -811,13 +815,25 @@ export async function getWorkOrderCase(buildingId: string, number: number) {
   return prisma.case.findFirst({
     where: { buildingId, number },
     include: {
-      building: { select: { name: true, address: true, suburb: true, state: true, postcode: true } },
+      building: {
+        select: {
+          name: true,
+          address: true,
+          suburb: true,
+          state: true,
+          postcode: true,
+          strataPlan: true,
+          siteContactName: true,
+          siteContactMobile: true,
+          siteContactEmail: true,
+        },
+      },
       type: { select: { name: true } },
       apartment: { select: { number: true } },
       assets: { include: { asset: { select: { name: true } } } },
       companies: { select: { companyId: true } },
       contacts: { select: { contactId: true } },
-      files: { orderBy: { uploadedAt: "asc" }, select: { id: true, name: true, kind: true } },
+      files: { orderBy: { uploadedAt: "asc" }, select: { id: true, name: true, kind: true, storedName: true } },
       workOrders: { select: { suffix: true } },
     },
   });
@@ -831,7 +847,7 @@ export async function listWorkOrderContractors(assignedIds: string[]) {
       id: true,
       name: true,
       status: true,
-      contacts: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true } },
+      contacts: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true, mobile: true } },
     },
   });
 }

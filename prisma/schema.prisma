@@ -69,8 +69,12 @@ model Building {
   suburb     String
   state      String
   postcode   String
-  photoUrl   String?
-  lotCount   Int
+  photoUrl          String?
+  lotCount          Int
+  strataPlan        String?
+  siteContactName   String?
+  siteContactMobile String?
+  siteContactEmail  String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   selectedBy        User[]
@@ -941,6 +945,16 @@ model GeneratedReport {
 
   @@index([buildingId, createdAt])
   @@index([createdById])
+}
+
+// One row for the whole account: company name, fallback site contact, and work order terms.
+model CompanySettings {
+  id                String @id
+  companyName       String @default("TNK Property Services Pty Ltd")
+  siteContactName   String @default("")
+  siteContactMobile String @default("")
+  siteContactEmail  String @default("")
+  workOrderTerms    String @default("")
 }
 
 model InspectionPhoto {
