@@ -16,7 +16,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Search,
   Settings,
   Users,
   Wrench,
@@ -25,6 +24,7 @@ import {
 } from "lucide-react";
 import { signOutAction } from "@/app/actions/auth";
 import { selectBuilding } from "@/app/actions/buildings";
+import { GlobalSearch } from "@/components/global-search";
 import { formatAddress, type BuildingRecord } from "@/lib/buildings";
 import { formatRole } from "@/lib/roles";
 
@@ -143,15 +143,7 @@ export function Shell({
             <Menu className="size-4" aria-hidden="true" />
             Menu
           </button>
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
-            <input
-              type="search"
-              placeholder="Search"
-              aria-label="Search"
-              className="w-full max-w-xl rounded-lg border border-line bg-page py-2 pr-3 pl-9 text-sm outline-none focus:border-brand-blue focus:bg-white focus:ring-2 focus:ring-brand-blue/30"
-            />
-          </div>
+          <GlobalSearch key={`${selected?.id ?? "none"}:${pathname}`} />
           <UserMenu name={user.name} role={user.role} />
         </header>
         <main ref={mainRef} className="flex-1 px-4 py-6 md:min-h-0 md:overflow-y-auto md:px-8 md:py-8">
