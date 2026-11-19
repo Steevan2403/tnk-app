@@ -126,9 +126,10 @@ export default async function WorkOrdersPage({
             {rows.map((row) => (
               <li key={row.id} className="rounded-xl border border-line bg-card p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <Link href={`/cases/${row.caseNumber}`} className="font-medium text-brand-blue hover:underline">
+                  <Link href={`/work-orders/${row.id}`} className="font-medium text-brand-blue hover:underline">
                     {row.number}
                   </Link>
+                  {row.onSiteName ? <p className="text-sm text-brand-green">On site · {row.onSiteName}</p> : null}
                   <RowLinks row={row} />
                 </div>
                 <p className="mt-2">{row.caseSubject}</p>
@@ -169,9 +170,10 @@ export default async function WorkOrdersPage({
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-3">
-                      <Link href={`/cases/${row.caseNumber}`} className="font-medium text-brand-blue hover:underline">
+                      <Link href={`/work-orders/${row.id}`} className="font-medium text-brand-blue hover:underline">
                         {row.number}
                       </Link>
+                      {row.onSiteName ? <p className="text-sm text-brand-green">On site · {row.onSiteName}</p> : null}
                     </td>
                     <td className="px-4 py-3">{row.caseSubject}</td>
                     <td className="px-4 py-3">{row.companyName}</td>

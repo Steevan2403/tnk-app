@@ -19,7 +19,7 @@ function input(overrides: Partial<WorkOrderPdfInput> = {}): WorkOrderPdfInput {
     siteContactMobile: "0400 000 001",
     siteContactEmail: "site.tower@example.com",
     viewUrl: "https://app.example/work-orders/wo-1",
-    checkInUrl: "https://app.example/work-orders/wo-1?checkin=1",
+    checkInUrl: "https://app.example/check-in/seed-check-in-12-a-example",
     dateRequested: "1 Oct 2026",
     dueBy: "8 Oct 2026",
     priority: "High",
@@ -48,7 +48,8 @@ describe("work order PDF", () => {
     expect(loaded.getPageCount()).toBe(1);
     const inflated = inflatePdf(bytes);
     expect(inflated).toContain("https://app.example/work-orders/wo-1");
-    expect(inflated).toContain("checkin=1");
+    expect(inflated).toContain("/check-in/seed-check-in-12-a-example");
+    expect(inflated.includes("checkin=1")).toBe(false);
     expect(inflated).toContain("mailto:site.tower@example.com");
     expect(pdfDraws(bytes, "WORK ORDER #12-A")).toBe(true);
     expect(pdfDraws(bytes, "Date Requested")).toBe(true);

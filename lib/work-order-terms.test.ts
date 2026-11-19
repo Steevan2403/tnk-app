@@ -63,13 +63,13 @@ describe("work order contact details", () => {
     );
   });
 
-  it("links check-in to the work order page", () => {
+  it("links check-in to the private token page", () => {
     const previous = process.env.APP_BASE_URL;
     process.env.APP_BASE_URL = "https://app.example";
     try {
-      const links = workOrderLinks("work-order-1");
+      const links = workOrderLinks("work-order-1", "seed-check-in-300-a-example");
       expect(links.viewUrl).toBe("https://app.example/work-orders/work-order-1");
-      expect(links.checkInUrl).toBe("https://app.example/work-orders/work-order-1?checkin=1");
+      expect(links.checkInUrl).toBe("https://app.example/check-in/seed-check-in-300-a-example");
     } finally {
       if (previous === undefined) delete process.env.APP_BASE_URL;
       else process.env.APP_BASE_URL = previous;

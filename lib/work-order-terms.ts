@@ -41,9 +41,13 @@ export function appBaseUrl(): string {
   return value.replace(/\/+$/, "");
 }
 
-export function workOrderLinks(id: string): { viewUrl: string; checkInUrl: string } {
-  const viewUrl = `${appBaseUrl()}/work-orders/${encodeURIComponent(id)}`;
-  return { viewUrl, checkInUrl: `${viewUrl}?checkin=1` };
+export const PREVIEW_CHECK_IN_TOKEN = "preview";
+
+export function workOrderLinks(id: string, checkInToken: string): { viewUrl: string; checkInUrl: string } {
+  const base = appBaseUrl();
+  const viewUrl = `${base}/work-orders/${encodeURIComponent(id)}`;
+  const checkInUrl = `${base}/check-in/${encodeURIComponent(checkInToken)}`;
+  return { viewUrl, checkInUrl };
 }
 
 // Keep the terms as typed, including numbering and blank lines. A whitespace-only value is empty.

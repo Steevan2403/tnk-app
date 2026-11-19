@@ -7,6 +7,7 @@ import {
   resolveWorkOrderContact,
   suffixFromRank,
   sydneyDateTimeToUtc,
+  workOrderEmailBody,
   type WorkOrderFormContext,
 } from "./work-orders";
 
@@ -88,6 +89,22 @@ describe("work order contacts", () => {
     const parsed = parseWorkOrderForm(data, context);
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.errors.contactId).toBe("Choose a contact of that company with an email.");
+  });
+});
+
+describe("work order email", () => {
+  it("includes the on-site check-in link", () => {
+    const body = workOrderEmailBody({
+      number: "300-A",
+      buildingName: "Example Tower",
+      companyName: "Fictional Fire Services",
+      contactName: "Avery Sample",
+      message: "Example instructions.",
+      pdfName: "work-order-300-A.pdf",
+      checkInUrl: "https://app.example/check-in/seed-check-in-300-a-example",
+    });
+    expect(body).toContain("On-site check-in: https://app.example/check-in/seed-check-in-300-a-example");
+    expect(body).toContain("The work order is attached as work-order-300-A.pdf.");
   });
 });
 

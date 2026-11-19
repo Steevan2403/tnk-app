@@ -3,7 +3,7 @@ import { buildWorkOrderPdf } from "@/lib/work-order-pdf";
 import { requireUser } from "@/lib/data";
 import { canSendWorkOrders } from "@/lib/roles";
 import { contentDisposition } from "@/lib/storage";
-import { workOrderLinks } from "@/lib/work-order-terms";
+import { PREVIEW_CHECK_IN_TOKEN, workOrderLinks } from "@/lib/work-order-terms";
 import { subjectForSuffix, workOrderPdfName } from "@/lib/work-orders";
 
 export async function POST(request: Request) {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const subject = subjectForSuffix(draft.subject, draft.caseNumber, draft.previewSuffix, draft.previewSuffix, draft.caseSubject);
   const photos = await workOrderPhotoBytes(draft.files);
   const bytes = await buildWorkOrderPdf(
-    toPdfInput({ ...draft, subject }, draft.previewSuffix, workOrderLinks("preview"), photos),
+    toPdfInput({ ...draft, subject }, draft.previewSuffix, workOrderLinks("preview", PREVIEW_CHECK_IN_TOKEN), photos),
   );
   const name = workOrderPdfName(draft.caseNumber, draft.previewSuffix);
   return new Response(new Uint8Array(bytes), {

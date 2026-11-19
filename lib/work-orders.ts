@@ -152,6 +152,7 @@ export function workOrderEmailBody(input: {
   contactName: string;
   message: string;
   pdfName: string;
+  checkInUrl: string;
 }): string {
   return [
     `Work order ${input.number} for ${input.buildingName}.`,
@@ -162,6 +163,8 @@ export function workOrderEmailBody(input: {
     input.message.trim() || "No instructions were added.",
     "",
     `The work order is attached as ${input.pdfName}.`,
+    "",
+    `On-site check-in: ${input.checkInUrl}`,
   ].join("\n");
 }
 

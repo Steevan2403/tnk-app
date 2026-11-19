@@ -1284,6 +1284,10 @@ const exampleWorkOrders = [
   },
 ];
 
+function seedCheckInToken(caseNumber: number, suffix: string): string {
+  return `seed-check-in-${caseNumber}-${suffix.toLowerCase()}-example`;
+}
+
 async function seedWorkOrders(authorId: string) {
   const building = await prisma.building.findUniqueOrThrow({ where: { id: "seed_example_tower" } });
   const settings = await prisma.companySettings.findUniqueOrThrow({ where: { id: COMPANY_SETTINGS_ID } });
@@ -1298,6 +1302,8 @@ async function seedWorkOrders(authorId: string) {
     const sentAt = new Date(item.sentAt);
     const pdfName = workOrderPdfName(item.caseNumber, item.suffix);
     const number = `${item.caseNumber}-${item.suffix}`;
+    const checkInToken = seedCheckInToken(item.caseNumber, item.suffix);
+    const links = workOrderLinks(item.id, checkInToken);
     const previous = await prisma.workOrder.findUnique({ where: { id: item.id }, select: { pdfStoredName: true } });
     const pdf = await buildWorkOrderPdf({
       number,
@@ -1307,7 +1313,7 @@ async function seedWorkOrders(authorId: string) {
       siteContactName: siteContactValue(building.siteContactName, settings.siteContactName),
       siteContactMobile: siteContactValue(building.siteContactMobile, settings.siteContactMobile),
       siteContactEmail: siteContactValue(building.siteContactEmail, settings.siteContactEmail),
-      ...workOrderLinks(item.id),
+      ...links,
       dateRequested: formatCalendarDate(onDay(job.startDate)),
       dueBy: formatCalendarDate(onDay(job.dueDate)),
       priority: formatPriority(job.priority),
@@ -1338,6 +1344,7 @@ async function seedWorkOrders(authorId: string) {
       sentById: authorId,
       pdfStoredName,
       pdfName,
+      checkInToken,
     };
     await prisma.workOrder.upsert({ where: { id: item.id }, update: data, create: { id: item.id, ...data } });
     if (previous) await removeUpload(previous.pdfStoredName);
@@ -1364,6 +1371,7 @@ async function seedWorkOrders(authorId: string) {
       contactName: item.contactName,
       message: item.message,
       pdfName,
+      checkInUrl: links.checkInUrl,
     });
     await prisma.outboxMessage.upsert({
       where: { id: messageId },
@@ -1380,6 +1388,41 @@ async function seedWorkOrders(authorId: string) {
     await prisma.outboxAttachment.deleteMany({ where: { messageId } });
     await prisma.outboxAttachment.create({
       data: { messageId, name: pdfName, storedName: pdfStoredName },
+    });
+  }
+
+  const exampleVisits = [
+    {
+      id: "seed_visit_300a",
+      workOrderId: "seed_wo_01a",
+      contractorName: "Avery Sample",
+      checkedInAt: new Date("2026-10-02T02:00:00.000Z"),
+      checkedOutAt: new Date("2026-10-02T03:15:00.000Z"),
+      checkInLatitude: -33.8688,
+      checkInLongitude: 151.2093,
+      checkOutLatitude: null,
+      checkOutLongitude: null,
+      openKey: null,
+    },
+    {
+      id: "seed_visit_307a",
+      workOrderId: "seed_wo_08a",
+      contractorName: "Casey Placeholder",
+      checkedInAt: new Date("2026-11-18T23:30:00.000Z"),
+      checkedOutAt: null,
+      checkInLatitude: null,
+      checkInLongitude: null,
+      checkOutLatitude: null,
+      checkOutLongitude: null,
+      openKey: "seed_wo_08a",
+    },
+  ];
+  for (const visit of exampleVisits) {
+    const { id, ...data } = visit;
+    await prisma.workOrderVisit.upsert({
+      where: { id },
+      update: data,
+      create: { id, ...data },
     });
   }
 }
