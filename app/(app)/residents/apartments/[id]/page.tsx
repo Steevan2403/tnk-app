@@ -27,7 +27,6 @@ import { PriorityBadge } from "@/components/priority-badge";
 import { EmptyState, Panel } from "@/components/ui";
 import { getApartment, listApartmentCases, listApartmentOptions, requireUser, type ApartmentDetail } from "@/lib/data";
 import { formatStatus } from "@/lib/cases";
-import { prisma } from "@/lib/db";
 import { formatKeyType, keyApartmentAccess, sortKeys } from "@/lib/keys";
 import {
   compareLabel,
@@ -54,8 +53,9 @@ const TABS: { id: ApartmentTab; label: string }[] = [
 ];
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params;
-  const apartment = await prisma.apartment.findUnique({ where: { id }, select: { number: true } });
+  const user = await requireUser();
+  if (!user.selectedBuildingId) return { title: "Apartment" };
+  const apartment = await getApartment(user.selectedBuildingId, (await params).id);
   return { title: apartment?.number ?? "Apartment" };
 }
 
