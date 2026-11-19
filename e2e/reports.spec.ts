@@ -22,11 +22,11 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
   await expect(page.getByRole("textbox", { name: "To", exact: true })).toHaveValue("2026-11-30");
   await page.getByLabel("Case type", { exact: true }).selectOption({ label: "Repair & maintenance" });
 
-  await expect(page.getByRole("checkbox", { name: "Include case 8", exact: true })).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: "Include case 12", exact: true })).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: "Include case 15", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("checkbox", { name: "Include case 1", exact: true })).toHaveCount(0);
-  await page.getByRole("checkbox", { name: "Include case 12", exact: true }).uncheck();
+  await expect(page.getByRole("checkbox", { name: "Include case 307", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Include case 311", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Include case 314", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: "Include case 300", exact: true })).toHaveCount(0);
+  await page.getByRole("checkbox", { name: "Include case 311", exact: true }).uncheck();
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("region", { name: "Report builder" }).screenshot({
@@ -38,7 +38,7 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
 
   await page.getByRole("button", { name: "This month", exact: true }).click();
   await page.getByLabel("Case type", { exact: true }).selectOption({ label: "Repair & maintenance" });
-  await page.getByRole("checkbox", { name: "Include case 12", exact: true }).uncheck();
+  await page.getByRole("checkbox", { name: "Include case 311", exact: true }).uncheck();
   await page.getByRole("button", { name: "Generate Excel" }).click();
   await expect(page.getByText("The report is ready.")).toBeVisible();
 
@@ -60,10 +60,10 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
   expect(pdfResponse.headers()["content-type"]).toContain("application/pdf");
   const pdf = await pdfResponse.body();
   expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
-  expect(pdfHas(pdf, "Case #8")).toBe(true);
-  expect(pdfHas(pdf, "Case #11")).toBe(true);
-  expect(pdfHas(pdf, "Case #12")).toBe(false);
-  expect(pdfHas(pdf, "Case #15")).toBe(false);
+  expect(pdfHas(pdf, "Case #307")).toBe(true);
+  expect(pdfHas(pdf, "Case #310")).toBe(true);
+  expect(pdfHas(pdf, "Case #311")).toBe(false);
+  expect(pdfHas(pdf, "Case #314")).toBe(false);
   const pdfPath = path.join(shots, "management-report.pdf");
   writeFileSync(pdfPath, pdf);
   const pdfDownload = page.waitForEvent("download");
@@ -77,9 +77,9 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
   const book = new ExcelJS.Workbook();
   await book.xlsx.load(excel as unknown as Parameters<typeof book.xlsx.load>[0]);
   const numbers = book.getWorksheet("Cases")!.getColumn(1).values.slice(1).map((value) => String(value ?? ""));
-  expect(numbers).toContain("8");
-  expect(numbers).toContain("11");
-  expect(numbers).not.toContain("12");
+  expect(numbers).toContain("307");
+  expect(numbers).toContain("310");
+  expect(numbers).not.toContain("311");
   expect(book.getWorksheet("Maintenance")).toBeTruthy();
   const excelDownload = page.waitForEvent("download");
   await excelLink.click();

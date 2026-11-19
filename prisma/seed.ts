@@ -1,6 +1,7 @@
 import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
+import { FIRST_CASE_NUMBER } from "../lib/cases";
 import { createGeneratedReport } from "../lib/report-data";
 import { defaultSections, monthPeriod } from "../lib/reports";
 import { occurrencesBetween, scheduleOf, sydneyToday } from "../lib/maintenance";
@@ -722,10 +723,14 @@ const caseTypes = [
   ["seed_case_type_complaint", "Complaint"],
 ] as const;
 
+function exampleCaseNumber(sequence: number): number {
+  return FIRST_CASE_NUMBER + sequence - 1;
+}
+
 const exampleCases = [
   {
     id: "seed_case_01",
-    number: 1,
+    number: exampleCaseNumber(1),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: "PO-EX-1001",
     startDate: "2026-10-01",
@@ -745,7 +750,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_02",
-    number: 2,
+    number: exampleCaseNumber(2),
     typeId: "seed_case_type_approval",
     purchaseOrderNumber: null,
     startDate: "2026-11-01",
@@ -765,7 +770,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_03",
-    number: 3,
+    number: exampleCaseNumber(3),
     typeId: "seed_case_type_move_in",
     purchaseOrderNumber: null,
     startDate: "2026-11-10",
@@ -785,7 +790,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_04",
-    number: 4,
+    number: exampleCaseNumber(4),
     typeId: "seed_case_type_pest",
     purchaseOrderNumber: null,
     startDate: "2026-11-05",
@@ -805,7 +810,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_05",
-    number: 5,
+    number: exampleCaseNumber(5),
     typeId: "seed_case_type_cleaning",
     purchaseOrderNumber: "PO-EX-1005",
     startDate: "2026-07-01",
@@ -825,7 +830,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_06",
-    number: 6,
+    number: exampleCaseNumber(6),
     typeId: "seed_case_type_complaint",
     purchaseOrderNumber: null,
     startDate: "2026-09-01",
@@ -845,7 +850,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_07",
-    number: 7,
+    number: exampleCaseNumber(7),
     typeId: "seed_case_type_fire",
     purchaseOrderNumber: "PO-EX-1007",
     startDate: "2026-11-02",
@@ -865,7 +870,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_08",
-    number: 8,
+    number: exampleCaseNumber(8),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: null,
     startDate: "2026-11-12",
@@ -885,7 +890,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_09",
-    number: 9,
+    number: exampleCaseNumber(9),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: null,
     startDate: "2026-11-05",
@@ -905,7 +910,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_10",
-    number: 10,
+    number: exampleCaseNumber(10),
     typeId: "seed_case_type_move_out",
     purchaseOrderNumber: null,
     startDate: "2026-06-01",
@@ -925,7 +930,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_11",
-    number: 11,
+    number: exampleCaseNumber(11),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: null,
     startDate: "2026-11-15",
@@ -945,7 +950,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_12",
-    number: 12,
+    number: exampleCaseNumber(12),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: null,
     startDate: "2026-11-08",
@@ -965,7 +970,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_13",
-    number: 13,
+    number: exampleCaseNumber(13),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: null,
     startDate: "2026-11-11",
@@ -985,7 +990,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_14",
-    number: 14,
+    number: exampleCaseNumber(14),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: "PO-EX-1014",
     startDate: "2026-08-01",
@@ -1005,7 +1010,7 @@ const exampleCases = [
   },
   {
     id: "seed_case_15",
-    number: 15,
+    number: exampleCaseNumber(15),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: null,
     startDate: "2026-11-16",
@@ -1114,7 +1119,7 @@ const exampleWorkOrders = [
   {
     id: "seed_wo_01a",
     caseId: "seed_case_01",
-    caseNumber: 1,
+    caseNumber: exampleCaseNumber(1),
     suffix: "A",
     companyId: "seed_co_fire",
     companyName: "Fictional Fire Services",
@@ -1123,7 +1128,7 @@ const exampleWorkOrders = [
     contactEmail: "avery.sample@example.com",
     status: "new" as const,
     sentAt: "2026-10-02T01:00:00.000Z",
-    subject: "Work order 1-A: Example fire pump drip",
+    subject: `Work order ${exampleCaseNumber(1)}-A: Example fire pump drip`,
     message: "Example drip at the seal. Please inspect before the next run.",
     purchaseOrderNumber: "PO-EX-1001",
     attendingAt: "2026-10-03T00:00:00.000Z",
@@ -1135,7 +1140,7 @@ const exampleWorkOrders = [
   {
     id: "seed_wo_01b",
     caseId: "seed_case_01",
-    caseNumber: 1,
+    caseNumber: exampleCaseNumber(1),
     suffix: "B",
     companyId: "seed_co_fire",
     companyName: "Fictional Fire Services",
@@ -1144,7 +1149,7 @@ const exampleWorkOrders = [
     contactEmail: "avery.sample@example.com",
     status: "accepted" as const,
     sentAt: "2026-10-03T02:00:00.000Z",
-    subject: "Work order 1-B: Example fire pump drip",
+    subject: `Work order ${exampleCaseNumber(1)}-B: Example fire pump drip`,
     message: "Example follow-up after the first look at the pump seal.",
     purchaseOrderNumber: "PO-EX-1001",
     attendingAt: null,
@@ -1156,7 +1161,7 @@ const exampleWorkOrders = [
   {
     id: "seed_wo_08a",
     caseId: "seed_case_08",
-    caseNumber: 8,
+    caseNumber: exampleCaseNumber(8),
     suffix: "A",
     companyId: "seed_co_plumbing",
     companyName: "Sample Plumbing Co",
@@ -1165,7 +1170,7 @@ const exampleWorkOrders = [
     contactEmail: "casey.placeholder@example.com",
     status: "in_progress" as const,
     sentAt: "2026-11-12T03:00:00.000Z",
-    subject: "Work order 8-A: Example hot water leak",
+    subject: `Work order ${exampleCaseNumber(8)}-A: Example hot water leak`,
     message: "Example leak reported under the hot water plant.",
     purchaseOrderNumber: null,
     attendingAt: "2026-11-13T01:00:00.000Z",
@@ -1177,7 +1182,7 @@ const exampleWorkOrders = [
   {
     id: "seed_wo_04a",
     caseId: "seed_case_04",
-    caseNumber: 4,
+    caseNumber: exampleCaseNumber(4),
     suffix: "A",
     companyId: "seed_co_cleaning",
     companyName: "Placeholder Cleaning",
@@ -1186,7 +1191,7 @@ const exampleWorkOrders = [
     contactEmail: "jordan.example@example.com",
     status: "awaiting_contractor" as const,
     sentAt: "2026-11-06T01:00:00.000Z",
-    subject: "Work order 4-A: Example pest treatment for apartment 201",
+    subject: `Work order ${exampleCaseNumber(4)}-A: Example pest treatment for apartment 201`,
     message: "Example pest treatment requested for apartment 201.",
     purchaseOrderNumber: null,
     attendingAt: null,
@@ -1198,7 +1203,7 @@ const exampleWorkOrders = [
   {
     id: "seed_wo_11a",
     caseId: "seed_case_11",
-    caseNumber: 11,
+    caseNumber: exampleCaseNumber(11),
     suffix: "A",
     companyId: "seed_co_electrical",
     companyName: "Example Electrical Pty Ltd",
@@ -1207,7 +1212,7 @@ const exampleWorkOrders = [
     contactEmail: "pat.example@example.com",
     status: "completed" as const,
     sentAt: "2026-11-15T04:00:00.000Z",
-    subject: "Work order 11-A: Example switchboard check",
+    subject: `Work order ${exampleCaseNumber(11)}-A: Example switchboard check`,
     message: "Example check of the main switchboard after a flicker.",
     purchaseOrderNumber: null,
     attendingAt: null,
@@ -1219,7 +1224,7 @@ const exampleWorkOrders = [
   {
     id: "seed_wo_14a",
     caseId: "seed_case_14",
-    caseNumber: 14,
+    caseNumber: exampleCaseNumber(14),
     suffix: "A",
     companyId: "seed_co_electrical",
     companyName: "Example Electrical Pty Ltd",
@@ -1228,7 +1233,7 @@ const exampleWorkOrders = [
     contactEmail: "sam.sample@example.com",
     status: "cancelled" as const,
     sentAt: "2026-08-02T01:00:00.000Z",
-    subject: "Work order 14-A: Example basement lamp replacement",
+    subject: `Work order ${exampleCaseNumber(14)}-A: Example basement lamp replacement`,
     message: "Example lamp replacement on basement B1.",
     purchaseOrderNumber: "PO-EX-1014",
     attendingAt: null,
@@ -1739,7 +1744,7 @@ async function seedInspections(adminId: string, staffId: string) {
 
   const caseData = {
     buildingId: "seed_example_tower",
-    number: 16,
+    number: exampleCaseNumber(16),
     typeId: "seed_case_type_repair",
     purchaseOrderNumber: null,
     startDate: onDay("2026-10-20"),

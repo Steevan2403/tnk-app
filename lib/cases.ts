@@ -4,6 +4,8 @@ export { formatCalendarDate, formatDateTime, formatIsoDate } from "./contractors
 
 export const PAGE_SIZE = 50;
 
+export const FIRST_CASE_NUMBER = 300;
+
 export const CASE_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
 
 export const CASE_STATUSES = [
@@ -235,7 +237,7 @@ export function nextCaseNumber(usedNumbers: number[]): number {
   for (const number of usedNumbers) {
     if (Number.isInteger(number) && number > highest) highest = number;
   }
-  return highest + 1;
+  return Math.max(highest + 1, FIRST_CASE_NUMBER);
 }
 
 export function contactCompanyError(
