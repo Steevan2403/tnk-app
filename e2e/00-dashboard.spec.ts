@@ -21,6 +21,26 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("link", { name: "Expired insurance 1", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Failed inspection items 2", exact: true })).toBeVisible();
 
+  const actionItems = page.getByRole("region", { name: "Items needing action" }).getByRole("listitem");
+  await expect(actionItems).toHaveCount(5);
+  const actionLabels = ["Overdue cases", "Overdue maintenance", "Expired warranties", "Expired insurance", "Failed inspection items"];
+  for (const [index, label] of actionLabels.entries()) {
+    await expect(actionItems.nth(index)).toContainText(label);
+  }
+  await expect(actionItems.filter({ hasText: "Expired insurance" })).toContainText("Contractor insurance past its end date.");
+  const actionCounts = await actionItems.evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute("data-action-count"))));
+  let seenZero = false;
+  for (const count of actionCounts) {
+    expect(Number.isInteger(count)).toBe(true);
+    if (count === 0) seenZero = true;
+    else expect(seenZero).toBe(false);
+  }
+  for (const item of await actionItems.all()) {
+    const count = Number(await item.getAttribute("data-action-count"));
+    if (count === 0) await expect(item).toHaveClass(/action-quiet/);
+    else await expect(item).not.toHaveClass(/action-quiet/);
+  }
+
   await expect(page.getByRole("link", { name: "15 Residents", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "12 Apartments", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "10 Assets", exact: true })).toBeVisible();

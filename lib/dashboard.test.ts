@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   actionCounts,
+  sortActionRows,
   canAddBuildingNote,
   canDeleteBuildingNote,
   canEditBuildingNote,
@@ -75,6 +76,24 @@ describe("action counts", () => {
       expiredInsurance: 0,
       failedInspections: 0,
     });
+  });
+
+  it("lifts rows with a count above zero and keeps the others in place", () => {
+    expect(
+      sortActionRows([
+        { label: "Overdue cases", count: 0 },
+        { label: "Overdue maintenance", count: 3 },
+        { label: "Expired warranties", count: 0 },
+        { label: "Expired insurance", count: 1 },
+        { label: "Failed inspection items", count: 2 },
+      ]).map((row) => row.label),
+    ).toEqual([
+      "Overdue maintenance",
+      "Expired insurance",
+      "Failed inspection items",
+      "Overdue cases",
+      "Expired warranties",
+    ]);
   });
 
   it("keeps a failed item on the first day of the 90-day window", () => {

@@ -99,6 +99,13 @@ export function failedItemsWithoutCase<T extends FailedInspectionItem>(items: T[
   });
 }
 
+export function sortActionRows<T extends { count: number }>(rows: readonly T[]): T[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => Number(right.row.count > 0) - Number(left.row.count > 0) || left.index - right.index)
+    .map((entry) => entry.row);
+}
+
 export function actionCounts(input: ActionCountInput): ActionCounts {
   const today = input.today ?? new Date();
   return {
