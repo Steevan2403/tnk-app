@@ -1,7 +1,7 @@
 import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
-import { FIRST_CASE_NUMBER, formatPriority } from "../lib/cases";
+import { FIRST_CASE_NUMBER, caseRankPatch, formatPriority } from "../lib/cases";
 import { formatCalendarDate } from "../lib/contractors";
 import { createGeneratedReport } from "../lib/report-data";
 import {
@@ -1147,6 +1147,7 @@ async function seedCases(authorId: string) {
       dueDate: onDay(item.dueDate),
       priority: item.priority,
       status: item.status,
+      ...caseRankPatch(item),
       completedAt: item.completedAt ? new Date(item.completedAt) : null,
       subject: item.subject,
       descriptionHtml: item.descriptionHtml,
@@ -1918,6 +1919,7 @@ async function seedInspections(adminId: string, staffId: string) {
     apartmentId: null,
     createdById: adminId,
     inspectionItemId: "seed_insp_done_floor",
+    ...caseRankPatch({ priority: "low", status: "new" }),
   };
   await prisma.case.upsert({
     where: { id: "seed_case_16" },

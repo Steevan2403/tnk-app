@@ -317,6 +317,16 @@ export function commentAddedActivity(): CaseActivityEntry {
   return { kind: "comment_added", summary: "Added a comment." };
 }
 
+export function caseRankPatch(input: { priority?: string | null; status?: string | null }): {
+  priorityRank?: number;
+  statusRank?: number;
+} {
+  const patch: { priorityRank?: number; statusRank?: number } = {};
+  if (input.priority && isCasePriority(input.priority)) patch.priorityRank = PRIORITY_RANK[input.priority];
+  if (input.status && isCaseStatus(input.status)) patch.statusRank = STATUS_RANK[input.status];
+  return patch;
+}
+
 export function compareCases(a: CaseSortable, b: CaseSortable, sort: CaseSort, dir: "asc" | "desc"): number {
   let result = 0;
   if (sort === "number") result = a.number - b.number;

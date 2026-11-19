@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 import { sanitizeCaseHtml } from "./case-html";
 import {
   FIRST_CASE_NUMBER,
+  caseRankPatch,
+  compareCases,
   nextCaseNumber,
   overdueCaseWhere,
   overdueCases,
   parseCaseForm,
   statusChange,
   type CaseFormContext,
+  type CasePriority,
+  type CaseStatus,
 } from "./cases";
 
 function form(fields: Record<string, string | string[]>): FormData {
@@ -184,5 +188,35 @@ describe("status change activity", () => {
     const same = statusChange({ from: "new", to: "new", completedAt: null, now });
     expect(same?.activity).toBeNull();
     expect(statusChange({ from: "new", to: "paused", completedAt: null, now })).toBeNull();
+  });
+});
+
+describe("case list order", () => {
+  const row = (priority: CasePriority, status: CaseStatus, number: number) => ({
+    number,
+    startDate: new Date("2026-11-01T00:00:00.000Z"),
+    subject: "Example",
+    typeName: "Repair",
+    priority,
+    status,
+  });
+
+  it("ranks priority and status the same way the list comparison does", () => {
+    const priorities: CasePriority[] = ["low", "urgent", "medium", "high"];
+    const byRank = [...priorities].sort(
+      (a, b) => (caseRankPatch({ priority: a }).priorityRank ?? 0) - (caseRankPatch({ priority: b }).priorityRank ?? 0),
+    );
+    const byCompare = [...priorities].sort((a, b) => compareCases(row(a, "new", 1), row(b, "new", 1), "priority", "asc"));
+    expect(byRank).toEqual(byCompare);
+
+    const statuses: CaseStatus[] = ["closed", "new", "completed", "awaiting_quote", "in_progress"];
+    const statusRank = [...statuses].sort(
+      (a, b) => (caseRankPatch({ status: a }).statusRank ?? 0) - (caseRankPatch({ status: b }).statusRank ?? 0),
+    );
+    const statusCompare = [...statuses].sort((a, b) =>
+      compareCases(row("low", a, 1), row("low", b, 1), "status", "asc"),
+    );
+    expect(statusRank).toEqual(statusCompare);
+    expect(caseRankPatch({ priority: "nope", status: "paused" })).toEqual({});
   });
 });

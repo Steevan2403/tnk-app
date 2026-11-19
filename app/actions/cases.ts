@@ -7,6 +7,7 @@ import { sanitizeCaseHtml } from "@/lib/case-html";
 import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import {
   caseCreatedActivity,
+  caseRankPatch,
   changedFieldLabels,
   type CaseActivityEntry,
   commentAddedActivity,
@@ -155,6 +156,7 @@ async function saveCaseBody(_prev: CaseFormState, formData: FormData): Promise<C
             ...caseData(parsed.value, descriptionHtml),
             status: change.status,
             completedAt: change.completedAt,
+            ...caseRankPatch({ status: change.status }),
           },
         });
         await tx.caseAsset.deleteMany({ where: { caseId: existing.id } });
@@ -300,6 +302,7 @@ export async function setCaseStatus(formData: FormData) {
         data: {
           status: change.status,
           completedAt: change.completedAt,
+          ...caseRankPatch({ status: change.status }),
           activities: {
             create: { actorId: user.id, kind: activity.kind, summary: activity.summary },
           },
@@ -350,6 +353,7 @@ export async function setCasesStatus(formData: FormData) {
         data: {
           status: change.status,
           completedAt: change.completedAt,
+          ...caseRankPatch({ status: change.status }),
           activities: {
             create: { actorId: user.id, kind: change.activity.kind, summary: change.activity.summary },
           },
@@ -573,6 +577,7 @@ function caseData(value: CaseInput, descriptionHtml: string) {
     dueDate: value.dueDate,
     priority: value.priority,
     status: value.status,
+    ...caseRankPatch(value),
     subject: value.subject,
     descriptionHtml,
     internalNotes: value.internalNotes,

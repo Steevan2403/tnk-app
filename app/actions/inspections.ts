@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sanitizeCaseHtml } from "@/lib/case-html";
-import { caseCreatedActivity, defaultCaseDates, fileAddedActivity, nextCaseNumber } from "@/lib/cases";
+import { caseCreatedActivity, caseRankPatch, defaultCaseDates, fileAddedActivity, nextCaseNumber } from "@/lib/cases";
 import { parseDateOnly } from "@/lib/contractors";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
@@ -524,6 +524,7 @@ async function createCaseForItem(
               dueDate,
               priority: "low",
               status: "new",
+              ...caseRankPatch({ priority: "low", status: "new" }),
               subject: fields.subject,
               descriptionHtml,
               internalNotes: `Created from inspection ${run.name}, ${item.areaName}, ${item.name}.`,

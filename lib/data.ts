@@ -19,13 +19,13 @@ import {
 import { PAGE_SIZE as ASSET_PAGE_SIZE, expiredWarrantyWhere, latestWarrantyExpiry } from "@/lib/assets";
 import {
   PAGE_SIZE as CASE_PAGE_SIZE,
-  compareCases,
   isCasePriority,
   isCaseStatus,
   overdueCaseWhere,
   parseCaseNumber,
   type CaseListQuery,
   type CasePriority,
+  type CaseSort,
   type CaseStatus,
 } from "@/lib/cases";
 import {
@@ -592,15 +592,28 @@ function mapCaseRow(
 }
 
 export async function listCases(query: CaseListQuery): Promise<{ total: number; rows: CaseRow[] }> {
-  const cases = await prisma.case.findMany({
-    where: caseWhere(query),
-    select: caseListSelect(query.userId),
-  });
-  const rows = cases
-    .map(mapCaseRow)
-    .sort((a, b) => compareCases(a, b, query.sort, query.dir));
-  const start = (query.page - 1) * CASE_PAGE_SIZE;
-  return { total: rows.length, rows: rows.slice(start, start + CASE_PAGE_SIZE) };
+  const where = caseWhere(query);
+  const [total, records] = await Promise.all([
+    prisma.case.count({ where }),
+    prisma.case.findMany({
+      where,
+      select: caseListSelect(query.userId),
+      orderBy: caseOrderBy(query.sort, query.dir),
+      skip: (query.page - 1) * CASE_PAGE_SIZE,
+      take: CASE_PAGE_SIZE,
+    }),
+  ]);
+  return { total, rows: records.map(mapCaseRow) };
+}
+
+function caseOrderBy(sort: CaseSort, dir: "asc" | "desc"): Prisma.CaseOrderByWithRelationInput[] {
+  const number = { number: dir };
+  if (sort === "start") return [{ startDate: dir }, number];
+  if (sort === "subject") return [{ subject: dir }, number];
+  if (sort === "type") return [{ type: { name: dir } }, number];
+  if (sort === "priority") return [{ priorityRank: dir }, number];
+  if (sort === "status") return [{ statusRank: dir }, number];
+  return [number];
 }
 
 export async function listCaseBoard(query: Omit<CaseListQuery, "sort" | "dir" | "page">): Promise<CaseRow[]> {

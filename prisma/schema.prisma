@@ -507,7 +507,9 @@ model Case {
   startDate           DateTime
   dueDate             DateTime
   priority            CasePriority   @default(low)
+  priorityRank        Int            @default(3)
   status              CaseStatus     @default(new)
+  statusRank          Int            @default(0)
   completedAt         DateTime?
   subject             String
   descriptionHtml     String         @default("")
