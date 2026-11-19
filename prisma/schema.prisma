@@ -37,6 +37,15 @@ enum Occupancy {
   investment
 }
 
+enum KeyType {
+  door
+  mailbox
+  garage_remote
+  fob
+  swipe_card
+  other
+}
+
 model User {
   id                 String           @id @default(cuid())
   email              String           @unique
@@ -197,7 +206,7 @@ model ContractorInsurance {
   @@index([expiresOn])
 }
 
-// Apartments and the people, vehicles, and files on them belong to one building.
+// Apartments and the people, vehicles, keys, and files on them belong to one building.
 model Apartment {
   id         String              @id @default(cuid())
   buildingId String
@@ -207,6 +216,7 @@ model Apartment {
   occupancy  Occupancy           @default(owner_occupied)
   residents  Resident[]
   vehicles   Vehicle[]
+  keys       ApartmentKey[]
   documents  ApartmentDocument[]
   images     ApartmentImage[]
   notes      ApartmentNote[]
@@ -260,6 +270,21 @@ model Vehicle {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  @@index([apartmentId])
+}
+
+model ApartmentKey {
+  id          String    @id @default(cuid())
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  number      String
+  type        KeyType
+  location    String?
+  comment     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([apartmentId, number])
   @@index([apartmentId])
 }
 

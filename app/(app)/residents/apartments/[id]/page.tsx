@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { deleteKey } from "@/app/actions/keys";
 import {
   deleteAgent,
   deleteApartment,
@@ -21,11 +22,13 @@ import {
 } from "@/components/apartment-forms";
 import { ApartmentDialog } from "@/components/apartment-dialog";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { KeyDialog } from "@/components/key-dialog";
 import { PriorityBadge } from "@/components/priority-badge";
 import { EmptyState, Panel } from "@/components/ui";
 import { getApartment, listApartmentCases, listApartmentOptions, requireUser, type ApartmentDetail } from "@/lib/data";
 import { formatStatus } from "@/lib/cases";
 import { prisma } from "@/lib/db";
+import { formatKeyType, keyApartmentAccess, sortKeys } from "@/lib/keys";
 import {
   compareLabel,
   formatCalendarDate,
@@ -44,6 +47,7 @@ import { canManageResidents } from "@/lib/roles";
 const TABS: { id: ApartmentTab; label: string }[] = [
   { id: "residents", label: "Residents" },
   { id: "vehicles", label: "Vehicles" },
+  { id: "keys", label: "Keys" },
   { id: "documents", label: "Documents" },
   { id: "images", label: "Images" },
   { id: "requests", label: "Requests" },
@@ -72,6 +76,15 @@ export default async function ApartmentPage({
     listApartmentOptions(user.selectedBuildingId),
   ]);
   if (!apartment) notFound();
+  const keyAccess = keyApartmentAccess(
+    {
+      role: user.role,
+      selectedBuildingId: user.selectedBuildingId,
+      memberBuildingIds: user.buildingIds,
+    },
+    { id: apartment.id, buildingId: apartment.buildingId },
+  );
+  if (!keyAccess.ok) notFound();
 
   const canManage = canManageResidents(user.role);
   const tab = parseApartmentTab(first(query.tab));
@@ -84,6 +97,9 @@ export default async function ApartmentPage({
   const editOwner = first(query.editOwner);
   const editAgent = first(query.editAgent) === "1";
   const editingVehicle = apartment.vehicles.find((vehicle) => vehicle.id === editVehicle) ?? null;
+  const keyQuery = first(query.key);
+  const addingKey = keyQuery === "new";
+  const editingKey = apartment.keys.find((key) => key.id === keyQuery) ?? null;
   const editingOwner = apartment.owners.find((owner) => owner.id === editOwner) ?? null;
   const nextOccupancy = apartment.occupancy === "investment" ? "owner_occupied" : "investment";
 
@@ -123,7 +139,7 @@ export default async function ApartmentPage({
                 <input type="hidden" name="apartmentId" value={apartment.id} />
                 <ConfirmSubmit
                   label="Delete apartment"
-                  message="Delete this apartment, including its residents, vehicles, documents, and images?"
+                  message="Delete this apartment, including its residents, vehicles, keys, documents, and images?"
                   className="text-sm text-danger hover:underline"
                 />
               </form>
@@ -172,6 +188,9 @@ export default async function ApartmentPage({
           ) : null}
           {tab === "vehicles" ? (
             <VehicleTab apartment={apartment} canManage={canManage} editing={editingVehicle} />
+          ) : null}
+          {tab === "keys" ? (
+            <KeysTab apartment={apartment} canManage={canManage} adding={addingKey} editing={editingKey} />
           ) : null}
           {tab === "documents" ? <DocumentTab apartment={apartment} canManage={canManage} /> : null}
           {tab === "images" ? <ImageTab apartment={apartment} canManage={canManage} /> : null}
@@ -352,6 +371,76 @@ function VehicleTab({
         ))}
       </ul>
       {canManage && !editing ? <VehicleForm apartmentId={apartment.id} /> : null}
+    </div>
+  );
+}
+
+function KeysTab({
+  apartment,
+  canManage,
+  adding,
+  editing,
+}: {
+  apartment: ApartmentDetail;
+  canManage: boolean;
+  adding: boolean;
+  editing: ApartmentDetail["keys"][number] | null;
+}) {
+  const keys = sortKeys(apartment.keys);
+  return (
+    <div className="mt-4">
+      {canManage ? (
+        <Link href={keyHref(apartment.id, "new")} className="text-sm font-medium text-brand-blue hover:underline">
+          Add key
+        </Link>
+      ) : null}
+      {keys.length === 0 ? <Empty>No keys yet.</Empty> : null}
+      <ul aria-label="Keys" className="mt-2 divide-y divide-line">
+        {keys.map((key) => (
+          <li key={key.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
+            <div>
+              <p className="font-medium">{key.number}</p>
+              <p className="mt-1 text-sm text-muted">{formatKeyType(key.type)}</p>
+              <p className="mt-1 text-sm">{key.location?.trim() ? key.location : "No location recorded"}</p>
+              {key.comment ? <p className="mt-1 whitespace-pre-wrap text-sm">{key.comment}</p> : null}
+            </div>
+            {canManage ? (
+              <div className="flex gap-3">
+                <Link
+                  href={keyHref(apartment.id, key.id)}
+                  aria-label={`Edit key ${key.number}`}
+                  className="text-sm text-brand-blue hover:underline"
+                >
+                  Edit
+                </Link>
+                <form action={deleteKey}>
+                  <input type="hidden" name="apartmentId" value={apartment.id} />
+                  <input type="hidden" name="keyId" value={key.id} />
+                  <ConfirmSubmit
+                    label="Remove"
+                    ariaLabel={`Remove key ${key.number}`}
+                    message={`Remove key ${key.number}?`}
+                    className="text-sm text-danger hover:underline"
+                  />
+                </form>
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {canManage && adding ? <KeyDialog apartmentId={apartment.id} /> : null}
+      {canManage && editing ? (
+        <KeyDialog
+          apartmentId={apartment.id}
+          keyRecord={{
+            id: editing.id,
+            number: editing.number,
+            type: editing.type,
+            location: editing.location,
+            comment: editing.comment,
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -551,6 +640,10 @@ function RequestsTab({
 function tabHref(id: string, tab: ApartmentTab): string {
   if (tab === "residents") return `/residents/apartments/${id}`;
   return `/residents/apartments/${id}?tab=${tab}`;
+}
+
+function keyHref(apartmentId: string, key: string): string {
+  return `/residents/apartments/${apartmentId}?tab=keys&key=${key}`;
 }
 
 function first(value: string | string[] | undefined): string {

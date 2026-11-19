@@ -489,6 +489,29 @@ async function seedApartments(authorId: string) {
     await prisma.vehicle.upsert({ where: { id: vehicle.id }, update: vehicle, create: vehicle });
   }
 
+  const keys = [
+    {
+      id: "seed_key_101_door",
+      apartmentId: "seed_apt_101",
+      number: "101-D",
+      type: "door" as const,
+      location: "Key cabinet",
+      comment: "Example front door key for apartment 101.",
+    },
+    {
+      id: "seed_key_101_mail",
+      apartmentId: "seed_apt_101",
+      number: "101-M",
+      type: "mailbox" as const,
+      location: "Mail room",
+      comment: "Example mailbox key for apartment 101.",
+    },
+  ];
+
+  for (const key of keys) {
+    await prisma.apartmentKey.upsert({ where: { id: key.id }, update: key, create: key });
+  }
+
   const owner = {
     id: "seed_owner_104",
     apartmentId: "seed_apt_104",

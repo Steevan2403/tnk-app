@@ -43,6 +43,7 @@ export type CurrentUser = {
   email: string;
   role: string;
   selectedBuildingId: string | null;
+  buildingIds: string[];
 };
 
 const buildingSelect = {
@@ -91,6 +92,7 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
       user.selectedBuildingId,
       user.memberships.map((membership) => membership.buildingId),
     ),
+    buildingIds: user.memberships.map((membership) => membership.buildingId),
   };
 });
 
@@ -390,6 +392,7 @@ export const listApartmentOptions = cache(async (buildingId: string) => {
 const apartmentDetailInclude = {
   residents: { orderBy: [{ lastName: "asc" as const }, { firstName: "asc" as const }] },
   vehicles: { orderBy: { registration: "asc" as const } },
+  keys: { orderBy: { number: "asc" as const } },
   documents: { orderBy: { uploadedAt: "desc" as const } },
   images: { orderBy: { uploadedAt: "desc" as const } },
   notes: {
