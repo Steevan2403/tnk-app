@@ -35,7 +35,10 @@ test("apartment and case photos show a lazy thumbnail that opens full size", asy
   await expectImage(page, apartmentThumb);
 
   await page.goto("/cases/300");
-  const photos = page.locator("section").filter({ has: page.getByRole("heading", { name: "Photos" }) });
+  const photos = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { level: 2, name: "Photos" }) })
+    .last();
   await photos.locator('input[type="file"]').setInputFiles(photoPath);
   await photos.getByRole("button", { name: "Upload photo" }).click();
   const caseThumb = photos.getByRole("img", { name: "example-thumb.png" });
