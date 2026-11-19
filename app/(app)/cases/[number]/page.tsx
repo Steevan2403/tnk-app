@@ -6,12 +6,14 @@ import { deleteCase, deleteCaseFile, setCaseStatus, toggleCaseStar } from "@/app
 import { CaseFileForm, CommentForm } from "@/components/case-record-forms";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SelectField } from "@/components/field";
+import { MoreActions } from "@/components/more-actions";
 import { PriorityBadge } from "@/components/priority-badge";
 import { EmptyState, Panel, StatusBadge } from "@/components/ui";
 import { sanitizeCaseHtml } from "@/lib/case-html";
 import {
   CASE_FILE_KINDS,
   CASE_STATUSES,
+  caseStatusSurface,
   fileKindLabel,
   formatArea,
   formatCalendarDate,
@@ -64,6 +66,7 @@ export default async function CasePage({
   ]);
   const canEdit = canEditCases(user.role);
   const canDelete = canDeleteCases(user.role);
+  const statusSurface = caseStatusSurface(canEdit);
   const replyTo = first(query.reply);
   const mailNotice = omittedAttachmentNotice(first(query.sent), many(query.omitted));
   const overdue = isCaseOverdue(record);
@@ -92,7 +95,11 @@ export default async function CasePage({
           <h1 className="font-serif text-3xl">{record.subject}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-muted">
             <span>Case #{record.number}</span>
-            <StatusBadge status={record.status} label={formatStatus(record.status)} />
+            {statusSurface === "badge" ? (
+              <span data-case-status="badge">
+                <StatusBadge status={record.status} label={formatStatus(record.status)} />
+              </span>
+            ) : null}
             <PriorityBadge priority={record.priority} />
           </p>
           {record.maintenanceEvent && record.occurrenceOn ? (
@@ -152,14 +159,17 @@ export default async function CasePage({
             </Link>
           ) : null}
           {canDelete ? (
-            <form action={deleteCase}>
-              <input type="hidden" name="number" value={record.number} />
-              <ConfirmSubmit
-                label="Delete case"
-                message="Delete this case, including its files, comments, and activity?"
-                className="text-sm text-danger hover:underline"
-              />
-            </form>
+            <MoreActions>
+              <form action={deleteCase}>
+                <input type="hidden" name="number" value={record.number} />
+                <ConfirmSubmit
+                  role="menuitem"
+                  label="Delete case"
+                  message="Delete this case, including its files, comments, and activity?"
+                  className="block w-full rounded-md px-3 py-2 text-left text-sm text-danger hover:bg-red-50"
+                />
+              </form>
+            </MoreActions>
           ) : null}
         </div>
       </div>
@@ -170,8 +180,8 @@ export default async function CasePage({
         </p>
       ) : null}
 
-      {canEdit ? (
-        <form action={setCaseStatus} className="mt-4 flex flex-wrap items-end gap-3">
+      {statusSurface === "dropdown" ? (
+        <form action={setCaseStatus} data-case-status="dropdown" className="mt-4 flex flex-wrap items-end gap-3">
           <input type="hidden" name="number" value={record.number} />
           <input type="hidden" name="returnTo" value={`/cases/${record.number}`} />
           <SelectField label="Status" name="status" defaultValue={record.status}>
@@ -201,9 +211,6 @@ export default async function CasePage({
             </Field>
             <Field label="Priority">
               <PriorityBadge priority={record.priority} />
-            </Field>
-            <Field label="Status">
-              <StatusBadge status={record.status} label={formatStatus(record.status)} />
             </Field>
             <Field label="Management report" value={record.includeInReport ? "Included" : "Not included"} />
             <Field label="Completed" value={record.completedAt ? formatDateTime(record.completedAt) : "—"} />

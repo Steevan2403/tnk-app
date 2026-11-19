@@ -3,6 +3,7 @@ import { sanitizeCaseHtml } from "./case-html";
 import {
   FIRST_CASE_NUMBER,
   caseRankPatch,
+  caseStatusSurface,
   formatArea,
   compareCases,
   nextCaseNumber,
@@ -51,6 +52,13 @@ const valid = {
   internalNotes: "Example note",
   includeInReport: "on",
 };
+
+describe("case status on the detail page", () => {
+  it("keeps the dropdown when it can be changed, and a badge when it cannot", () => {
+    expect(caseStatusSurface(true)).toBe("dropdown");
+    expect(caseStatusSurface(false)).toBe("badge");
+  });
+});
 
 describe("job area labels", () => {
   it("renames the options and keeps the stored values behind them", () => {

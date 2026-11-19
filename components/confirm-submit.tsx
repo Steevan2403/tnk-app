@@ -5,15 +5,18 @@ export function ConfirmSubmit({
   message,
   className,
   ariaLabel,
+  role,
 }: {
   label: string;
   message: string;
   className?: string;
   ariaLabel?: string;
+  role?: "menuitem";
 }) {
   return (
     <button
       type="submit"
+      role={role}
       className={className}
       aria-label={ariaLabel}
       onClick={(event) => {

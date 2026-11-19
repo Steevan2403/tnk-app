@@ -210,6 +210,10 @@ export function formatStatus(status: string): string {
   return status;
 }
 
+export function caseStatusSurface(canChangeStatus: boolean): "dropdown" | "badge" {
+  return canChangeStatus ? "dropdown" : "badge";
+}
+
 export function formatArea(area: string): string {
   if (area === "asset") return "Common asset";
   if (area === "apartment") return "Private lot";
