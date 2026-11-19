@@ -639,6 +639,48 @@ function stepMonths(start: UTCDate, from: UTCDate, until: UTCDate, step: number)
   return dates;
 }
 
+export function caseCalendarOffer(role: string, linkedEventId: string | null): "add" | "linked" | "hidden" {
+  if (!canManageMaintenance(role)) return "hidden";
+  if (linkedEventId) return "linked";
+  return "add";
+}
+
+export function caseCalendarHref(eventId: string, occursOn: string): string {
+  return `/calendar?date=${encodeURIComponent(occursOn)}&event=${encodeURIComponent(eventId)}&on=${encodeURIComponent(occursOn)}`;
+}
+
+export function oneOffFromCase(input: {
+  number: number;
+  subject: string;
+  dueDate: Date;
+  area: CaseArea;
+  apartmentId: string | null;
+  assetIds: string[];
+  companyIds: string[];
+  contactIds: string[];
+}) {
+  const subject = input.subject.trim().slice(0, 160) || `Case #${input.number}`;
+  return {
+    subject,
+    description: `Case #${input.number}.`,
+    startDate: input.dueDate,
+    endDate: null as Date | null,
+    frequency: "one_off" as const,
+    intervalMonths: null as number | null,
+    remindContractor: false,
+    reminderDays: 7,
+    area: input.area,
+    apartmentId: input.area === "apartment" ? input.apartmentId : null,
+    assetIds: input.area === "asset" ? uniqueStrings(input.assetIds) : [],
+    companyIds: uniqueStrings(input.companyIds),
+    contactIds: uniqueStrings(input.contactIds),
+  };
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
 function doneKeys(records: StoredOccurrence[]): Set<string> {
   return new Set(records.map((record) => formatIsoDate(record.occursOn)));
 }

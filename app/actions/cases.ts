@@ -30,9 +30,10 @@ import {
 } from "@/lib/cases";
 import { requireUser } from "@/lib/data";
 import { maintenanceLinkFromForm } from "@/lib/maintenance-data";
+import { caseCalendarOffer, oneOffFromCase } from "@/lib/maintenance";
 import { notifyBuilding } from "@/lib/notifications";
 import { prisma } from "@/lib/db";
-import { canDeleteCases, canEditCases, canManageCaseTypes } from "@/lib/roles";
+import { canDeleteCases, canEditCases, canManageCaseTypes, canManageMaintenance } from "@/lib/roles";
 import { fileBaseName, imageUploadProblem, removeUpload, saveUpload, uploadProblem, videoUploadProblem } from "@/lib/storage";
 
 export type CaseFormState = {
@@ -370,6 +371,77 @@ export async function setCasesStatus(formData: FormData) {
   });
   refresh();
   redirect(returnTo);
+}
+
+export async function addCaseToCalendar(formData: FormData) {
+  const user = await requireUser();
+  const number = parseCaseNumber(String(formData.get("number") ?? ""));
+  const back = number == null ? "/cases" : `/cases/${number}`;
+  if (!user.selectedBuildingId || number == null || !canManageMaintenance(user.role)) redirect(back);
+
+  const buildingId = user.selectedBuildingId;
+  const record = await prisma.case.findFirst({
+    where: { buildingId, number },
+    include: {
+      assets: { select: { assetId: true } },
+      companies: { select: { companyId: true } },
+      contacts: { select: { contactId: true } },
+    },
+  });
+  if (!record) redirect("/cases");
+  if (caseCalendarOffer(user.role, record.maintenanceEventId) !== "add") redirect(back);
+
+  const draft = oneOffFromCase({
+    number: record.number,
+    subject: record.subject,
+    dueDate: record.dueDate,
+    area: record.area,
+    apartmentId: record.apartmentId,
+    assetIds: record.assets.map((link) => link.assetId),
+    companyIds: record.companies.map((link) => link.companyId),
+    contactIds: record.contacts.map((link) => link.contactId),
+  });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const open = await tx.case.findFirst({
+        where: { id: record.id, buildingId, maintenanceEventId: null },
+        select: { id: true },
+      });
+      if (!open) return;
+      const event = await tx.maintenanceEvent.create({
+        data: {
+          buildingId,
+          createdById: user.id,
+          subject: draft.subject,
+          description: draft.description,
+          startDate: draft.startDate,
+          endDate: draft.endDate,
+          frequency: draft.frequency,
+          intervalMonths: draft.intervalMonths,
+          remindContractor: draft.remindContractor,
+          reminderDays: draft.reminderDays,
+          area: draft.area,
+          apartmentId: draft.apartmentId,
+          assets: draft.assetIds.length ? { create: draft.assetIds.map((assetId) => ({ assetId })) } : undefined,
+          companies: draft.companyIds.length ? { create: draft.companyIds.map((companyId) => ({ companyId })) } : undefined,
+          contacts: draft.contactIds.length ? { create: draft.contactIds.map((contactId) => ({ contactId })) } : undefined,
+        },
+      });
+      const linked = await tx.case.updateMany({
+        where: { id: record.id, buildingId, maintenanceEventId: null },
+        data: { maintenanceEventId: event.id, occurrenceOn: record.dueDate },
+      });
+      if (linked.count === 0) await tx.maintenanceEvent.delete({ where: { id: event.id } });
+    });
+  } catch (error) {
+    console.error(error);
+  }
+
+  refresh();
+  revalidatePath("/calendar");
+  revalidatePath("/maintenance");
+  redirect(back);
 }
 
 export async function toggleCaseStar(formData: FormData) {

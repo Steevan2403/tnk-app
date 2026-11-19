@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { deleteCase, deleteCaseFile, setCaseStatus, toggleCaseStar } from "@/app/actions/cases";
+import { addCaseToCalendar, deleteCase, deleteCaseFile, setCaseStatus, toggleCaseStar } from "@/app/actions/cases";
 import { CaseFileForm, CommentForm } from "@/components/case-record-forms";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SelectField } from "@/components/field";
@@ -27,6 +27,7 @@ import {
 import { openSiteVisit, siteVisitActivity } from "@/lib/check-in";
 import { formatWorkOrderStatus, omittedAttachmentNotice, workOrderNumber } from "@/lib/work-orders";
 import { caseNeighbors, caseStarred, getCaseByNumber, requireUser, type CaseDetail } from "@/lib/data";
+import { caseCalendarHref, caseCalendarOffer } from "@/lib/maintenance";
 import { canDeleteCases, canEditCases } from "@/lib/roles";
 
 const FILE_LABELS: Record<CaseFileKind, string> = {
@@ -66,6 +67,8 @@ export default async function CasePage({
   ]);
   const canEdit = canEditCases(user.role);
   const canDelete = canDeleteCases(user.role);
+  const calendarOffer = caseCalendarOffer(user.role, record.maintenanceEvent?.id ?? null);
+  const calendarOn = formatIsoDate(record.occurrenceOn ?? record.dueDate);
   const statusSurface = caseStatusSurface(canEdit);
   const replyTo = first(query.reply);
   const mailNotice = omittedAttachmentNotice(first(query.sent), many(query.omitted));
@@ -148,6 +151,25 @@ export default async function CasePage({
               {starred ? "Starred" : "Star"}
             </button>
           </form>
+          {calendarOffer === "linked" && record.maintenanceEvent ? (
+            <Link
+              href={caseCalendarHref(record.maintenanceEvent.id, calendarOn)}
+              className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue"
+            >
+              On calendar
+            </Link>
+          ) : null}
+          {calendarOffer === "add" ? (
+            <form action={addCaseToCalendar}>
+              <input type="hidden" name="number" value={record.number} />
+              <button
+                type="submit"
+                className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue"
+              >
+                Add to calendar
+              </button>
+            </form>
+          ) : null}
           {canEdit ? (
             <Link href={`/cases/${record.number}/work-order`} className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue">
               Send work order

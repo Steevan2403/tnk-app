@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { sydneyDateTimeToUtc } from "./work-orders";
 import {
+  caseCalendarHref,
+  caseCalendarOffer,
   caseDraftFromOccurrence,
+  oneOffFromCase,
   dueReminders,
   isOccurrenceDate,
   isScheduleComplete,
@@ -443,5 +446,46 @@ describe("caseDraftFromOccurrence", () => {
     expect(draft.descriptionHtml).toContain("Check the example panel.");
     expect(isOccurrenceDate(rule, day("2026-10-18"))).toBe(true);
     expect(isOccurrenceDate(rule, day("2026-10-19"))).toBe(false);
+  });
+});
+
+describe("case on the calendar", () => {
+  const due = new Date("2026-10-08T00:00:00.000Z");
+
+  it("offers add to admins and managers, and hides it once a one-off already exists", () => {
+    expect(caseCalendarOffer("admin", null)).toBe("add");
+    expect(caseCalendarOffer("manager", null)).toBe("add");
+    expect(caseCalendarOffer("staff", null)).toBe("hidden");
+    expect(caseCalendarOffer("admin", "event-1")).toBe("linked");
+    expect(caseCalendarOffer("manager", "event-1")).toBe("linked");
+    expect(caseCalendarOffer("staff", "event-1")).toBe("hidden");
+  });
+
+  it("builds one one-off on the due date, titled with the case subject", () => {
+    const event = oneOffFromCase({
+      number: 300,
+      subject: "Example fire pump drip",
+      dueDate: due,
+      area: "asset",
+      apartmentId: "apt-101",
+      assetIds: ["pump"],
+      companyIds: ["fire"],
+      contactIds: ["avery"],
+    });
+    expect(event).toMatchObject({
+      subject: "Example fire pump drip",
+      description: "Case #300.",
+      startDate: due,
+      endDate: null,
+      frequency: "one_off",
+      area: "asset",
+      apartmentId: null,
+      assetIds: ["pump"],
+      companyIds: ["fire"],
+      contactIds: ["avery"],
+      remindContractor: false,
+    });
+    expect(caseCalendarHref("event-1", "2026-10-08")).toBe("/calendar?date=2026-10-08&event=event-1&on=2026-10-08");
+    expect(caseCalendarOffer("admin", "event-1")).toBe("linked");
   });
 });
