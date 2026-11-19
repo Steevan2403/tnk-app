@@ -391,6 +391,7 @@ model Asset {
   warranties       AssetWarranty[]
   caseLinks        CaseAsset[]
   maintenanceLinks MaintenanceAsset[]
+  inspectionLinks  InspectionRunAsset[]
   createdAt        DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -928,6 +929,8 @@ model InspectionRun {
   type         InspectionType
   apartmentId  String?
   apartment    Apartment?         @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  area         CaseArea?
+  assets       InspectionRunAsset[]
   inspectorId  String
   inspector    User               @relation(fields: [inspectorId], references: [id], onDelete: Restrict)
   inspectedAt  DateTime
@@ -942,6 +945,16 @@ model InspectionRun {
   @@index([inspectorId])
   @@index([apartmentId])
   @@index([completedAt])
+}
+
+model InspectionRunAsset {
+  runId   String
+  run     InspectionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([runId, assetId])
+  @@index([assetId])
 }
 
 model InspectionRunArea {

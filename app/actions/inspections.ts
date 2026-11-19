@@ -13,6 +13,7 @@ import { buildInspectionPdf } from "@/lib/inspection-pdf";
 import {
   caseFieldsFromItem,
   completionDecision,
+  inspectionLocation,
   duplicateTemplateName,
   formatSydneyDate,
   planTemplateDelete,
@@ -215,17 +216,25 @@ export async function startInspection(formData: FormData) {
   const inspectedAt = parseDateOnly(String(formData.get("inspectedAt") ?? ""));
   if (!inspectedAt) redirect(`${startPath}?error=date`);
 
-  let apartmentId: string | null = null;
-  if (template.type === "private_lot") {
-    const requested = String(formData.get("apartmentId") ?? "").trim();
-    const apartment = requested
-      ? await prisma.apartment.findFirst({
-          where: { id: requested, buildingId: user.buildingId },
-          select: { id: true },
-        })
-      : null;
-    if (!apartment) redirect(`${startPath}?error=apartment`);
-    apartmentId = apartment.id;
+  const [knownAssets, knownApartments] = await Promise.all([
+    prisma.asset.findMany({ where: { buildingId: user.buildingId }, select: { id: true } }),
+    prisma.apartment.findMany({ where: { buildingId: user.buildingId }, select: { id: true } }),
+  ]);
+  const location = inspectionLocation(
+    {
+      area: String(formData.get("area") ?? ""),
+      assetIds: formData.getAll("assetId").map((value) => String(value)),
+      apartmentId: String(formData.get("apartmentId") ?? ""),
+    },
+    {
+      assetIds: knownAssets.map((asset) => asset.id),
+      apartmentIds: knownApartments.map((apartment) => apartment.id),
+    },
+  );
+  if (!location.ok) {
+    const chosen = String(formData.get("area") ?? "").trim();
+    const areaQuery = chosen ? `&area=${encodeURIComponent(chosen)}` : "";
+    redirect(`${startPath}?error=${location.error}${areaQuery}`);
   }
 
   const snapshot = snapshotTemplate({
@@ -248,7 +257,11 @@ export async function startInspection(formData: FormData) {
       templateId: template.id,
       name: snapshot.name,
       type: snapshot.type,
-      apartmentId,
+      area: location.value.area,
+      apartmentId: location.value.apartmentId,
+      assets: location.value.assetIds.length
+        ? { create: location.value.assetIds.map((assetId) => ({ assetId })) }
+        : undefined,
       inspectorId: user.id,
       inspectedAt,
       status: "in_progress",
@@ -493,7 +506,9 @@ async function createCaseForItem(
       areaName: item.areaName,
       comment: item.comment,
       type: run.type,
+      area: run.area,
       apartmentId: run.apartmentId,
+      assetIds: run.assets.map((link) => link.assetId),
     });
     const dates = defaultCaseDates();
     const startDate = parseDateOnly(dates.startDate);
@@ -531,6 +546,9 @@ async function createCaseForItem(
               includeInReport: true,
               area: fields.area,
               apartmentId: fields.apartmentId,
+              assets: fields.assetIds.length
+                ? { create: fields.assetIds.map((assetId) => ({ assetId })) }
+                : undefined,
               createdById: user.id,
               inspectionItemId: item.id,
               files: copies.length
