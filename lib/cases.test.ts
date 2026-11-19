@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeCaseHtml } from "./case-html";
 import {
+  FIRST_CASE_NUMBER,
   nextCaseNumber,
   overdueCaseWhere,
   overdueCases,
@@ -47,19 +48,23 @@ const valid = {
 };
 
 describe("case numbers per building", () => {
-  it("starts at 1 and stays independent for each building", () => {
+  it("starts at 300 and stays independent for each building", () => {
+    expect(FIRST_CASE_NUMBER).toBe(300);
+
     const tower: number[] = [];
     const court: number[] = [];
 
-    expect(nextCaseNumber(tower)).toBe(1);
-    tower.push(1);
-    expect(nextCaseNumber(court)).toBe(1);
-    court.push(1);
+    expect(nextCaseNumber(tower)).toBe(300);
+    tower.push(300);
+    expect(nextCaseNumber(court)).toBe(300);
+    court.push(300);
     tower.push(nextCaseNumber(tower));
 
-    expect(tower).toEqual([1, 2]);
-    expect(nextCaseNumber(court)).toBe(2);
-    expect(nextCaseNumber([1, 3])).toBe(4);
+    expect(tower).toEqual([300, 301]);
+    expect(nextCaseNumber(court)).toBe(301);
+    expect(nextCaseNumber([300, 302])).toBe(303);
+    expect(nextCaseNumber([1, 16])).toBe(300);
+    expect(nextCaseNumber([400])).toBe(401);
   });
 });
 

@@ -31,7 +31,8 @@
     "qrcode": "1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "sanitize-html": "2.18.2"
+    "sanitize-html": "2.18.2",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",

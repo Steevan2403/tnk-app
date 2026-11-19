@@ -277,13 +277,13 @@ export type ResidentRow = {
   primaryContact: boolean;
   apartmentId: string;
   apartmentNumber: string;
-  lotNumber: string;
+  lotNumber: string | null;
 };
 
 export type ApartmentRow = {
   id: string;
   number: string;
-  lotNumber: string;
+  lotNumber: string | null;
   occupancy: "owner_occupied" | "investment";
   residentCount: number;
 };
@@ -924,6 +924,7 @@ function residentWhere(query: ResidentListQuery): Prisma.ResidentWhereInput {
         { mobile: { contains: token } },
         { secondaryPhone: { contains: token } },
         { apartment: { number: { contains: token } } },
+        { apartment: { lotNumber: { contains: token } } },
       ],
     });
   }

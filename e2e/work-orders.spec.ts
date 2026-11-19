@@ -20,12 +20,12 @@ test("admin sends a work order from a case and it shows on the list, PDF, outbox
       .click();
     await expect(switcher).toContainText("Example Tower");
   }
-  await page.goto("/cases/6");
+  await page.goto("/cases/305");
   await expect(page.getByRole("heading", { level: 1, name: "Example noise complaint for apartment 104" })).toBeVisible();
   await page.getByRole("link", { name: "Send work order" }).first().click();
 
   await expect(page.getByRole("heading", { name: "Send work order" })).toBeVisible();
-  await expect(page.getByLabel("Subject")).toHaveValue(/Work order 6-A:/);
+  await expect(page.getByLabel("Subject")).toHaveValue(/Work order 305-A:/);
   await page.getByLabel("Contractor").selectOption({ label: "Fictional Fire Services" });
   await page.getByLabel("Contact").selectOption({ label: "Avery Sample · avery.sample@example.com" });
   await expect(page.getByLabel("Message")).toHaveValue(/evening noise/);
@@ -39,8 +39,8 @@ test("admin sends a work order from a case and it shows on the list, PDF, outbox
   await page.getByRole("button", { name: "Send", exact: true }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Example noise complaint for apartment 104" })).toBeVisible();
-  await expect(page.getByText("Sent work order 6-A to Fictional Fire Services (Avery Sample).")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Work orders" }).locator("..").getByText("6-A")).toBeVisible();
+  await expect(page.getByText("Sent work order 305-A to Fictional Fire Services (Avery Sample).")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Work orders" }).locator("..").getByText("305-A")).toBeVisible();
   await expect(page.getByLabel("Status")).toHaveValue("new");
 
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -51,32 +51,32 @@ test("admin sends a work order from a case and it shows on the list, PDF, outbox
   await page.setViewportSize({ width: 1680, height: 1000 });
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Work Orders" }).click();
   await expect(page.getByRole("heading", { name: "Work Orders" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "6-A", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "305-A", exact: true })).toBeVisible();
   await shot(page, "work-orders-list-desktop.png");
   await page.setViewportSize({ width: 390, height: 844 });
   await shot(page, "work-orders-list-mobile.png");
 
   await page.setViewportSize({ width: 1280, height: 900 });
-  const pdfHref = await page.getByRole("link", { name: "View PDF for 6-A" }).getAttribute("href");
+  const pdfHref = await page.getByRole("link", { name: "View PDF for 305-A" }).getAttribute("href");
   expect(pdfHref).toBeTruthy();
   const pdfResponse = await page.request.get(pdfHref!);
   expect(pdfResponse.ok()).toBeTruthy();
   expect(pdfResponse.headers()["content-type"]).toContain("application/pdf");
   const pdf = await pdfResponse.body();
   expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
-  expect((await PDFDocument.load(pdf)).getTitle()).toContain("6-A");
-  expect(pdfDraws(pdf, "6-A")).toBe(true);
+  expect((await PDFDocument.load(pdf)).getTitle()).toContain("305-A");
+  expect(pdfDraws(pdf, "305-A")).toBe(true);
   mkdirSync("test-results", { recursive: true });
-  writeFileSync(path.join("test-results", "work-order-6-A.pdf"), pdf);
+  writeFileSync(path.join("test-results", "work-order-305-A.pdf"), pdf);
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "View PDF for 6-A" }).click();
+  await page.getByRole("link", { name: "View PDF for 305-A" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toContain("6-A");
+  expect(download.suggestedFilename()).toContain("305-A");
 
   await page.goto("/settings/outbox");
-  const message = page.getByRole("article", { name: /Work order 6-A/ });
+  const message = page.getByRole("article", { name: /Work order 305-A/ });
   await expect(message.getByText("avery.sample@example.com")).toBeVisible();
-  const attachment = message.getByRole("link", { name: "work-order-6-A.pdf" });
+  const attachment = message.getByRole("link", { name: "work-order-305-A.pdf" });
   await expect(attachment).toBeVisible();
   const attachmentHref = await attachment.getAttribute("href");
   const attachmentResponse = await page.request.get(attachmentHref!);
