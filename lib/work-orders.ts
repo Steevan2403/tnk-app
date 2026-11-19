@@ -153,8 +153,9 @@ export function workOrderEmailBody(input: {
   message: string;
   pdfName: string;
   checkInUrl: string;
+  omitted?: { name: string; size: number | null; url: string }[];
 }): string {
-  return [
+  const lines = [
     `Work order ${input.number} for ${input.buildingName}.`,
     "",
     `Contractor: ${input.companyName}`,
@@ -165,7 +166,35 @@ export function workOrderEmailBody(input: {
     `The work order is attached as ${input.pdfName}.`,
     "",
     `On-site check-in: ${input.checkInUrl}`,
-  ].join("\n");
+  ];
+  const omitted = input.omitted ?? [];
+  if (omitted.length > 0) {
+    lines.push("", "These files were too large to attach:");
+    for (const file of omitted) {
+      lines.push(`${file.name} (${formatFileSize(file.size)})`);
+      lines.push(file.url);
+    }
+  }
+  return lines.join("\n");
+}
+
+export function formatFileSize(bytes: number | null): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return "unknown size";
+  const rounded = Math.round(bytes);
+  if (rounded < 1024) return `${rounded} B`;
+  if (rounded < 1024 * 1024) return `${Math.max(1, Math.round(rounded / 1024))} KB`;
+  const megabytes = (rounded / (1024 * 1024)).toFixed(1);
+  return `${megabytes.endsWith(".0") ? megabytes.slice(0, -2) : megabytes} MB`;
+}
+
+export function omittedAttachmentNotice(number: string, names: string[]): string | null {
+  const sent = number.trim();
+  const files = names.map((name) => name.trim()).filter(Boolean);
+  if (!sent || files.length === 0) return null;
+  if (files.length === 1) {
+    return `Work order ${sent} was sent. ${files[0]} was too large to attach and is linked in the email.`;
+  }
+  return `Work order ${sent} was sent. These files were too large to attach and are linked in the email: ${files.join(", ")}.`;
 }
 
 export function contactEmail(value: string | null | undefined): string | null {

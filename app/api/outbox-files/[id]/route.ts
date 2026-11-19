@@ -14,10 +14,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!attachment) return new Response("Not found", { status: 404 });
   const bytes = await readStoredFile(attachment.storedName);
   if (!bytes) return new Response("Not found", { status: 404 });
-  const inline = contentTypeFor(attachment.storedName) === "application/pdf";
+  const type = contentTypeFor(attachment.storedName);
+  const inline = type === "application/pdf" || type.startsWith("image/") || type.startsWith("video/");
   return new Response(new Uint8Array(bytes), {
     headers: {
-      "Content-Type": contentTypeFor(attachment.storedName),
+      "Content-Type": type,
       "Content-Disposition": contentDisposition(attachment.name, inline),
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",

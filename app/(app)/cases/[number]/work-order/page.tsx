@@ -3,9 +3,17 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { WorkOrderForm, type WorkOrderContractorOption } from "@/components/work-order-form";
 import { parseCaseNumber } from "@/lib/cases";
-import { contactEmail, defaultWorkOrderSubject, htmlToPlain, nextWorkOrderSuffix } from "@/lib/work-orders";
 import { getWorkOrderCase, listWorkOrderContractors, requireUser } from "@/lib/data";
+import { EMAIL_ATTACHMENT_BUDGET } from "@/lib/mail";
 import { canSendWorkOrders } from "@/lib/roles";
+import { storedFileSize } from "@/lib/storage";
+import {
+  contactEmail,
+  defaultWorkOrderSubject,
+  formatFileSize,
+  htmlToPlain,
+  nextWorkOrderSuffix,
+} from "@/lib/work-orders";
 
 export const metadata: Metadata = { title: "Send work order" };
 
@@ -80,7 +88,14 @@ export default async function SendWorkOrderPage({ params }: { params: Promise<{ 
           defaultSubject={defaultWorkOrderSubject(record.number, suffix, record.subject)}
           defaultMessage={htmlToPlain(record.descriptionHtml)}
           defaultPurchaseOrder={record.purchaseOrderNumber ?? ""}
-          files={record.files.map((file) => ({ id: file.id, name: file.name, kind: file.kind }))}
+          files={await Promise.all(
+            record.files.map(async (file) => {
+              const size = await storedFileSize(file.storedName);
+              return { id: file.id, name: file.name, kind: file.kind, size, sizeLabel: formatFileSize(size) };
+            }),
+          )}
+          attachmentBudget={EMAIL_ATTACHMENT_BUDGET}
+          budgetLabel={formatFileSize(EMAIL_ATTACHMENT_BUDGET)}
         />
       )}
     </section>

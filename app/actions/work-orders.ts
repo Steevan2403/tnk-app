@@ -5,14 +5,14 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { newCheckInToken } from "@/lib/check-in";
-import { mailTransport, sendSmtp, type OutgoingMail } from "@/lib/mail";
+import { mailTransport, packEmailAttachments, sendSmtp, type OutgoingMail } from "@/lib/mail";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
 import { canCancelWorkOrders, canSendWorkOrders } from "@/lib/roles";
-import { removeUpload, saveBytes } from "@/lib/storage";
+import { removeUpload, saveBytes, storedFileSize } from "@/lib/storage";
 import { mailboxFor, prepareWorkOrderDraft, toPdfInput, workOrderPhotoBytes } from "@/lib/work-order-draft";
 import { buildWorkOrderPdf } from "@/lib/work-order-pdf";
-import { workOrderLinks } from "@/lib/work-order-terms";
+import { workOrderFileUrl, workOrderLinks } from "@/lib/work-order-terms";
 import {
   isWorkOrderStatus,
   nextWorkOrderSuffix,
@@ -51,6 +51,8 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
   let storedName: string | null = null;
   let saved = false;
   let outgoing: OutgoingMail | null = null;
+  let sentNumber = "";
+  let omittedNames: string[] = [];
   try {
     for (let attempt = 0; attempt < 3 && !saved; attempt += 1) {
       const existing = await prisma.workOrder.findMany({
@@ -68,6 +70,16 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
       const photos = await workOrderPhotoBytes(draft.files);
       const bytes = await buildWorkOrderPdf(toPdfInput({ ...draft, subject }, suffix, links, photos));
       storedName = await saveBytes(bytes, ".pdf");
+      // Selected case files, including the photos drawn under Job Information, travel with the PDF.
+      const sizedFiles = await Promise.all(
+        draft.files.map(async (file) => ({ ...file, size: await storedFileSize(file.storedName) })),
+      );
+      const packed = packEmailAttachments({ name: pdfName, storedName, size: bytes.byteLength }, sizedFiles);
+      const leftOff = packed.omitted.map((file) => ({
+        name: file.name,
+        size: file.size,
+        url: workOrderFileUrl(checkInToken, file.id),
+      }));
       const mail: OutgoingMail = {
         to: draft.contactEmail,
         subject,
@@ -79,8 +91,9 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
           message: draft.message,
           pdfName,
           checkInUrl: links.checkInUrl,
+          omitted: leftOff,
         }),
-        attachments: [{ name: pdfName, storedName }],
+        attachments: packed.attachments,
       };
       try {
         await prisma.$transaction(async (tx) => {
@@ -120,6 +133,8 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
         });
         outgoing = mail;
         saved = true;
+        sentNumber = number;
+        omittedNames = leftOff.map((file) => file.name);
       } catch (error) {
         await removeUpload(storedName);
         storedName = null;
@@ -142,6 +157,12 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
 
   if (!saved) return { error: "The work order could not be sent." };
   refresh();
+  if (omittedNames.length > 0) {
+    const params = new URLSearchParams();
+    params.set("sent", sentNumber);
+    for (const name of omittedNames) params.append("omitted", name);
+    redirect(`/cases/${draft.caseNumber}?${params.toString()}`);
+  }
   redirect(`/cases/${draft.caseNumber}`);
 }
 

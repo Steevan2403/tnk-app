@@ -896,6 +896,7 @@ export async function getWorkOrderMessage(buildingId: string, id: string) {
     where: { id, case: { buildingId } },
     include: {
       case: { select: { number: true, subject: true } },
+      files: { select: { caseFile: { select: { id: true, storedName: true } } } },
       messages: {
         orderBy: { createdAt: "desc" },
         include: { attachments: { orderBy: { name: "asc" } } },

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Local stand-in for object storage. Callers use these helpers so files can move later.
@@ -114,6 +114,23 @@ export async function readStoredFile(storedName: string): Promise<Buffer | null>
   } catch {
     return null;
   }
+}
+
+export async function storedFileSize(storedName: string): Promise<number | null> {
+  const full = resolveStoredFile(storedName);
+  if (!full) return null;
+  try {
+    const info = await stat(full);
+    return info.isFile() ? info.size : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function withStoredSizes<T extends { storedName: string }>(
+  items: T[],
+): Promise<(T & { size: number | null })[]> {
+  return Promise.all(items.map(async (item) => ({ ...item, size: await storedFileSize(item.storedName) })));
 }
 
 export async function removeUpload(storedName: string | null): Promise<void> {
