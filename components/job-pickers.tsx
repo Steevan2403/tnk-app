@@ -114,7 +114,7 @@ export function JobAreaPicker({
         </div>
       ) : null}
       {area === "apartment" ? (
-        <SelectField label="Apartment" name="apartmentId" defaultValue={apartmentId} error={errors?.apartmentId} required>
+        <SelectField label="Apartment" name="apartmentId" defaultValue={apartmentId} error={errors?.apartmentId} required markRequired>
           <option value="">Choose an apartment</option>
           {apartments.map((apartment) => (
             <option key={apartment.id} value={apartment.id}>

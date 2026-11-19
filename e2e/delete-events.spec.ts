@@ -60,6 +60,7 @@ test("admin deletes a visit or a series, and a template, and staff cannot", asyn
   await expect(panel.getByRole("heading", { name: eventSubject })).toBeVisible();
   await panel.getByRole("link", { name: "Create case" }).click();
   await expect(page.getByLabel("Subject")).toHaveValue(eventSubject);
+  await page.getByLabel("Priority").selectOption({ label: "Low" });
   await page.getByRole("button", { name: "Save case" }).click();
   await expect(page.getByRole("heading", { level: 1, name: eventSubject })).toBeVisible();
   await expect(page.getByText("From maintenance")).toBeVisible();

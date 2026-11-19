@@ -81,6 +81,14 @@ describe("case numbers per building", () => {
   });
 });
 
+describe("priority", () => {
+  it("asks for a priority when none was chosen", () => {
+    const missing = parseCaseForm(form({ ...valid, priority: "" }), context);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.errors.priority).toBe("Choose a priority.");
+  });
+});
+
 describe("due date", () => {
   it("uses seven days after the start date when the due date is left blank", () => {
     const blank = parseCaseForm(form({ ...valid, startDate: "2026-11-01", dueDate: "" }), context);

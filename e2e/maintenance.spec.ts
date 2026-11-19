@@ -102,6 +102,7 @@ test("admin schedules monthly maintenance, completes a visit, and opens a case f
   await expect(page.getByLabel("Subject")).toHaveValue(subject);
   await expect(page.getByLabel("Case type").locator("option:checked")).toHaveText("Repair & maintenance");
   await expect(page.getByRole("checkbox", { name: "Fictional Fire Services", exact: true })).toBeChecked();
+  await page.getByLabel("Priority").selectOption({ label: "Low" });
   await page.getByRole("button", { name: "Save case" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: subject })).toBeVisible();

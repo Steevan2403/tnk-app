@@ -75,9 +75,23 @@ export function CaseForm({
         </p>
       ) : null}
 
-      <fieldset className="space-y-4">
-        <legend className="text-lg font-medium text-brand-navy">Case information</legend>
-        <SelectField label="Case type" name="typeId" defaultValue={values?.typeId ?? ""} error={state.errors?.typeId} required>
+      <div className="space-y-4">
+        <TextField
+          label="Subject"
+          name="subject"
+          defaultValue={values?.subject ?? ""}
+          error={state.errors?.subject}
+          required
+          markRequired
+        />
+        <SelectField
+          label="Case type"
+          name="typeId"
+          defaultValue={values?.typeId ?? ""}
+          error={state.errors?.typeId}
+          required
+          markRequired
+        >
           <option value="">Choose a type</option>
           {types.map((type) => (
             <option key={type.id} value={type.id}>
@@ -85,6 +99,11 @@ export function CaseForm({
             </option>
           ))}
         </SelectField>
+        <RichTextEditor name="description" defaultValue={values?.descriptionHtml ?? ""} error={state.errors?.description} />
+      </div>
+
+      <fieldset className="space-y-4">
+        <legend className="text-lg font-medium text-brand-navy">Case information</legend>
         <TextField
           label="Purchase order number"
           name="purchaseOrderNumber"
@@ -100,6 +119,7 @@ export function CaseForm({
             defaultValue={values?.startDate ?? dates.startDate}
             error={state.errors?.startDate}
             required
+            markRequired
           />
           <TextField
             label="Due date"
@@ -111,14 +131,29 @@ export function CaseForm({
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <SelectField label="Priority" name="priority" defaultValue={caseRecord?.priority ?? "low"} error={state.errors?.priority} required>
+          <SelectField
+            label="Priority"
+            name="priority"
+            defaultValue={caseRecord?.priority ?? ""}
+            error={state.errors?.priority}
+            required
+            markRequired
+          >
+            <option value="">Choose a priority</option>
             {CASE_PRIORITIES.map((priority) => (
               <option key={priority} value={priority}>
                 {formatPriority(priority)}
               </option>
             ))}
           </SelectField>
-          <SelectField label="Status" name="status" defaultValue={caseRecord?.status ?? "new"} error={state.errors?.status} required>
+          <SelectField
+            label="Status"
+            name="status"
+            defaultValue={caseRecord?.status ?? "new"}
+            error={state.errors?.status}
+            required
+            markRequired
+          >
             {CASE_STATUSES.map((status) => (
               <option key={status} value={status}>
                 {formatStatus(status)}
@@ -143,19 +178,14 @@ export function CaseForm({
         errors={state.errors}
       />
 
-      <fieldset className="space-y-4">
-        <legend className="text-lg font-medium text-brand-navy">Job</legend>
-        <TextField label="Subject" name="subject" defaultValue={values?.subject ?? ""} error={state.errors?.subject} required />
-        <RichTextEditor name="description" defaultValue={values?.descriptionHtml ?? ""} error={state.errors?.description} />
-        <TextArea
-          label="Internal notes"
-          name="internalNotes"
-          rows={4}
-          defaultValue={values?.internalNotes ?? ""}
-          error={state.errors?.internalNotes}
-          placeholder="Optional"
-        />
-      </fieldset>
+      <TextArea
+        label="Internal notes"
+        name="internalNotes"
+        rows={4}
+        defaultValue={values?.internalNotes ?? ""}
+        error={state.errors?.internalNotes}
+        placeholder="Optional"
+      />
 
       <CheckField label="Include in management report" name="includeInReport" defaultChecked={caseRecord?.includeInReport ?? true} />
 

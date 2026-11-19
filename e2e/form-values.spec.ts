@@ -13,6 +13,7 @@ test("new case keeps typed values when the due date is before the start date", a
   const caseType = page.getByLabel("Case type");
   await caseType.selectOption({ label: "Repair & maintenance" });
   const typeValue = await caseType.inputValue();
+  await page.getByLabel("Priority").selectOption({ label: "High" });
   await page.getByLabel("Start date").fill("2026-11-18");
   await page.getByLabel("Due date").fill("2026-11-01");
   await page.getByLabel("Subject").fill("Example leaking tap");
@@ -46,6 +47,7 @@ test("new case keeps the asset job area when no asset is chosen", async ({ page 
   const caseType = page.getByLabel("Case type");
   await caseType.selectOption({ label: "Repair & maintenance" });
   const typeValue = await caseType.inputValue();
+  await page.getByLabel("Priority").selectOption({ label: "High" });
   await page.getByLabel("Subject").fill("Example plant room check");
   await page.getByRole("radio", { name: "Common asset", exact: true }).check();
   await expect(page.getByLabel("Asset category")).toBeVisible();

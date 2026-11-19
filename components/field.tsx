@@ -8,11 +8,26 @@ import { useSubmittedValues } from "@/components/retained-form";
 const controlClass =
   "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30";
 
+function FieldLabel({ id, label, markRequired }: { id: string; label: string; markRequired?: boolean }) {
+  return (
+    <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
+      {label}
+      {markRequired ? (
+        <span aria-hidden="true" className="text-danger">
+          {" "}
+          *
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
 export function TextField({
   label,
   name,
   error,
   hint,
+  markRequired,
   defaultValue,
   value,
   onChange,
@@ -22,6 +37,7 @@ export function TextField({
   name: string;
   error?: string;
   hint?: string;
+  markRequired?: boolean;
 } & InputHTMLAttributes<HTMLInputElement>) {
   const id = props.id ?? name;
   const submitted = useSubmittedValues();
@@ -33,9 +49,7 @@ export function TextField({
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
-        {label}
-      </label>
+      <FieldLabel id={id} label={label} markRequired={markRequired} />
       {dateKind ? (
         <AuDateField
           {...rest}
@@ -82,6 +96,7 @@ export function SelectField({
   label,
   name,
   error,
+  markRequired,
   children,
   defaultValue,
   value,
@@ -90,21 +105,21 @@ export function SelectField({
   label: string;
   name: string;
   error?: string;
+  markRequired?: boolean;
   children: ReactNode;
 } & SelectHTMLAttributes<HTMLSelectElement>) {
   const id = props.id ?? name;
   const submitted = useSubmittedValues();
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
-        {label}
-      </label>
+      <FieldLabel id={id} label={label} markRequired={markRequired} />
       <select
         {...props}
         id={id}
         name={name}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
+        aria-required={props.required ? true : undefined}
         className={controlClass}
         {...(value === undefined ? { defaultValue: textValue(submitted, name, defaultValue) } : { value })}
       >
