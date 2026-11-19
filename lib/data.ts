@@ -34,7 +34,7 @@ import {
   workOrderNumber,
   type WorkOrderStatus,
 } from "@/lib/work-orders";
-import { isCheckInToken } from "@/lib/check-in";
+import { isCheckInToken, workOrderClosedMessage } from "@/lib/check-in";
 import { prisma } from "@/lib/db";
 
 export type CurrentUser = {
@@ -897,7 +897,7 @@ export async function listWorkOrderContractors(assignedIds: string[]) {
 
 export async function getCheckInWorkOrder(token: string) {
   if (!isCheckInToken(token)) return null;
-  return prisma.workOrder.findUnique({
+  const record = await prisma.workOrder.findUnique({
     where: { checkInToken: token },
     include: {
       case: {
@@ -910,6 +910,8 @@ export async function getCheckInWorkOrder(token: string) {
       visits: { orderBy: { checkedInAt: "desc" } },
     },
   });
+  if (!record || workOrderClosedMessage(record.status)) return null;
+  return record;
 }
 
 export async function getWorkOrderDetail(buildingId: string, id: string) {

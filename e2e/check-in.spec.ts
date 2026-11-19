@@ -5,26 +5,36 @@ import { expect, test, type Page } from "@playwright/test";
 
 const artifacts = "/opt/cursor/artifacts";
 
-test("unknown and closed check-in links do not accept a visit", async ({ page }) => {
+test("unknown and closed check-in links are not found", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/check-in/not-a-real-token-value");
+  const unknown = await page.goto("/check-in/not-a-real-token-value");
+  expect(unknown?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Check-in link" })).toBeVisible();
-  await expect(page.getByText("This check-in link is not valid or has expired.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "This check-in link is not valid. It can be used for more than one visit until the work order is completed or cancelled.",
+    ),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Check in" })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
 
-  await page.goto("/check-in/seed-check-in-310-a-example");
-  await expect(page.getByRole("heading", { name: "310-A" })).toBeVisible();
-  await expect(page.getByText("Example Tower")).toBeVisible();
-  await expect(page.getByText("100 Example Street, Sydney NSW 2000")).toBeVisible();
-  await expect(page.getByText("This work order is completed. On-site check-in is closed.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Check in" })).toHaveCount(0);
+  const missing = await page.goto("/check-in/preview");
+  expect(missing?.status()).toBe(404);
 
-  await page.goto("/check-in/seed-check-in-313-a-example");
-  await expect(page.getByRole("heading", { name: "313-A" })).toBeVisible();
-  await expect(page.getByText("This work order is cancelled. On-site check-in is closed.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Check in" })).toHaveCount(0);
+  const completed = await page.goto("/check-in/seed-check-in-310-a-example");
+  expect(completed?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "310-A" })).toHaveCount(0);
+  await expect(page.getByText("completed or cancelled")).toBeVisible();
+
+  const cancelled = await page.goto("/check-in/seed-check-in-313-a-example");
+  expect(cancelled?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "313-A" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Check out" })).toHaveCount(0);
+
+  const open = await page.goto("/check-in/seed-check-in-300-a-example");
+  expect(open?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "300-A" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Check in" })).toBeVisible();
 });
 
 test("contractor checks in and out, and staff see the visit history", async ({ page, browser }) => {
