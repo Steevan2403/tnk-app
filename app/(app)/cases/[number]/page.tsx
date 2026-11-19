@@ -21,6 +21,7 @@ import {
   parseCaseNumber,
   type CaseFileKind,
 } from "@/lib/cases";
+import { openSiteVisit, siteVisitActivity } from "@/lib/check-in";
 import { formatWorkOrderStatus, workOrderNumber } from "@/lib/work-orders";
 import { caseNeighbors, caseStarred, getCaseByNumber, requireUser, type CaseDetail } from "@/lib/data";
 import { canDeleteCases, canEditCases } from "@/lib/roles";
@@ -251,14 +252,18 @@ export default async function CasePage({
             <ul className="mt-2 divide-y divide-line">
               {record.workOrders.map((order) => {
                 const number = workOrderNumber(record.number, order.suffix);
+                const onSite = openSiteVisit(order.visits);
                 return (
                   <li key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <div>
-                      <p className="font-medium">{number}</p>
+                      <Link href={`/work-orders/${order.id}`} className="font-medium text-brand-blue hover:underline">
+                        {number}
+                      </Link>
                       <p className="text-sm text-muted">
                         {order.company?.name ?? order.companyName} · {order.contact?.name ?? order.contactName} ·{" "}
                         {formatWorkOrderStatus(order.status)} · {formatDateTime(order.sentAt)}
                       </p>
+                      {onSite ? <p className="text-sm text-brand-green">On site · {onSite.contractorName}</p> : null}
                     </div>
                     <a href={`/api/work-orders/${order.id}/pdf`} className="text-sm text-brand-blue hover:underline">
                       PDF
@@ -313,17 +318,7 @@ export default async function CasePage({
         </Panel>
 
         <Panel title="Activity">
-          {record.activities.length === 0 ? <p className="mt-3 text-muted">No activity yet.</p> : null}
-          <ul className="mt-2 divide-y divide-line">
-            {record.activities.map((activity) => (
-              <li key={activity.id} className="py-3">
-                <p>{activity.summary}</p>
-                <p className="text-sm text-muted">
-                  {activity.actor.name} · {formatDateTime(activity.createdAt)}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <CaseActivity record={record} />
         </Panel>
       </div>
     </section>
@@ -484,6 +479,39 @@ function Field({ label, value, children }: { label: string; value?: string; chil
       <dt className="text-sm text-muted">{label}</dt>
       <dd className="mt-1">{children ?? value}</dd>
     </div>
+  );
+}
+
+function CaseActivity({ record }: { record: CaseDetail }) {
+  const lines = [
+    ...record.activities.map((activity) => ({
+      id: activity.id,
+      at: activity.createdAt,
+      actorName: activity.actor.name,
+      summary: activity.summary,
+    })),
+    ...siteVisitActivity(
+      record.workOrders.map((order) => ({
+        id: order.id,
+        suffix: order.suffix,
+        caseNumber: record.number,
+        visits: order.visits,
+      })),
+    ),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime() || a.id.localeCompare(b.id));
+
+  if (lines.length === 0) return <p className="mt-3 text-muted">No activity yet.</p>;
+  return (
+    <ul className="mt-2 divide-y divide-line">
+      {lines.map((activity) => (
+        <li key={activity.id} className="py-3">
+          <p>{activity.summary}</p>
+          <p className="text-sm text-muted">
+            {activity.actorName} · {formatDateTime(activity.at)}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 

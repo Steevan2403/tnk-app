@@ -4,6 +4,7 @@ import {
   buildingLine,
   companyNameOf,
   siteContactValue,
+  PREVIEW_CHECK_IN_TOKEN,
   workOrderLinks,
   type CompanySettingsInput,
 } from "./work-order-terms";
@@ -35,7 +36,7 @@ const sample = {
 
 export function previewWorkOrderInput(settings: CompanySettingsInput, building: PreviewBuilding | null): WorkOrderPdfInput {
   const source = building ?? sample;
-  const links = workOrderLinks("preview");
+  const links = workOrderLinks("preview", PREVIEW_CHECK_IN_TOKEN);
   return {
     number: "300-A",
     companyName: companyNameOf(settings.companyName),

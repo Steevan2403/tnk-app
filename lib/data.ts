@@ -34,6 +34,7 @@ import {
   workOrderNumber,
   type WorkOrderStatus,
 } from "@/lib/work-orders";
+import { isCheckInToken } from "@/lib/check-in";
 import { prisma } from "@/lib/db";
 
 export type CurrentUser = {
@@ -642,6 +643,7 @@ const caseDetailInclude = {
     include: {
       company: { select: { name: true } },
       contact: { select: { name: true } },
+      visits: { orderBy: { checkedInAt: "desc" as const } },
     },
   },
   maintenanceEvent: { select: { id: true, subject: true } },
@@ -750,6 +752,7 @@ export type WorkOrderRow = {
   status: WorkOrderStatus;
   sentAt: Date;
   sentByName: string;
+  onSiteName: string | null;
 };
 
 export type WorkOrderListQuery = {
@@ -773,6 +776,7 @@ const workOrderListSelect = {
   company: { select: { name: true } },
   contact: { select: { name: true } },
   sentBy: { select: { name: true } },
+  visits: { where: { checkedOutAt: null }, select: { contractorName: true }, take: 1 },
 } satisfies Prisma.WorkOrderSelect;
 
 export async function listWorkOrders(query: WorkOrderListQuery): Promise<{ total: number; rows: WorkOrderRow[] }> {
@@ -800,6 +804,7 @@ export async function listWorkOrders(query: WorkOrderListQuery): Promise<{ total
       status: item.status,
       sentAt: item.sentAt,
       sentByName: item.sentBy.name,
+      onSiteName: item.visits[0]?.contractorName ?? null,
     })),
   };
 }
@@ -848,6 +853,40 @@ export async function listWorkOrderContractors(assignedIds: string[]) {
       name: true,
       status: true,
       contacts: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true, mobile: true } },
+    },
+  });
+}
+
+export async function getCheckInWorkOrder(token: string) {
+  if (!isCheckInToken(token)) return null;
+  return prisma.workOrder.findUnique({
+    where: { checkInToken: token },
+    include: {
+      case: {
+        select: {
+          number: true,
+          subject: true,
+          building: { select: { name: true, address: true, suburb: true, state: true, postcode: true } },
+        },
+      },
+      visits: { orderBy: { checkedInAt: "desc" } },
+    },
+  });
+}
+
+export async function getWorkOrderDetail(buildingId: string, id: string) {
+  return prisma.workOrder.findFirst({
+    where: { id, case: { buildingId } },
+    include: {
+      case: {
+        select: {
+          number: true,
+          subject: true,
+          building: { select: { name: true, address: true, suburb: true, state: true, postcode: true } },
+        },
+      },
+      sentBy: { select: { name: true } },
+      visits: { orderBy: { checkedInAt: "desc" } },
     },
   });
 }

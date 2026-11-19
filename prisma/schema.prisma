@@ -755,8 +755,11 @@ model WorkOrder {
   sentBy              User               @relation(fields: [sentById], references: [id], onDelete: Restrict)
   pdfStoredName       String
   pdfName             String
+  // Unguessable key for the public check-in link. Contractors do not sign in.
+  checkInToken        String             @unique
   files               WorkOrderFile[]
   messages            OutboxMessage[]
+  visits              WorkOrderVisit[]
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -766,6 +769,25 @@ model WorkOrder {
   @@index([sentById])
   @@index([sentAt])
   @@index([status])
+}
+
+// One row is a visit. openKey is the work order id while the contractor is on site,
+// and null after check-out, so a work order can have only one open visit.
+model WorkOrderVisit {
+  id                 String    @id @default(cuid())
+  workOrderId        String
+  workOrder          WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  contractorName     String
+  checkedInAt        DateTime
+  checkedOutAt       DateTime?
+  checkInLatitude    Float?
+  checkInLongitude   Float?
+  checkOutLatitude   Float?
+  checkOutLongitude  Float?
+  openKey            String?
+
+  @@unique([workOrderId, openKey])
+  @@index([checkedInAt])
 }
 
 model WorkOrderFile {

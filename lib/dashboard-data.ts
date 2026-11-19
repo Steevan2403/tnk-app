@@ -16,6 +16,7 @@ import { prisma } from "./db";
 import { calendarTitle, monthCells, sydneyToday } from "./maintenance";
 import { loadCalendar, overdueVisitsForBuilding, visibleRange } from "./maintenance-data";
 import { periodLabel } from "./reports";
+import { siteVisitActivity } from "./check-in";
 import { sentRange, workOrderNumber } from "./work-orders";
 
 export async function loadDashboard(
@@ -47,6 +48,7 @@ export async function loadDashboard(
     notes,
     numbers,
     caseActivity,
+    siteVisits,
     occurrences,
     runs,
     reports,
@@ -127,6 +129,18 @@ export async function loadDashboard(
         case: { select: { number: true } },
       },
     }),
+    prisma.workOrderVisit.findMany({
+      where: { workOrder: { case: { buildingId } } },
+      orderBy: [{ checkedInAt: "desc" }, { id: "desc" }],
+      take: 20,
+      select: {
+        id: true,
+        contractorName: true,
+        checkedInAt: true,
+        checkedOutAt: true,
+        workOrder: { select: { id: true, suffix: true, case: { select: { number: true } } } },
+      },
+    }),
     prisma.maintenanceOccurrence.findMany({
       where: { event: { buildingId } },
       orderBy: [{ actedAt: "desc" }, { id: "desc" }],
@@ -195,6 +209,20 @@ export async function loadDashboard(
       userName: item.actor.name,
       action: item.summary,
       href: `/cases/${item.case.number}`,
+    })),
+    ...siteVisitActivity(
+      siteVisits.map((visit) => ({
+        id: visit.workOrder.id,
+        suffix: visit.workOrder.suffix,
+        caseNumber: visit.workOrder.case.number,
+        visits: [visit],
+      })),
+    ).map((item) => ({
+      id: `site-${item.id}`,
+      at: item.at,
+      userName: item.actorName,
+      action: item.summary,
+      href: item.href,
     })),
     ...occurrences.map((item) => ({
       id: `visit-${item.id}`,

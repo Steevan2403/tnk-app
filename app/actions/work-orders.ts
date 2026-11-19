@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { newCheckInToken } from "@/lib/check-in";
 import { mailTransport, sendSmtp, type OutgoingMail } from "@/lib/mail";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
@@ -62,8 +63,10 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
       const pdfName = workOrderPdfName(draft.caseNumber, suffix);
       const sentAt = new Date();
       const id = randomUUID();
+      const checkInToken = newCheckInToken();
+      const links = workOrderLinks(id, checkInToken);
       const photos = await workOrderPhotoBytes(draft.files);
-      const bytes = await buildWorkOrderPdf(toPdfInput({ ...draft, subject }, suffix, workOrderLinks(id), photos));
+      const bytes = await buildWorkOrderPdf(toPdfInput({ ...draft, subject }, suffix, links, photos));
       storedName = await saveBytes(bytes, ".pdf");
       const mail: OutgoingMail = {
         to: draft.contactEmail,
@@ -75,6 +78,7 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
           contactName: draft.contactName,
           message: draft.message,
           pdfName,
+          checkInUrl: links.checkInUrl,
         }),
         attachments: [{ name: pdfName, storedName }],
       };
@@ -100,6 +104,7 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
               sentById: user.id,
               pdfStoredName: storedName!,
               pdfName,
+              checkInToken,
               files: draft.files.length ? { create: draft.files.map((file) => ({ caseFileId: file.id })) } : undefined,
             },
           });

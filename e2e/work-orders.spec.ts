@@ -66,6 +66,9 @@ test("admin sends a work order from a case and it shows on the list, PDF, outbox
   expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   expect((await PDFDocument.load(pdf)).getTitle()).toContain("305-A");
   expect(pdfDraws(pdf, "305-A")).toBe(true);
+  const pdfText = `${pdf.toString("latin1")}\n${inflatePdf(pdf)}`;
+  expect(pdfText).toContain("/check-in/");
+  expect(pdfText.includes("checkin=1")).toBe(false);
   mkdirSync("test-results", { recursive: true });
   writeFileSync(path.join("test-results", "work-order-305-A.pdf"), pdf);
   const downloadPromise = page.waitForEvent("download");
