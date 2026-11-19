@@ -147,6 +147,22 @@ summary::-webkit-details-marker {
   }
 }
 
+.day-add > button {
+  opacity: 0;
+}
+
+.group:hover .day-add > button,
+.day-add:focus-within > button,
+.day-add:has(button[aria-expanded="true"]) > button {
+  opacity: 1;
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 767px) {
+  .day-add > button {
+    opacity: 1;
+  }
+}
+
 [role="alert"] {
   border-radius: 0.75rem;
   border: 1px solid #fecaca;

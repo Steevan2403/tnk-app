@@ -41,6 +41,14 @@ test("month columns are equal width and Sunday stays on screen", async ({ page }
   const link = page.getByRole("link", { name: longTitle });
   expect(await link.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(true);
 
+  const cell = grid.getByRole("gridcell").first();
+  await cell.hover();
+  const dayNumber = (await cell.locator("time").innerText()).trim();
+  const add = cell.getByRole("button", { name: /^Add event on / });
+  await expect(add).toBeVisible();
+  await expect(add).toHaveAttribute("aria-label", new RegExp(`^Add event on ${dayNumber} [A-Za-z]+ \\d{4}$`));
+  await expect(add).toHaveAttribute("title", new RegExp(`^Add event on ${dayNumber} [A-Za-z]+ \\d{4}$`));
+
   const show = page.getByLabel("Show");
   await show.getByRole("link", { name: "Maintenance" }).click();
   await expect(page.getByRole("link", { name: longTitle })).toHaveCount(0);

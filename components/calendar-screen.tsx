@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CalendarAdd } from "@/components/calendar-add";
 import { completeOccurrence, deleteMaintenanceEvent, skipOccurrence } from "@/app/actions/maintenance";
 import { deleteConfirmButtonClass, DeleteConfirm } from "@/components/delete-confirm";
 import { FileField, TextArea, TextField } from "@/components/field";
@@ -105,13 +106,16 @@ export function CalendarScreen({
             </Link>
           ))}
         </div>
-        <ul className="mt-3 flex flex-wrap gap-2 text-xs">
-          <li className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-medium text-brand-navy">Upcoming</li>
-          <li className="rounded-full bg-red-50 px-2.5 py-1 font-medium text-danger">Overdue</li>
-          <li className="rounded-full bg-[#d1fae5] px-2.5 py-1 font-medium text-[#065f46]">Completed</li>
-          <li className="rounded-full bg-brand-navy/10 px-2.5 py-1 font-medium text-brand-navy">Case</li>
-          <li className="rounded-full border border-line bg-card px-2.5 py-1 font-medium">Work order</li>
-        </ul>
+        <div className="mt-4 rounded-xl border border-line bg-card px-3 py-3">
+          <p className="text-xs font-semibold tracking-[0.14em] text-muted uppercase">Legend</p>
+          <ul className="mt-2 flex flex-wrap gap-2 text-xs" aria-label="Colour legend">
+            <li className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-medium text-brand-navy">Upcoming</li>
+            <li className="rounded-full bg-red-50 px-2.5 py-1 font-medium text-danger">Overdue</li>
+            <li className="rounded-full bg-[#d1fae5] px-2.5 py-1 font-medium text-[#065f46]">Completed</li>
+            <li className="rounded-full bg-brand-navy/10 px-2.5 py-1 font-medium text-brand-navy">Case</li>
+            <li className="rounded-full border border-line bg-page px-2.5 py-1 font-medium">Work order</li>
+          </ul>
+        </div>
 
         {view === "month" ? (
           <MonthView days={days} todayIso={todayIso} canManage={canManage} />
@@ -135,7 +139,7 @@ export function CalendarScreen({
                     {row.map((day) => (
                       <td
                         key={day.iso}
-                        className={`h-48 border border-line align-top p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${
+                        className={`group h-48 border border-line align-top p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${
                           day.inMonth ? "" : "text-muted"
                         }`}
                       >
@@ -175,7 +179,7 @@ function MonthView({ days, todayIso, canManage }: { days: CalendarDay[]; todayIs
                 <div
                   key={day.iso}
                   role="gridcell"
-                  className={`min-h-32 min-w-0 p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${day.inMonth ? "" : "text-muted"}`}
+                  className={`group min-h-32 min-w-0 p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${day.inMonth ? "" : "text-muted"}`}
                 >
                   <DayBody day={day} canManage={canManage} truncate />
                 </div>
@@ -204,7 +208,7 @@ function Agenda({
   return (
     <div className="mt-4 space-y-4">
       {filled.map((day) => (
-        <section key={day.iso} className={`rounded-xl border border-line bg-card p-4 ${day.iso === todayIso ? "ring-2 ring-brand-blue" : ""}`}>
+        <section key={day.iso} className={`group rounded-xl border border-line bg-card p-4 ${day.iso === todayIso ? "ring-2 ring-brand-blue" : ""}`}>
           <h2 className="text-lg font-medium">{dayHeading(day.iso, showWeekday)}</h2>
           <DayItems day={day} />
           <NewMenu day={day} canManage={canManage} />
@@ -255,21 +259,8 @@ function DayItems({ day, truncate = false }: { day: CalendarDay; truncate?: bool
 }
 
 function NewMenu({ day, canManage }: { day: CalendarDay; canManage: boolean }) {
-  return (
-    <details className="mt-1">
-      <summary className="cursor-pointer text-xs text-brand-blue">New</summary>
-      <div className="mt-1 flex flex-col gap-1 text-xs">
-        {canManage ? (
-          <Link href={day.maintenanceHref} className="text-brand-blue hover:underline">
-            Maintenance
-          </Link>
-        ) : null}
-        <Link href={day.caseHref} className="text-brand-blue hover:underline">
-          Case
-        </Link>
-      </div>
-    </details>
-  );
+  const label = `Add event on ${formatCalendarDate(new Date(`${day.iso}T00:00:00.000Z`))}`;
+  return <CalendarAdd label={label} canManage={canManage} maintenanceHref={day.maintenanceHref} caseHref={day.caseHref} />;
 }
 
 function OccurrenceAside({
