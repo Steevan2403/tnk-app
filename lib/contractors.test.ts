@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   companiesWithExpiredInsurance,
+  contractorCategoryInUseMessage,
+  contractorCategoryNameTaken,
   expiredInsuranceWhere,
   insuranceStanding,
   normalizeAbn,
   normalizeEmail,
   normalizeWebsite,
   parseCompanyForm,
+  parseContractorCategoryName,
 } from "./contractors";
+import { canManageContractors } from "./roles";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -85,6 +89,48 @@ describe("parseCompanyForm", () => {
       expect(result.errors.email).toBe("Enter a valid email address.");
       expect(result.errors.website).toBe("Enter a valid website link.");
     }
+  });
+});
+
+describe("contractor categories", () => {
+  const existing = [
+    { id: "plumbing", name: "Plumbing" },
+    { id: "electrical", name: "Electrical" },
+  ];
+
+  it("lets an admin or a manager change categories and leaves staff able to view only", () => {
+    expect(canManageContractors("admin")).toBe(true);
+    expect(canManageContractors("manager")).toBe(true);
+    expect(canManageContractors("staff")).toBe(false);
+  });
+
+  it("rejects a blank name and a name over 80 characters", () => {
+    expect(parseContractorCategoryName("")).toEqual({ ok: false, error: "Enter a category name." });
+    expect(parseContractorCategoryName("   ")).toEqual({ ok: false, error: "Enter a category name." });
+    expect(parseContractorCategoryName(`  Glass  `)).toEqual({ ok: true, name: "Glass" });
+    expect(parseContractorCategoryName("a".repeat(80))).toEqual({ ok: true, name: "a".repeat(80) });
+    expect(parseContractorCategoryName("a".repeat(81))).toEqual({
+      ok: false,
+      error: "Use 80 characters or fewer.",
+    });
+  });
+
+  it("treats names that differ only by case as duplicates, except the category being renamed", () => {
+    expect(contractorCategoryNameTaken("plumbing", existing)).toBe(true);
+    expect(contractorCategoryNameTaken("PLUMBING", existing)).toBe(true);
+    expect(contractorCategoryNameTaken("Glass", existing)).toBe(false);
+    expect(contractorCategoryNameTaken("plumbing", existing, "plumbing")).toBe(false);
+  });
+
+  it("blocks removal while contractors still use the category and does not delete them", () => {
+    expect(contractorCategoryInUseMessage(0)).toBeNull();
+    expect(contractorCategoryInUseMessage(1)).toBe(
+      "1 contractor uses this category. Move that contractor to another category before removing it.",
+    );
+    expect(contractorCategoryInUseMessage(3)).toBe(
+      "3 contractors use this category. Move them to another category before removing it.",
+    );
+    expect(contractorCategoryInUseMessage(1)).not.toMatch(/delete/i);
   });
 });
 

@@ -1,12 +1,16 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
 import {
+  contractorCategoryInUseMessage,
+  contractorCategoryNameTaken,
   parseCompanyForm,
   parseContactForm,
+  parseContractorCategoryName,
   parseDocumentName,
   parseInsuranceForm,
   parseNoteForm,
@@ -45,6 +49,12 @@ export type DocumentFormState = {
 };
 
 const denied = "You do not have permission to change contractors.";
+const categoryDenied = "You do not have permission to change contractor categories.";
+
+export type CategoryFormState = {
+  error?: string;
+  errors?: Partial<Record<"name", string>>;
+};
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -305,6 +315,103 @@ export async function uploadDocument(
 
   refresh();
   redirect(companyPath(companyId));
+}
+
+export async function addContractorCategory(
+  _prev: CategoryFormState,
+  formData: FormData,
+): Promise<CategoryFormState> {
+  const user = await editor();
+  if (!user) return { error: categoryDenied };
+
+  const parsed = parseContractorCategoryName(String(formData.get("name") ?? ""));
+  if (!parsed.ok) return { errors: { name: parsed.error } };
+  if (await categoryNameTaken(parsed.name)) return { errors: { name: "That category already exists." } };
+
+  try {
+    await prisma.contractorCategory.create({ data: { name: parsed.name } });
+  } catch (error) {
+    if (isUniqueConflict(error)) return { errors: { name: "That category already exists." } };
+    console.error(error);
+    return { error: "The category could not be saved." };
+  }
+
+  refresh();
+  return {};
+}
+
+export async function renameContractorCategory(
+  _prev: CategoryFormState,
+  formData: FormData,
+): Promise<CategoryFormState> {
+  const user = await editor();
+  if (!user) return { error: categoryDenied };
+
+  const id = String(formData.get("id") ?? "");
+  const parsed = parseContractorCategoryName(String(formData.get("name") ?? ""));
+  if (!parsed.ok) return { errors: { name: parsed.error } };
+
+  const existing = await prisma.contractorCategory.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) return { error: "That category could not be found." };
+  if (await categoryNameTaken(parsed.name, id)) return { errors: { name: "That category already exists." } };
+
+  try {
+    await prisma.contractorCategory.update({ where: { id }, data: { name: parsed.name } });
+  } catch (error) {
+    if (isUniqueConflict(error)) return { errors: { name: "That category already exists." } };
+    console.error(error);
+    return { error: "The category could not be saved." };
+  }
+
+  refresh();
+  return {};
+}
+
+export async function deleteContractorCategory(
+  _prev: CategoryFormState,
+  formData: FormData,
+): Promise<CategoryFormState> {
+  const user = await editor();
+  if (!user) return { error: categoryDenied };
+
+  const id = String(formData.get("id") ?? "");
+  const existing = await prisma.contractorCategory.findUnique({
+    where: { id },
+    select: { id: true, _count: { select: { companies: true } } },
+  });
+  if (!existing) return { error: "That category could not be found." };
+
+  const blocked = contractorCategoryInUseMessage(existing._count.companies);
+  if (blocked) return { error: blocked };
+
+  try {
+    await prisma.contractorCategory.delete({ where: { id } });
+  } catch (error) {
+    if (isRestrictConflict(error)) {
+      const used = await prisma.contractorCompany.count({ where: { categoryId: id } });
+      return { error: contractorCategoryInUseMessage(used) ?? "That category is still in use." };
+    }
+    console.error(error);
+    return { error: "The category could not be removed." };
+  }
+
+  refresh();
+  return {};
+}
+
+async function categoryNameTaken(name: string, ignoreId?: string): Promise<boolean> {
+  const categories = await prisma.contractorCategory.findMany({ select: { id: true, name: true } });
+  return contractorCategoryNameTaken(name, categories, ignoreId);
+}
+
+function isUniqueConflict(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+function isRestrictConflict(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2003" || error.code === "P2014")
+  );
 }
 
 export async function deleteDocument(formData: FormData) {

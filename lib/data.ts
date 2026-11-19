@@ -852,6 +852,7 @@ export async function listWorkOrderContractors(assignedIds: string[]) {
       id: true,
       name: true,
       status: true,
+      category: { select: { name: true } },
       contacts: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true, mobile: true } },
     },
   });
