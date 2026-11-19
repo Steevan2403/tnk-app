@@ -9,7 +9,7 @@ const shots = path.join("test-results", "screenshots");
 const period = "1 Nov 2026 to 30 Nov 2026";
 
 test("admin builds a filtered report, and staff cannot generate one", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   mkdirSync(shots, { recursive: true });
 
   await signIn(page, "admin@tnk.example", "example-admin-pass");
@@ -32,6 +32,11 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
   await page.getByRole("region", { name: "Report builder" }).screenshot({
     path: path.join(shots, "reports-builder.png"),
   });
+  await page.getByRole("button", { name: "Generate Word" }).scrollIntoViewIfNeeded();
+  const exportButtons = page.getByRole("button", { name: "Generate Word" }).locator("xpath=..");
+  await exportButtons.screenshot({ path: path.join(shots, "reports-export-buttons.png") });
+  mkdirSync("/opt/cursor/artifacts", { recursive: true });
+  await exportButtons.screenshot({ path: "/opt/cursor/artifacts/report_export_buttons.png" });
 
   await page.getByRole("button", { name: "Generate PDF" }).click();
   await expect(page.getByText("The report is ready.")).toBeVisible();
@@ -85,10 +90,41 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
   await excelLink.click();
   expect((await excelDownload).suggestedFilename()).toContain(".xlsx");
 
+  await page.getByRole("button", { name: "This month", exact: true }).click();
+  await page.getByLabel("Case type", { exact: true }).selectOption({ label: "Repair & maintenance" });
+  await page.getByRole("checkbox", { name: "Include case 311", exact: true }).uncheck();
+  await page.getByRole("button", { name: "Generate Word" }).click();
+  await expect(page.getByText("The report is ready.")).toBeVisible();
+  const wordLink = list.getByRole("link", { name: `Download Word for ${period}` });
+  await expect(wordLink).toBeVisible();
+  const wordHref = await wordLink.getAttribute("href");
+  expect(wordHref).toBeTruthy();
+  const wordResponse = await page.request.get(wordHref!);
+  expect(wordResponse.ok()).toBeTruthy();
+  expect(wordResponse.headers()["content-type"]).toContain(
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  );
+  expect(wordResponse.headers()["content-disposition"] ?? "").toContain("management-report-2026-11-01-to-2026-11-30.docx");
+  const word = await wordResponse.body();
+  expect(word.subarray(0, 2).toString()).toBe("PK");
+  writeFileSync(path.join(shots, "management-report.docx"), word);
+  const wordDownload = page.waitForEvent("download");
+  await wordLink.click();
+  expect((await wordDownload).suggestedFilename()).toBe("management-report-2026-11-01-to-2026-11-30.docx");
+
+  await switchBuilding(page, "Sample Court", "Sample Court 8 Sample Road, Pyrmont NSW 2009");
+  expect((await page.request.get(wordHref!)).status()).toBe(404);
+  expect((await page.request.get(pdfHref!)).status()).toBe(404);
+  await switchBuilding(page, "Example Tower", "Example Tower 100 Example Street, Sydney NSW 2000");
+  const allowedWord = await page.request.get(wordHref!);
+  expect(allowedWord.status()).toBe(200);
+  expect(allowedWord.headers()["content-type"]).toContain("wordprocessingml.document");
+
   await page.goto("/dashboard");
   const card = page.getByRole("region", { name: "Management reports" });
   await expect(card.getByRole("link", { name: `View PDF for ${period}` })).toBeVisible();
   await expect(card.getByRole("link", { name: `View Excel for ${period}` })).toBeVisible();
+  await expect(card.getByRole("link", { name: `View Word for ${period}` })).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await card.screenshot({ path: path.join(shots, "reports-dashboard-card.png") });
 
@@ -102,6 +138,7 @@ test("admin builds a filtered report, and staff cannot generate one", async ({ p
   await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate PDF" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Generate Excel" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Generate Word" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Email report" })).toHaveCount(0);
   await expect(list.getByRole("link", { name: `Download PDF for ${period}` })).toBeVisible();
@@ -158,14 +195,15 @@ function inflatePdf(bytes: Buffer): string {
 }
 
 async function useExampleTower(page: Page) {
+  await switchBuilding(page, "Example Tower", "Example Tower 100 Example Street, Sydney NSW 2000");
+}
+
+async function switchBuilding(page: Page, name: string, button: string) {
   const switcher = page.getByRole("button", { name: /Switch building/ });
-  if (!(await switcher.innerText()).includes("Example Tower")) {
+  if (!(await switcher.innerText()).includes(name)) {
     await switcher.click();
-    await page
-      .locator("aside")
-      .getByRole("button", { name: "Example Tower 100 Example Street, Sydney NSW 2000", exact: true })
-      .click();
-    await expect(switcher).toContainText("Example Tower");
+    await page.locator("aside").getByRole("button", { name: button, exact: true }).click();
+    await expect(switcher).toContainText(name);
   }
 }
 
