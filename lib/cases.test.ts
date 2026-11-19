@@ -3,6 +3,7 @@ import { sanitizeCaseHtml } from "./case-html";
 import {
   FIRST_CASE_NUMBER,
   caseRankPatch,
+  caseTextWhere,
   caseStatusSurface,
   formatArea,
   compareCases,
@@ -57,6 +58,19 @@ describe("case status on the detail page", () => {
   it("keeps the dropdown when it can be changed, and a badge when it cannot", () => {
     expect(caseStatusSurface(true)).toBe("dropdown");
     expect(caseStatusSurface(false)).toBe("badge");
+  });
+});
+
+describe("case search", () => {
+  it("matches a linked asset name and an apartment number or lot, inside one building", () => {
+    expect(caseTextWhere("tower", "Lift")).toEqual([
+      { subject: { contains: "Lift" } },
+      { descriptionHtml: { contains: "Lift" } },
+      { assets: { some: { asset: { buildingId: "tower", name: { contains: "Lift" } } } } },
+      { apartment: { buildingId: "tower", OR: [{ number: { contains: "Lift" } }, { lotNumber: { contains: "Lift" } }] } },
+    ]);
+    expect(JSON.stringify(caseTextWhere("court", "104"))).toContain("court");
+    expect(JSON.stringify(caseTextWhere("court", "104"))).not.toContain("tower");
   });
 });
 

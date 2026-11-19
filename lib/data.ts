@@ -19,10 +19,10 @@ import {
 import { PAGE_SIZE as ASSET_PAGE_SIZE, expiredWarrantyWhere, latestWarrantyExpiry } from "@/lib/assets";
 import {
   PAGE_SIZE as CASE_PAGE_SIZE,
+  caseTextWhere,
   isCasePriority,
   isCaseStatus,
   overdueCaseWhere,
-  parseCaseNumber,
   type CaseListQuery,
   type CasePriority,
   type CaseSort,
@@ -763,12 +763,7 @@ function caseWhere(query: CaseListQuery): Prisma.CaseWhereInput {
   }
   if (query.overdue) filters.push(overdueCaseWhere());
   const q = query.q.trim();
-  if (q) {
-    const or: Prisma.CaseWhereInput[] = [{ subject: { contains: q } }, { descriptionHtml: { contains: q } }];
-    const number = parseCaseNumber(q);
-    if (number) or.push({ number });
-    filters.push({ OR: or });
-  }
+  if (q) filters.push({ OR: caseTextWhere(query.buildingId, q) });
   return { AND: filters };
 }
 

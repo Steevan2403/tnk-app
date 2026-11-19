@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { expiredBefore, formatIsoDate, parseDateOnly } from "./contractors";
 
 export { formatCalendarDate, formatDateTime, formatIsoDate } from "./contractors";
@@ -160,6 +161,19 @@ export function parsePage(value: string): number {
   if (!Number.isInteger(page) || page < 1) return 1;
   if (page > 10000) return 10000;
   return page;
+}
+
+export function caseTextWhere(buildingId: string, query: string): Prisma.CaseWhereInput[] {
+  const q = query.trim();
+  const or: Prisma.CaseWhereInput[] = [
+    { subject: { contains: q } },
+    { descriptionHtml: { contains: q } },
+    { assets: { some: { asset: { buildingId, name: { contains: q } } } } },
+    { apartment: { buildingId, OR: [{ number: { contains: q } }, { lotNumber: { contains: q } }] } },
+  ];
+  const number = parseCaseNumber(q);
+  if (number) or.push({ number });
+  return or;
 }
 
 export function parseCaseNumber(value: string): number | null {

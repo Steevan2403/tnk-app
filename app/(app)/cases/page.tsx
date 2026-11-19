@@ -165,7 +165,7 @@ export default async function CasesPage({
 
       <form method="get" action="/cases" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {active.view === "board" ? <input type="hidden" name="view" value="board" /> : null}
-        <TextField label="Search cases" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, or description" />
+        <TextField label="Search cases" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, asset, or apartment" />
         <SelectField label="Type" name="type" defaultValue={active.typeId}>
           <option value="">All types</option>
           {types.map((type) => (
