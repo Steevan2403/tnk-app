@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { setCasesStatus, toggleCaseStar } from "@/app/actions/cases";
 import { CaseBoard } from "@/components/case-board";
+import { ColumnMenu } from "@/components/column-menu";
 import { SelectAll } from "@/components/case-select";
 import { FilesMark } from "@/components/files-mark";
 import { WorkOrderMark } from "@/components/work-order-mark";
@@ -58,6 +59,20 @@ const SORT_LABELS: Record<CaseSort, string> = {
   type: "Type",
   priority: "Priority",
   status: "Status",
+};
+
+const OPTIONAL_CASE_COLUMNS = [
+  { id: "start", label: "Start date" },
+  { id: "type", label: "Type" },
+  { id: "priority", label: "Priority" },
+  { id: "status", label: "Status" },
+];
+
+const CASE_COLUMN_BY_SORT: Partial<Record<CaseSort, string>> = {
+  start: "start",
+  type: "type",
+  priority: "priority",
+  status: "status",
 };
 
 export default async function CasesPage({
@@ -131,6 +146,15 @@ export default async function CasesPage({
               Board
             </ViewLink>
           </div>
+          {active.view === "list" ? (
+            <ColumnMenu
+              userId={user.id}
+              table="cases"
+              tableId="case-list"
+              columns={OPTIONAL_CASE_COLUMNS}
+              kept="Case number and subject stay visible."
+            />
+          ) : null}
           {canEdit ? (
             <Link href="/cases/new" className="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue">
               New case
@@ -210,7 +234,9 @@ export default async function CasesPage({
         listed.rows.length === 0 ? (
           <EmptyState>{filtered ? "No cases match." : "No cases yet."}</EmptyState>
         ) : (
-          <CaseResults rows={listed.rows} filters={active} returnTo={returnTo} canEdit={canEdit} />
+          <div id="case-list">
+            <CaseResults rows={listed.rows} filters={active} returnTo={returnTo} canEdit={canEdit} />
+          </div>
         )
       ) : null}
 
@@ -285,12 +311,17 @@ function CaseResults({
               </div>
               <StarButton row={row} returnTo={returnTo} />
             </div>
-            <p className="mt-2 text-sm text-muted">
-              {formatCalendarDate(row.startDate)} · {row.typeName}
+            <p className="mt-2 flex flex-wrap gap-x-2 text-sm text-muted">
+              <span data-column="start">{formatCalendarDate(row.startDate)}</span>
+              <span data-column="type">{row.typeName}</span>
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <PriorityBadge priority={row.priority} />
-              <StatusBadge status={row.status} label={formatStatus(row.status)} />
+              <span data-column="priority">
+                <PriorityBadge priority={row.priority} />
+              </span>
+              <span data-column="status">
+                <StatusBadge status={row.status} label={formatStatus(row.status)} />
+              </span>
               {row.hasFiles ? <FilesMark /> : null}
               {row.hasWorkOrders ? <WorkOrderMark /> : null}
             </div>
@@ -303,7 +334,12 @@ function CaseResults({
             <tr>
               <th className="px-4 py-3 font-medium">{canEdit ? <SelectAll /> : null}</th>
               {CASE_SORTS.map((sort) => (
-                <th key={sort} className="px-4 py-3 font-medium" aria-sort={filters.sort === sort ? (filters.dir === "asc" ? "ascending" : "descending") : "none"}>
+                <th
+                  key={sort}
+                  data-column={CASE_COLUMN_BY_SORT[sort]}
+                  className="px-4 py-3 font-medium"
+                  aria-sort={filters.sort === sort ? (filters.dir === "asc" ? "ascending" : "descending") : "none"}
+                >
                   <Link href={sortHref(filters, sort)} className="hover:text-brand-blue">
                     {SORT_LABELS[sort]}
                     {filters.sort === sort ? (filters.dir === "asc" ? " ↑" : " ↓") : ""}
@@ -327,7 +363,7 @@ function CaseResults({
                     #{row.number}
                   </Link>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-column="start">
                   <time dateTime={formatIsoDate(row.startDate)}>{formatCalendarDate(row.startDate)}</time>
                 </td>
                 <td className="px-4 py-3">
@@ -335,11 +371,13 @@ function CaseResults({
                     {row.subject}
                   </Link>
                 </td>
-                <td className="px-4 py-3">{row.typeName}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-column="type">
+                  {row.typeName}
+                </td>
+                <td className="px-4 py-3" data-column="priority">
                   <PriorityBadge priority={row.priority} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-column="status">
                   <StatusBadge status={row.status} label={formatStatus(row.status)} />
                 </td>
                 <td className="px-4 py-3">
