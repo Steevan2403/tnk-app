@@ -229,7 +229,7 @@ function Donut({
     };
   });
   return (
-    <svg viewBox="0 0 120 120" className="h-40 w-40" role="img" aria-label={`Cases by type, ${total} in the last ${period === 1 ? "month" : `${period} months`}`}>
+    <svg viewBox="0 0 120 120" className="h-40 w-40" role="group" aria-label={`Cases by type, ${total} in the last ${period === 1 ? "month" : `${period} months`}`}>
       <circle cx="60" cy="60" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="16" />
       {placed.map(({ slice, index, length, offset }) => (
         <a key={slice.typeId} href={slice.href} aria-label={`${slice.typeName}, ${slice.count}`}>

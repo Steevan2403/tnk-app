@@ -98,7 +98,7 @@ export function CalendarScreen({
             <Link
               key={link.label}
               href={link.href}
-              aria-pressed={link.current}
+              aria-current={link.current ? "true" : undefined}
               className={`rounded-full px-3 py-1 text-sm ${link.current ? "bg-brand-blue text-white" : "bg-card text-muted ring-1 ring-line"}`}
             >
               {link.label}
@@ -161,24 +161,25 @@ function MonthView({ days, todayIso, canManage }: { days: CalendarDay[]; todayIs
         <Agenda days={days.filter((day) => day.inMonth)} todayIso={todayIso} canManage={canManage} showWeekday />
       </div>
       <div className="mt-4 hidden overflow-hidden rounded-xl border border-line bg-card sm:block">
-        <div
-          role="grid"
-          aria-label="Month"
-          className="calendar-grid grid w-full gap-px bg-line text-sm"
-          style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
-        >
-          {WEEKDAYS.map((day) => (
-            <div key={day} role="columnheader" className="truncate bg-[#f6f7fb] px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
-              {day}
-            </div>
-          ))}
-          {days.map((day) => (
-            <div
-              key={day.iso}
-              role="gridcell"
-              className={`min-h-32 min-w-0 p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${day.inMonth ? "" : "text-muted"}`}
-            >
-              <DayBody day={day} canManage={canManage} truncate />
+        <div role="grid" aria-label="Month" className="calendar-grid grid w-full gap-px bg-line text-sm">
+          <div role="row" className="grid gap-px" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+            {WEEKDAYS.map((day) => (
+              <div key={day} role="columnheader" className="truncate bg-[#f6f7fb] px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
+                {day}
+              </div>
+            ))}
+          </div>
+          {rowsOf(days, 7).map((week) => (
+            <div key={week[0].iso} role="row" className="grid gap-px" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+              {week.map((day) => (
+                <div
+                  key={day.iso}
+                  role="gridcell"
+                  className={`min-h-32 min-w-0 p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${day.inMonth ? "" : "text-muted"}`}
+                >
+                  <DayBody day={day} canManage={canManage} truncate />
+                </div>
+              ))}
             </div>
           ))}
         </div>

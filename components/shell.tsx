@@ -82,11 +82,15 @@ export function Shell({
 
   return (
     <div className="app-shell min-h-dvh bg-page md:fixed md:inset-0 md:flex md:overflow-hidden">
+      <a href="#content" className="skip-link">
+        Skip to content
+      </a>
       {open ? (
         <button
           type="button"
           className="fixed inset-0 z-30 bg-brand-navy/50 md:hidden"
           aria-label="Dismiss menu"
+          title="Dismiss menu"
           onClick={() => setOpen(false)}
         />
       ) : null}
@@ -141,7 +145,7 @@ export function Shell({
           <NotificationBell key={pathname} unread={notifications.unread} items={notifications.items} />
           <UserMenu name={user.name} role={user.role} />
         </header>
-        <main ref={mainRef} className="flex-1 px-4 py-6 md:min-h-0 md:overflow-y-auto md:px-8 md:py-8">
+        <main id="content" tabIndex={-1} ref={mainRef} className="flex-1 px-4 py-6 md:min-h-0 md:overflow-y-auto md:px-8 md:py-8">
           {children}
         </main>
       </div>

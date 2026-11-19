@@ -29,7 +29,7 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("link", { name: "3 Work orders this month", exact: true })).toBeVisible();
 
   await expect(page.getByRole("link", { name: "Repair & maintenance 8", exact: true })).toBeVisible();
-  await expect(page.getByRole("img", { name: /Cases by type, 13/ })).toBeVisible();
+  await expect(page.getByRole("group", { name: /Cases by type, 13/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "310-A", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example pump service", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example car park gate service", exact: true })).toBeVisible();
