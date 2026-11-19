@@ -13,7 +13,7 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("heading", { name: "Example Tower" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Items needing action" })).toBeVisible();
 
-  const overdueCases = page.getByRole("link", { name: "Overdue cases 3", exact: true });
+  const overdueCases = page.getByRole("link", { name: "Overdue cases 5", exact: true });
   await expect(overdueCases).toBeVisible();
   await expect(overdueCases.locator("span").nth(1)).toHaveClass(/text-danger/);
   await expect(page.getByRole("link", { name: "Overdue maintenance 3", exact: true })).toBeVisible();
@@ -58,7 +58,7 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page).toHaveURL(/\/cases\?overdue=1/);
   await expect(page.getByRole("heading", { name: "Cases" })).toBeVisible();
   await expect(page.getByLabel("Overdue only")).toBeChecked();
-  await expect(page.getByText("3 cases", { exact: true })).toBeVisible();
+  await expect(page.getByText("5 cases", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example fire pump drip" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example noise complaint for apartment 104" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Lobby floor (Lobby)" })).toBeVisible();
@@ -84,7 +84,7 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("link", { name: "02 0000 2222" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add number" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add note" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Overdue cases 3", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Overdue cases 5", exact: true })).toBeVisible();
 });
 
 async function signIn(page: Page, email: string, password: string) {

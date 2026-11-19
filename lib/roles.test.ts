@@ -4,6 +4,7 @@ import {
   canEditCases,
   canManageAssetCategories,
   canManageAssets,
+  canAssignBuildings,
   canManageBuildings,
   canCancelWorkOrders,
   canManageCaseTypes,
@@ -27,6 +28,17 @@ describe("canManageBuildings", () => {
   it("blocks manager and staff", () => {
     expect(canManageBuildings("manager")).toBe(false);
     expect(canManageBuildings("staff")).toBe(false);
+  });
+});
+
+describe("canAssignBuildings", () => {
+  it("allows an admin to assign buildings", () => {
+    expect(canAssignBuildings("admin")).toBe(true);
+  });
+
+  it("blocks manager and staff from assigning buildings", () => {
+    expect(canAssignBuildings("manager")).toBe(false);
+    expect(canAssignBuildings("staff")).toBe(false);
   });
 });
 

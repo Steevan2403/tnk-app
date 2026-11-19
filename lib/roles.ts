@@ -6,6 +6,10 @@ export function canManageBuildings(role: string): boolean {
   return role === "admin";
 }
 
+export function canAssignBuildings(role: string): boolean {
+  return role === "admin";
+}
+
 export function canManageContractors(role: string): boolean {
   return role === "admin" || role === "manager";
 }

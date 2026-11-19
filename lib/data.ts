@@ -2,7 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { auth, signOut } from "@/auth";
-import type { BuildingRecord } from "@/lib/buildings";
+import { selectedBuildingForUser, type BuildingRecord } from "@/lib/buildings";
 import {
   PAGE_SIZE,
   expiredInsuranceWhere,
@@ -72,6 +72,7 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
       email: true,
       role: true,
       selectedBuildingId: true,
+      memberships: { select: { buildingId: true } },
     },
   });
 
@@ -80,14 +81,47 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
     redirect("/sign-in");
   }
 
-  return user;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    selectedBuildingId: selectedBuildingForUser(
+      user.role,
+      user.selectedBuildingId,
+      user.memberships.map((membership) => membership.buildingId),
+    ),
+  };
 });
 
 export const listBuildings = cache(async (): Promise<BuildingRecord[]> => {
+  const user = await requireUser();
   return prisma.building.findMany({
+    where: user.role === "admin" ? undefined : { members: { some: { userId: user.id } } },
     orderBy: { name: "asc" },
     select: buildingSelect,
   });
+});
+
+export const listManagedUsers = cache(async () => {
+  const people = await prisma.user.findMany({
+    where: { role: { in: ["manager", "staff"] } },
+    orderBy: [{ name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      memberships: { select: { buildingId: true } },
+    },
+  });
+  return people.map((person) => ({
+    id: person.id,
+    name: person.name,
+    email: person.email,
+    role: person.role,
+    buildingIds: person.memberships.map((membership) => membership.buildingId),
+  }));
 });
 
 export const getBuilding = cache(async (id: string): Promise<BuildingRecord | null> => {

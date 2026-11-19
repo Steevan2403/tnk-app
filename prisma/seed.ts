@@ -254,8 +254,9 @@ async function main() {
     });
   }
 
-  const [adminHash, staffHash] = await Promise.all([
+  const [adminHash, managerHash, staffHash] = await Promise.all([
     hashPassword("example-admin-pass"),
+    hashPassword("example-manager-pass"),
     hashPassword("example-staff-pass"),
   ]);
 
@@ -304,6 +305,32 @@ async function main() {
       data: { selectedBuildingId: "seed_example_tower" },
     });
   }
+
+  const manager = await prisma.user.upsert({
+    where: { email: "manager@tnk.example" },
+    update: {
+      name: "Example Manager",
+      passwordHash: managerHash,
+      role: "manager",
+    },
+    create: {
+      email: "manager@tnk.example",
+      name: "Example Manager",
+      passwordHash: managerHash,
+      role: "manager",
+      selectedBuildingId: "seed_example_tower",
+    },
+  });
+
+  if (!manager.selectedBuildingId) {
+    await prisma.user.update({
+      where: { id: manager.id },
+      data: { selectedBuildingId: "seed_example_tower" },
+    });
+  }
+
+  await assignBuildings(manager.id, ["seed_example_tower"]);
+  await assignBuildings(staff.id, ["seed_example_tower", "seed_sample_court"]);
 
   for (const company of companies) {
     await prisma.contractorCompany.upsert({
@@ -394,6 +421,13 @@ const residentPlan = [
   ["seed_res_quinn", "303", "Quinn", "Sample", "tenant", null, "0400 000 014", "quinn.sample@example.com", "2024-10-01", null, true],
   ["seed_res_reese", "303", "Reese", "Example", "other", null, "0400 000 015", "reese.example@example.com", "2024-10-01", null, false],
 ] as const;
+
+async function assignBuildings(userId: string, buildingIds: string[]) {
+  await prisma.userBuilding.deleteMany({ where: { userId } });
+  await prisma.userBuilding.createMany({
+    data: buildingIds.map((buildingId) => ({ userId, buildingId })),
+  });
+}
 
 function day(value: string | null): Date | null {
   return value ? new Date(`${value}T00:00:00.000Z`) : null;

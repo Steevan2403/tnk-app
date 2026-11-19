@@ -44,7 +44,8 @@ model User {
   passwordHash       String
   role               UserRole
   selectedBuildingId String?
-  selectedBuilding   Building?        @relation(fields: [selectedBuildingId], references: [id], onDelete: SetNull)
+  selectedBuilding   Building?        @relation("SelectedBuilding", fields: [selectedBuildingId], references: [id], onDelete: SetNull)
+  memberships        UserBuilding[]
   contractorNotes    ContractorNote[]
   apartmentNotes     ApartmentNote[]
   casesCreated       Case[]
@@ -78,7 +79,8 @@ model Building {
   siteContactEmail  String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
-  selectedBy        User[]
+  selectedBy        User[]           @relation("SelectedBuilding")
+  members           UserBuilding[]
   apartments        Apartment[]
   assets            Asset[]
   cases                Case[]
@@ -89,6 +91,17 @@ model Building {
   usefulNumbers        UsefulNumber[]
   generatedReports     GeneratedReport[]
   activities           BuildingActivity[]
+}
+
+// Which buildings a manager or a staff member can open. Admins are not listed here.
+model UserBuilding {
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, buildingId])
+  @@index([buildingId])
 }
 
 // Contractors belong to the account, not to one building.
