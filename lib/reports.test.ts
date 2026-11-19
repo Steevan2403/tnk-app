@@ -161,6 +161,11 @@ describe("report period helpers", () => {
           schedule: { startDate: new Date("2026-11-02T00:00:00.000Z"), endDate: null, frequency: "monthly", intervalMonths: null },
           records: [{ occursOn: new Date("2026-11-02T00:00:00.000Z"), state: "completed" }],
         },
+        {
+          subject: "Example removed visit",
+          schedule: { startDate: new Date("2026-11-03T00:00:00.000Z"), endDate: null, frequency: "one_off", intervalMonths: null },
+          records: [{ occursOn: new Date("2026-11-03T00:00:00.000Z"), state: "removed" }],
+        },
       ],
       from,
       to,
@@ -170,6 +175,7 @@ describe("report period helpers", () => {
     expect(visits.filter((visit) => visit.status === "skipped")).toHaveLength(1);
     expect(visits.filter((visit) => visit.status === "overdue")).toHaveLength(2);
     expect(visits.some((visit) => visit.occursOn.getTime() === new Date("2026-11-22T00:00:00.000Z").getTime())).toBe(false);
+    expect(visits.some((visit) => visit.subject === "Example removed visit")).toBe(false);
 
     const runs = inspectionsInPeriod(
       [

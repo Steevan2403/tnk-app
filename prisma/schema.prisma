@@ -57,6 +57,7 @@ model User {
   occurrenceRecords  MaintenanceOccurrence[]
   inspectionRuns     InspectionRun[]
   buildingNotes      BuildingNote[]
+  buildingActivities BuildingActivity[]
   generatedReports   GeneratedReport[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -87,6 +88,7 @@ model Building {
   notes                BuildingNote[]
   usefulNumbers        UsefulNumber[]
   generatedReports     GeneratedReport[]
+  activities           BuildingActivity[]
 }
 
 // Contractors belong to the account, not to one building.
@@ -519,6 +521,7 @@ enum MaintenanceFileKind {
 enum MaintenanceMark {
   completed
   skipped
+  removed
 }
 
 enum InspectionType {
@@ -872,8 +875,8 @@ model InspectionRun {
   id           String             @id @default(cuid())
   buildingId   String
   building     Building           @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  templateId   String
-  template     InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  templateId   String?
+  template     InspectionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   name         String
   type         InspectionType
   apartmentId  String?
@@ -967,6 +970,21 @@ model GeneratedReport {
 
   @@index([buildingId, createdAt])
   @@index([createdById])
+}
+
+// A deletion that has to stay after the record is gone. Shown with the other dashboard activity.
+model BuildingActivity {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  summary    String
+  href       String
+  createdAt  DateTime @default(now())
+
+  @@index([buildingId, createdAt])
+  @@index([actorId])
 }
 
 // One row for the whole account: company name, fallback site contact, and work order terms.

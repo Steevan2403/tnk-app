@@ -5,12 +5,18 @@ import {
   dueReminders,
   isOccurrenceDate,
   isScheduleComplete,
+  maintenanceDeletePrompt,
   maintenanceTab,
   nextDueDate,
   occurrencesBetween,
   overdueDates,
   overdueMaintenance,
+  planMaintenanceDelete,
   reminderRecipients,
+  removedVisitActivity,
+  seriesDeletePrompt,
+  seriesDeletedActivity,
+  shownVisitStatus,
   type Schedule,
   type StoredOccurrence,
 } from "./maintenance";
@@ -286,6 +292,122 @@ describe("dueReminders", () => {
     expect(dueReminders([{ ...event, emails: [] }], [], today)).toEqual([]);
     expect(reminderRecipients(["pat.example@example.com"], ["office@example.com"])).toEqual(["pat.example@example.com"]);
     expect(reminderRecipients([null], ["Office@example.com"])).toEqual(["office@example.com"]);
+  });
+});
+
+describe("removed visits", () => {
+  const today = day("2026-11-18");
+  const rule = schedule({ start: "2025-10-18", frequency: "monthly" });
+
+  it("leaves a removed visit off the overdue list and off the calendar", () => {
+    const records: StoredOccurrence[] = [
+      { occursOn: day("2026-10-18"), state: "completed" },
+      { occursOn: day("2026-08-18"), state: "removed" },
+    ];
+    expect(isoList(overdueDates(rule, records, today))).not.toContain("2026-08-18");
+    expect(nextDueDate(rule, records, today)?.toISOString().slice(0, 10)).toBe("2026-11-18");
+    expect(shownVisitStatus(day("2026-08-18"), "removed", today)).toBeNull();
+    expect(shownVisitStatus(day("2026-08-18"), null, today)).toBe("overdue");
+  });
+
+  it("does not remind anyone about a removed visit", () => {
+    const event = {
+      id: "fire",
+      subject: "Fire system test",
+      buildingName: "Example Tower",
+      description: "Example monthly test.",
+      reminderDays: 7,
+      remindContractor: true,
+      schedule: schedule({ start: "2026-11-25", frequency: "monthly" }),
+      records: [{ occursOn: day("2026-11-25"), state: "removed" as const }],
+      emails: ["avery.sample@example.com"],
+    };
+    expect(dueReminders([event], [], today)).toEqual([]);
+  });
+
+  it("treats a removed visit as nothing left to do once the series has ended", () => {
+    const ended = schedule({ start: "2026-09-01", end: "2026-10-01", frequency: "monthly" });
+    const records: StoredOccurrence[] = [
+      { occursOn: day("2026-09-01"), state: "completed" },
+      { occursOn: day("2026-10-01"), state: "removed" },
+    ];
+    expect(isScheduleComplete(ended, records, today)).toBe(true);
+    expect(maintenanceTab(ended, records, today)).toBe("completed");
+  });
+});
+
+describe("maintenance delete", () => {
+  it("lets an admin or a manager delete, and blocks staff", () => {
+    expect(planMaintenanceDelete({ role: "admin", frequency: "monthly", scope: "occurrence" })).toEqual({
+      ok: true,
+      action: "occurrence",
+    });
+    expect(planMaintenanceDelete({ role: "manager", frequency: "monthly", scope: "series" })).toEqual({
+      ok: true,
+      action: "series",
+    });
+    expect(planMaintenanceDelete({ role: "staff", frequency: "monthly", scope: "series" })).toEqual({
+      ok: false,
+      error: "You do not have permission to delete maintenance.",
+    });
+  });
+
+  it("deletes one visit of a repeating event, and the whole event when it is one-off", () => {
+    expect(planMaintenanceDelete({ role: "admin", frequency: "weekly", scope: "occurrence" })).toEqual({
+      ok: true,
+      action: "occurrence",
+    });
+    expect(planMaintenanceDelete({ role: "admin", frequency: "one_off", scope: "occurrence" })).toEqual({
+      ok: true,
+      action: "series",
+    });
+    expect(planMaintenanceDelete({ role: "admin", frequency: "monthly", scope: "nope" })).toEqual({
+      ok: false,
+      error: "Choose this visit or the whole series.",
+    });
+  });
+
+  it("says what a visit delete and a series delete will change", () => {
+    expect(
+      maintenanceDeletePrompt({
+        subject: "Example fire system test",
+        dateLabel: "18 Nov 2026",
+        recurring: true,
+        visitCases: 1,
+        seriesCases: 2,
+        fileCount: 1,
+      }).message,
+    ).toBe(
+      [
+        "This visit is 18 Nov 2026. Choose this visit only, or the whole series.",
+        "This visit only: that date comes off the calendar. The other visits stay. 1 case already opened from this visit stays, including its work orders.",
+        "Whole series: the schedule, visit history, and reminders are removed. 1 file is removed. 2 cases already opened from this series stay, including their work orders.",
+      ].join("\n"),
+    );
+    expect(
+      maintenanceDeletePrompt({
+        subject: "Example lobby camera check",
+        dateLabel: "12 Jul 2026",
+        recurring: false,
+        visitCases: 0,
+        seriesCases: 0,
+        fileCount: 0,
+      }).message,
+    ).toBe(
+      "Delete this event on 12 Jul 2026?\nThe event, its visit history, and its reminders are removed. It has no files. No cases were opened from it.",
+    );
+    expect(
+      seriesDeletePrompt({ subject: "Example gutter clean", recurring: true, seriesCases: 0, fileCount: 0 }).message,
+    ).toContain("Delete every visit in this series?");
+    expect(removedVisitActivity("Example fire system test", "18 Nov 2026")).toBe(
+      "Deleted the 18 Nov 2026 visit of Example fire system test. Other visits were kept.",
+    );
+    expect(seriesDeletedActivity("Example fire system test", 2)).toBe(
+      "Deleted maintenance event Example fire system test. 2 cases already opened from it were kept, including their work orders.",
+    );
+    expect(seriesDeletedActivity("Example lobby camera check", 0)).toBe(
+      "Deleted maintenance event Example lobby camera check. No cases had been opened from it.",
+    );
   });
 });
 

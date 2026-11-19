@@ -15,6 +15,8 @@ import {
   completionDecision,
   duplicateTemplateName,
   formatSydneyDate,
+  planTemplateDelete,
+  templateDeletedActivity,
   inspectionPdfName,
   isInspectionResult,
   parseReportRecipient,
@@ -125,6 +127,37 @@ export async function saveTemplate(_prev: TemplateFormState, formData: FormData)
     return { error: "The template could not be saved." };
   }
 
+  refresh();
+  redirect("/building/inspections?tab=templates");
+}
+
+export async function deleteInspectionTemplate(formData: FormData) {
+  const user = await templateEditor();
+  if (!user) redirect("/building/inspections?tab=templates");
+  const id = String(formData.get("id") ?? "").trim();
+  const template = await prisma.inspectionTemplate.findFirst({
+    where: { id, buildingId: user.buildingId },
+    select: {
+      id: true,
+      name: true,
+      runs: { select: { status: true } },
+    },
+  });
+  if (!template) redirect("/building/inspections?tab=templates");
+  if (!planTemplateDelete(user.role).ok) redirect("/building/inspections?tab=templates");
+  const completedRuns = template.runs.filter((run) => run.status === "completed").length;
+  const activeRuns = template.runs.filter((run) => run.status === "in_progress").length;
+  await prisma.$transaction(async (tx) => {
+    await tx.buildingActivity.create({
+      data: {
+        buildingId: user.buildingId,
+        actorId: user.id,
+        summary: templateDeletedActivity(template.name, completedRuns, activeRuns),
+        href: "/building/inspections",
+      },
+    });
+    await tx.inspectionTemplate.delete({ where: { id: template.id } });
+  });
   refresh();
   redirect("/building/inspections?tab=templates");
 }

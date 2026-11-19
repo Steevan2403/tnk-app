@@ -1,8 +1,9 @@
 import type { Prisma } from "@prisma/client";
-import { formatIsoDate, parseDateOnly } from "./contractors";
+import { formatCalendarDate, formatIsoDate, parseDateOnly } from "./contractors";
 import { prisma } from "./db";
 import {
   PAGE_SIZE,
+  asOccurrenceState,
   caseDraftFromOccurrence,
   isFrequency,
   isOccurrenceDate,
@@ -12,6 +13,7 @@ import {
   occurrencesBetween,
   overdueMaintenance,
   scheduleOf,
+  shownVisitStatus,
   sydneyToday,
   visitStatus,
   weekCells,
@@ -110,6 +112,17 @@ export async function getMaintenance(buildingId: string, id: string): Promise<Ma
   return prisma.maintenanceEvent.findFirst({ where: { id, buildingId }, include: eventInclude });
 }
 
+export async function maintenanceSeriesFacts(buildingId: string, eventId: string) {
+  const [seriesCases, eventFiles, occurrenceFiles] = await Promise.all([
+    prisma.case.count({ where: { buildingId, maintenanceEventId: eventId } }),
+    prisma.maintenanceFile.count({ where: { eventId, event: { buildingId } } }),
+    prisma.maintenanceOccurrence.count({
+      where: { eventId, event: { buildingId }, fileStoredName: { not: null } },
+    }),
+  ]);
+  return { seriesCases, fileCount: eventFiles + occurrenceFiles };
+}
+
 export async function overdueVisitsForBuilding(buildingId: string, now = new Date()) {
   const today = sydneyToday(now);
   const events = await prisma.maintenanceEvent.findMany({
@@ -178,11 +191,13 @@ export async function loadCalendar(buildingId: string, fromIso: string, toIso: s
     const states = new Map(event.occurrences.map((record) => [formatIsoDate(record.occursOn), stored(record).state]));
     for (const date of occurrencesBetween(schedule, from, to)) {
       const iso = formatIsoDate(date);
+      const status = shownVisitStatus(date, states.get(iso) ?? null, today);
+      if (!status) continue;
       maintenance.push({
         eventId: event.id,
         subject: event.subject,
         iso,
-        status: visitStatus(date, states.get(iso) ?? null, today),
+        status,
       });
     }
   }
@@ -213,11 +228,16 @@ export type OccurrencePanel = {
   occurrenceId: string | null;
   subject: string;
   iso: string;
+  dateLabel: string;
   status: VisitStatus;
   note: string | null;
   fileName: string | null;
   actedBy: string | null;
   caseNumber: number | null;
+  recurring: boolean;
+  visitCases: number;
+  seriesCases: number;
+  fileCount: number;
 };
 
 export async function loadOccurrencePanel(
@@ -236,21 +256,33 @@ export async function loadOccurrencePanel(
   const schedule = event ? scheduleOf(event) : null;
   if (!event || !schedule || !isOccurrenceDate(schedule, occursOn)) return null;
   const record = event.occurrences[0] ?? null;
-  const linked = await prisma.case.findFirst({
-    where: { buildingId, maintenanceEventId: event.id, occurrenceOn: occursOn },
-    select: { number: true },
-    orderBy: { number: "asc" },
-  });
+  if (record && stored(record).state === "removed") return null;
+  const [linked, visitCases, seriesCases, eventFiles, occurrenceFiles] = await Promise.all([
+    prisma.case.findFirst({
+      where: { buildingId, maintenanceEventId: event.id, occurrenceOn: occursOn },
+      select: { number: true },
+      orderBy: { number: "asc" },
+    }),
+    prisma.case.count({ where: { buildingId, maintenanceEventId: event.id, occurrenceOn: occursOn } }),
+    prisma.case.count({ where: { buildingId, maintenanceEventId: event.id } }),
+    prisma.maintenanceFile.count({ where: { eventId: event.id } }),
+    prisma.maintenanceOccurrence.count({ where: { eventId: event.id, fileStoredName: { not: null } } }),
+  ]);
   return {
     eventId: event.id,
     occurrenceId: record?.id ?? null,
     subject: event.subject,
     iso,
+    dateLabel: formatCalendarDate(occursOn),
     status: visitStatus(occursOn, record ? stored(record).state : null, sydneyToday()),
     note: record?.note ?? null,
     fileName: record?.fileName ?? null,
     actedBy: record?.actedBy.name ?? null,
     caseNumber: linked?.number ?? null,
+    recurring: event.frequency !== "one_off",
+    visitCases,
+    seriesCases,
+    fileCount: eventFiles + occurrenceFiles,
   };
 }
 
@@ -318,6 +350,7 @@ function toRow(event: MaintenanceRecord, today: Date, months: string[]): Mainten
   const schedule = scheduleOf(event);
   const records = event.occurrences.map(stored);
   const upcoming = schedule ? occurrencesBetween(schedule, startOfMonth(today), addMonthsDate(today, 12)) : [];
+  const removed = new Set(records.filter((record) => record.state === "removed").map((record) => formatIsoDate(record.occursOn)));
   return {
     id: event.id,
     subject: event.subject,
@@ -330,7 +363,9 @@ function toRow(event: MaintenanceRecord, today: Date, months: string[]): Mainten
     documentCount: event.files.length,
     remindContractor: event.remindContractor,
     nextDue: schedule ? nextDueDate(schedule, records, today) : null,
-    upcomingDates: upcoming.map((date) => formatIsoDate(date)).filter((iso) => months.includes(iso.slice(0, 7))),
+    upcomingDates: upcoming
+      .map((date) => formatIsoDate(date))
+      .filter((iso) => months.includes(iso.slice(0, 7)) && !removed.has(iso)),
     tab: schedule ? maintenanceTab(schedule, records, today) : "active",
   };
 }
@@ -345,7 +380,7 @@ function compareRows(a: MaintenanceRow, b: MaintenanceRow, tab: MaintenanceTab):
 }
 
 function stored(record: { occursOn: Date; state: string }): StoredOccurrence {
-  return { occursOn: record.occursOn, state: record.state === "skipped" ? "skipped" : "completed" };
+  return { occursOn: record.occursOn, state: asOccurrenceState(record.state) };
 }
 
 function timelineKeys(today: Date): string[] {

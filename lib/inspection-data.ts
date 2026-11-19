@@ -128,6 +128,17 @@ export async function listRuns(
   });
 }
 
+export async function templateRunCounts(buildingId: string, templateId: string) {
+  const runs = await prisma.inspectionRun.findMany({
+    where: { buildingId, templateId },
+    select: { status: true },
+  });
+  return {
+    completedRuns: runs.filter((run) => run.status === "completed").length,
+    activeRuns: runs.filter((run) => run.status === "in_progress").length,
+  };
+}
+
 export async function getTemplate(buildingId: string, id: string) {
   return prisma.inspectionTemplate.findFirst({
     where: { id, buildingId },

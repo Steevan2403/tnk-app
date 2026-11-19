@@ -10,6 +10,7 @@ import {
 } from "date-fns";
 import { contactCompanyError, isCaseArea, type CaseArea } from "./cases";
 import { expiredBefore, formatIsoDate, parseDateOnly } from "./contractors";
+import { canManageMaintenance } from "./roles";
 
 export const PAGE_SIZE = 50;
 
@@ -38,9 +39,9 @@ export type CalendarView = (typeof CALENDAR_VIEWS)[number];
 
 export type CalendarKind = (typeof CALENDAR_KINDS)[number];
 
-export type OccurrenceState = "completed" | "skipped";
+export type OccurrenceState = "completed" | "skipped" | "removed";
 
-export type VisitStatus = OccurrenceState | "overdue" | "upcoming";
+export type VisitStatus = "completed" | "skipped" | "overdue" | "upcoming";
 
 export type Schedule = {
   startDate: Date;
@@ -224,6 +225,93 @@ export function isOccurrenceDate(schedule: Schedule, date: Date): boolean {
 export function visitStatus(date: Date, state: OccurrenceState | null, today: Date): VisitStatus {
   if (state === "completed" || state === "skipped") return state;
   return date.getTime() < utc(today).getTime() ? "overdue" : "upcoming";
+}
+
+// A removed visit is not shown. Callers skip that date instead of marking it overdue.
+export function shownVisitStatus(date: Date, state: OccurrenceState | null, today: Date): VisitStatus | null {
+  if (state === "removed") return null;
+  return visitStatus(date, state, today);
+}
+
+export function asOccurrenceState(state: string): OccurrenceState {
+  if (state === "skipped" || state === "removed") return state;
+  return "completed";
+}
+
+export function planMaintenanceDelete(input: {
+  role: string;
+  frequency: string;
+  scope: string;
+}): { ok: true; action: "occurrence" | "series" } | { ok: false; error: string } {
+  if (!canManageMaintenance(input.role)) {
+    return { ok: false, error: "You do not have permission to delete maintenance." };
+  }
+  if (!isFrequency(input.frequency)) return { ok: false, error: "That maintenance event could not be found." };
+  if (input.scope === "occurrence" && input.frequency !== "one_off") return { ok: true, action: "occurrence" };
+  if (input.scope === "series" || input.scope === "occurrence") return { ok: true, action: "series" };
+  return { ok: false, error: "Choose this visit or the whole series." };
+}
+
+export function maintenanceDeletePrompt(input: {
+  subject: string;
+  dateLabel: string;
+  recurring: boolean;
+  visitCases: number;
+  seriesCases: number;
+  fileCount: number;
+}): { title: string; message: string } {
+  const title = `Delete ${input.subject}?`;
+  if (!input.recurring) {
+    return {
+      title,
+      message: `Delete this event on ${input.dateLabel}?\nThe event, its visit history, and its reminders are removed. ${fileSentence(input.fileCount)} ${caseSentence(input.seriesCases, "from it")}`,
+    };
+  }
+  return {
+    title,
+    message: [
+      `This visit is ${input.dateLabel}. Choose this visit only, or the whole series.`,
+      `This visit only: that date comes off the calendar. The other visits stay. ${caseSentence(input.visitCases, "from this visit")}`,
+      `Whole series: the schedule, visit history, and reminders are removed. ${fileSentence(input.fileCount)} ${caseSentence(input.seriesCases, "from this series")}`,
+    ].join("\n"),
+  };
+}
+
+export function seriesDeletePrompt(input: {
+  subject: string;
+  recurring: boolean;
+  seriesCases: number;
+  fileCount: number;
+}): { title: string; message: string } {
+  const lead = input.recurring ? "Delete every visit in this series?" : "Delete this event?";
+  return {
+    title: `Delete ${input.subject}?`,
+    message: `${lead}\nThe schedule, visit history, and reminders are removed. ${fileSentence(input.fileCount)} ${caseSentence(input.seriesCases, "from it")}`,
+  };
+}
+
+export function removedVisitActivity(subject: string, dateLabel: string): string {
+  return `Deleted the ${dateLabel} visit of ${subject}. Other visits were kept.`;
+}
+
+export function seriesDeletedActivity(subject: string, caseCount: number): string {
+  if (caseCount === 0) return `Deleted maintenance event ${subject}. No cases had been opened from it.`;
+  if (caseCount === 1) {
+    return `Deleted maintenance event ${subject}. 1 case already opened from it was kept, including its work orders.`;
+  }
+  return `Deleted maintenance event ${subject}. ${caseCount} cases already opened from it were kept, including their work orders.`;
+}
+
+function fileSentence(count: number): string {
+  if (count === 0) return "It has no files.";
+  if (count === 1) return "1 file is removed.";
+  return `${count} files are removed.`;
+}
+
+function caseSentence(count: number, source: string): string {
+  if (count === 0) return `No cases were opened ${source}.`;
+  if (count === 1) return `1 case already opened ${source} stays, including its work orders.`;
+  return `${count} cases already opened ${source} stay, including their work orders.`;
 }
 
 // Overdue visits are before today in Sydney, not completed or skipped, and inside the last 12 months.
