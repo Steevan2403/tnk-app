@@ -157,7 +157,7 @@ function monthDate(iso: string, months: number, day: number): string {
 }
 
 function visitLink(page: Page, subject: string) {
-  return page.locator("a[href*='event=']").filter({ hasText: subject });
+  return page.locator("a[href*='event=']").filter({ hasText: subject, visible: true });
 }
 
 function dateLabel(iso: string): string {
