@@ -22,6 +22,8 @@ export function WorkOrderForm({
   defaultMessage,
   defaultPurchaseOrder,
   files,
+  attachmentBudget,
+  budgetLabel,
 }: {
   caseNumber: number;
   contractors: WorkOrderContractorOption[];
@@ -30,14 +32,21 @@ export function WorkOrderForm({
   defaultSubject: string;
   defaultMessage: string;
   defaultPurchaseOrder: string;
-  files: { id: string; name: string; kind: string }[];
+  files: { id: string; name: string; kind: string; size: number | null; sizeLabel: string }[];
+  attachmentBudget: number;
+  budgetLabel: string;
 }) {
   const [state, action, pending] = useActionState(sendWorkOrder, {} as WorkOrderFormState);
   const [companyId, setCompanyId] = useState(defaultCompanyId);
   const [contactId, setContactId] = useState(defaultContactId);
+  const [picked, setPicked] = useState<string[]>([]);
   const [previewError, setPreviewError] = useState("");
   const [previewing, setPreviewing] = useState(false);
   const contacts = contractors.find((contractor) => contractor.id === companyId)?.contacts ?? [];
+  const selectedBytes = files.reduce((sum, file) => {
+    if (!picked.includes(file.id) || file.size == null) return sum;
+    return sum + file.size;
+  }, 0);
 
   return (
     <form action={action} className="mt-6 max-w-3xl space-y-4">
@@ -97,13 +106,39 @@ export function WorkOrderForm({
           {files.map((file) => (
             <li key={file.id}>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="fileId" value={file.id} className="size-4 accent-brand-navy" />
+                <input
+                  type="checkbox"
+                  name="fileId"
+                  value={file.id}
+                  className="size-4 accent-brand-navy"
+                  onChange={(event) => {
+                    const id = file.id;
+                    setPicked((current) =>
+                      event.target.checked
+                        ? current.includes(id)
+                          ? current
+                          : [...current, id]
+                        : current.filter((item) => item !== id),
+                    );
+                  }}
+                />
                 {file.name}
-                <span className="text-muted">({file.kind})</span>
+                <span className="text-muted">
+                  ({file.kind}, {file.sizeLabel})
+                </span>
               </label>
             </li>
           ))}
         </ul>
+        <p className="mt-2 text-sm text-muted">
+          The PDF is always attached. Other files are attached until the email reaches {budgetLabel}. Anything that does
+          not fit is linked in the email.
+        </p>
+        {selectedBytes > attachmentBudget ? (
+          <p role="status" className="mt-2 text-sm text-danger">
+            The selected files are over {budgetLabel}. The email will attach what fits and link the rest.
+          </p>
+        ) : null}
         {state.errors?.fileIds ? <p className="mt-1 text-sm text-danger">{state.errors.fileIds}</p> : null}
       </fieldset>
       <div className="flex flex-wrap gap-3">

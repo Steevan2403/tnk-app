@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDateTime } from "@/lib/contractors";
 import { getWorkOrderMessage, requireUser } from "@/lib/data";
-import { workOrderNumber } from "@/lib/work-orders";
+import { withStoredSizes } from "@/lib/storage";
+import { formatFileSize, workOrderNumber } from "@/lib/work-orders";
 
 export const metadata: Metadata = { title: "Work order email" };
 
@@ -15,6 +16,7 @@ export default async function WorkOrderEmailPage({ params }: { params: Promise<{
   if (!record) notFound();
   const number = workOrderNumber(record.case.number, record.suffix);
   const message = record.messages[0];
+  const attachments = message ? await withStoredSizes(message.attachments) : [];
 
   return (
     <section className="max-w-3xl">
@@ -44,15 +46,20 @@ export default async function WorkOrderEmailPage({ params }: { params: Promise<{
           </p>
           <h2 className="mt-3 text-lg font-medium">{message.subject}</h2>
           <p className="mt-3 whitespace-pre-wrap">{message.body}</p>
-          {message.attachments.length > 0 ? (
+          {attachments.length > 0 ? (
             <ul className="mt-4 space-y-2">
-              {message.attachments.map((attachment) => (
-                <li key={attachment.id}>
-                  <a href={`/api/work-orders/${record.id}/pdf`} className="text-brand-blue hover:underline">
-                    {attachment.name}
-                  </a>
-                </li>
-              ))}
+              {attachments.map((attachment) => {
+                const file = record.files.find((item) => item.caseFile.storedName === attachment.storedName);
+                const href = file ? `/api/case-files/${file.caseFile.id}` : `/api/work-orders/${record.id}/pdf`;
+                return (
+                  <li key={attachment.id}>
+                    <a href={href} className="text-brand-blue hover:underline">
+                      {attachment.name}
+                    </a>
+                    <span className="text-sm text-muted"> · {formatFileSize(attachment.size)}</span>
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
         </article>

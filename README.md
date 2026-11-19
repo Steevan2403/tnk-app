@@ -104,7 +104,9 @@ The smoke test signs in, creates a building, switches to it, and checks the dash
 
 ## Email
 
-Outgoing mail stays in this app. There is no paid mail service and no real inbox. Each message is stored in the local outbox, including the attachment names, and an admin can read it at `/settings/outbox`.
+Outgoing mail stays in this app. There is no paid mail service and no real inbox. Each message is stored in the local outbox, including each attachment's name and size, and an admin can open those files at `/settings/outbox`.
+
+A work order email attaches the PDF and the files selected on that work order. Photos selected for the work order are the ones drawn under Job Information, and they are attached as files too. The attachments are kept to 10 MB in total. Files that do not fit are left off the message and listed with download links in the email. After sending, the case page names the files that were linked instead.
 
 SMTP is off unless you set it. To point the same helper at an SMTP server later, set these variables. Do not commit passwords or other credentials.
 

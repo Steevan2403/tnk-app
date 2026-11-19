@@ -5,6 +5,36 @@ export type MailAttachment = {
   storedName: string;
 };
 
+// 10 MB of file bytes. That stays under a typical mailbox limit once the message is encoded.
+export const EMAIL_ATTACHMENT_BUDGET = 10 * 1024 * 1024;
+
+export type MailFile = {
+  id: string;
+  name: string;
+  storedName: string;
+  size: number | null;
+};
+
+// The PDF is always included. Later files are added while they fit, and the rest are returned to be linked.
+export function packEmailAttachments(
+  pdf: { name: string; storedName: string; size: number },
+  files: MailFile[],
+  budget = EMAIL_ATTACHMENT_BUDGET,
+): { attachments: MailAttachment[]; omitted: MailFile[] } {
+  const attachments: MailAttachment[] = [{ name: pdf.name, storedName: pdf.storedName }];
+  let used = pdf.size > 0 ? pdf.size : 0;
+  const omitted: MailFile[] = [];
+  for (const file of files) {
+    if (file.size != null && file.size >= 0 && used + file.size <= budget) {
+      attachments.push({ name: file.name, storedName: file.storedName });
+      used += file.size;
+    } else {
+      omitted.push(file);
+    }
+  }
+  return { attachments, omitted };
+}
+
 export type OutgoingMail = {
   to: string;
   subject: string;

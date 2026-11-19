@@ -50,6 +50,11 @@ export function workOrderLinks(id: string, checkInToken: string): { viewUrl: str
   return { viewUrl, checkInUrl };
 }
 
+// The check-in token is the secret. Contractors can download a work order file without an account.
+export function workOrderFileUrl(checkInToken: string, fileId: string): string {
+  return `${appBaseUrl()}/api/work-order-files/${encodeURIComponent(checkInToken)}/${encodeURIComponent(fileId)}`;
+}
+
 // Keep the terms as typed, including numbering and blank lines. A whitespace-only value is empty.
 export function normalizeTerms(value: string): string {
   const terms = value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");

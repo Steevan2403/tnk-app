@@ -22,7 +22,7 @@ import {
   type CaseFileKind,
 } from "@/lib/cases";
 import { openSiteVisit, siteVisitActivity } from "@/lib/check-in";
-import { formatWorkOrderStatus, workOrderNumber } from "@/lib/work-orders";
+import { formatWorkOrderStatus, omittedAttachmentNotice, workOrderNumber } from "@/lib/work-orders";
 import { caseNeighbors, caseStarred, getCaseByNumber, requireUser, type CaseDetail } from "@/lib/data";
 import { canDeleteCases, canEditCases } from "@/lib/roles";
 
@@ -64,6 +64,7 @@ export default async function CasePage({
   const canEdit = canEditCases(user.role);
   const canDelete = canDeleteCases(user.role);
   const replyTo = first(query.reply);
+  const mailNotice = omittedAttachmentNotice(first(query.sent), many(query.omitted));
   const overdue = isCaseOverdue(record);
   const description = sanitizeCaseHtml(record.descriptionHtml);
   const topComments = record.comments.filter((comment) => !comment.parentId);
@@ -157,6 +158,12 @@ export default async function CasePage({
           ) : null}
         </div>
       </div>
+
+      {mailNotice ? (
+        <p role="status" className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-sm">
+          {mailNotice}
+        </p>
+      ) : null}
 
       {canEdit ? (
         <form action={setCaseStatus} className="mt-4 flex flex-wrap items-end gap-3">
@@ -535,6 +542,11 @@ function GalleryImage({ name, src }: { name: string; src: string }) {
 function first(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
   return (raw ?? "").trim();
+}
+
+function many(value: string | string[] | undefined): string[] {
+  const raw = Array.isArray(value) ? value : value ? [value] : [];
+  return raw.map((item) => item.trim()).filter(Boolean);
 }
 
 function blank(value: string | null): string {

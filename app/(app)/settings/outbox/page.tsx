@@ -4,7 +4,8 @@ import { formatDateTime } from "@/lib/contractors";
 import { parsePage } from "@/lib/cases";
 import { listOutbox, requireUser } from "@/lib/data";
 import { canViewOutbox } from "@/lib/roles";
-import { PAGE_SIZE } from "@/lib/work-orders";
+import { withStoredSizes } from "@/lib/storage";
+import { PAGE_SIZE, formatFileSize } from "@/lib/work-orders";
 
 export const metadata: Metadata = { title: "Outbox" };
 
@@ -29,6 +30,9 @@ export default async function OutboxPage({
   const totalPages = Math.max(1, Math.ceil(listed.total / PAGE_SIZE));
   const page = Math.min(requested, totalPages);
   const rows = page === requested ? listed.rows : (await listOutbox(page)).rows;
+  const messages = await Promise.all(
+    rows.map(async (message) => ({ ...message, attachments: await withStoredSizes(message.attachments) })),
+  );
 
   return (
     <section>
@@ -50,7 +54,7 @@ export default async function OutboxPage({
       <p className="mt-4 text-sm text-muted">{listed.total === 1 ? "1 message" : `${listed.total} messages`}</p>
       {rows.length === 0 ? <p className="mt-4 text-muted">No messages yet.</p> : null}
       <ul className="mt-4 space-y-4">
-        {rows.map((message) => (
+        {messages.map((message) => (
           <li key={message.id}>
             <article aria-label={message.subject} className="rounded-xl border border-line bg-card p-4">
               <p className="text-sm text-muted">{formatDateTime(message.createdAt)}</p>
@@ -67,6 +71,7 @@ export default async function OutboxPage({
                       <a href={`/api/outbox-files/${attachment.id}`} className="text-brand-blue hover:underline">
                         {attachment.name}
                       </a>
+                      <span className="text-sm text-muted"> · {formatFileSize(attachment.size)}</span>
                     </li>
                   ))}
                 </ul>

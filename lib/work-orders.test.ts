@@ -7,6 +7,8 @@ import {
   resolveWorkOrderContact,
   suffixFromRank,
   sydneyDateTimeToUtc,
+  formatFileSize,
+  omittedAttachmentNotice,
   workOrderEmailBody,
   type WorkOrderFormContext,
 } from "./work-orders";
@@ -92,6 +94,19 @@ describe("work order contacts", () => {
   });
 });
 
+describe("file sizes", () => {
+  it("uses bytes, kilobytes, and megabytes", () => {
+    expect(formatFileSize(null)).toBe("unknown size");
+    expect(formatFileSize(-1)).toBe("unknown size");
+    expect(formatFileSize(0)).toBe("0 B");
+    expect(formatFileSize(512)).toBe("512 B");
+    expect(formatFileSize(1024)).toBe("1 KB");
+    expect(formatFileSize(1536)).toBe("2 KB");
+    expect(formatFileSize(1.5 * 1024 * 1024)).toBe("1.5 MB");
+    expect(formatFileSize(10 * 1024 * 1024)).toBe("10 MB");
+  });
+});
+
 describe("work order email", () => {
   it("includes the on-site check-in link", () => {
     const body = workOrderEmailBody({
@@ -105,6 +120,40 @@ describe("work order email", () => {
     });
     expect(body).toContain("On-site check-in: https://app.example/check-in/seed-check-in-300-a-example");
     expect(body).toContain("The work order is attached as work-order-300-A.pdf.");
+    expect(body).not.toContain("too large to attach");
+  });
+
+  it("lists files that did not fit, with a download link", () => {
+    const body = workOrderEmailBody({
+      number: "305-A",
+      buildingName: "Example Tower",
+      companyName: "Fictional Fire Services",
+      contactName: "Avery Sample",
+      message: "Example instructions.",
+      pdfName: "work-order-305-A.pdf",
+      checkInUrl: "https://app.example/check-in/token",
+      omitted: [
+        {
+          name: "example-large.txt",
+          size: 10 * 1024 * 1024,
+          url: "https://app.example/api/work-order-files/token/file-1",
+        },
+      ],
+    });
+    expect(body).toContain("These files were too large to attach:");
+    expect(body).toContain("example-large.txt (10 MB)");
+    expect(body).toContain("https://app.example/api/work-order-files/token/file-1");
+  });
+
+  it("tells the sender which files were linked instead of attached", () => {
+    expect(omittedAttachmentNotice("305-A", ["example-large.txt"])).toBe(
+      "Work order 305-A was sent. example-large.txt was too large to attach and is linked in the email.",
+    );
+    expect(omittedAttachmentNotice("305-A", ["clip.mp4", "scan.pdf"])).toBe(
+      "Work order 305-A was sent. These files were too large to attach and are linked in the email: clip.mp4, scan.pdf.",
+    );
+    expect(omittedAttachmentNotice("305-A", [])).toBeNull();
+    expect(omittedAttachmentNotice("", ["clip.mp4"])).toBeNull();
   });
 });
 

@@ -4,6 +4,7 @@ import {
   buildingLine,
   decideCompanySettingsSave,
   siteContactValue,
+  workOrderFileUrl,
   workOrderLinks,
 } from "./work-order-terms";
 
@@ -70,6 +71,9 @@ describe("work order contact details", () => {
       const links = workOrderLinks("work-order-1", "seed-check-in-300-a-example");
       expect(links.viewUrl).toBe("https://app.example/work-orders/work-order-1");
       expect(links.checkInUrl).toBe("https://app.example/check-in/seed-check-in-300-a-example");
+      expect(workOrderFileUrl("seed-check-in-300-a-example", "file 1")).toBe(
+        "https://app.example/api/work-order-files/seed-check-in-300-a-example/file%201",
+      );
     } finally {
       if (previous === undefined) delete process.env.APP_BASE_URL;
       else process.env.APP_BASE_URL = previous;
