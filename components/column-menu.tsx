@@ -1,7 +1,18 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useSyncExternalStore, useState } from "react";
 import { columnStorageKey, hiddenColumnIds } from "@/lib/columns";
+
+const CHANGE = "tnk-columns-change";
+
+function subscribe(onChange: () => void) {
+  window.addEventListener(CHANGE, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(CHANGE, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
 
 export function ColumnMenu({
   userId,
@@ -21,14 +32,17 @@ export function ColumnMenu({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [hidden, setHidden] = useState<string[]>([]);
-  const ids = columns.map((column) => column.id).join("\n");
+  const allowed = columns.map((column) => column.id).join("\n");
+  const stored = useSyncExternalStore(
+    subscribe,
+    () => window.localStorage.getItem(storageKey) ?? "",
+    () => "",
+  );
+  const hidden = hiddenColumnIds(stored || null, allowed.split("\n"));
 
   useLayoutEffect(() => {
-    const next = hiddenColumnIds(window.localStorage.getItem(storageKey), ids.split("\n"));
-    setHidden(next);
-    applyColumns(tableId, ids.split("\n"), next);
-  }, [storageKey, tableId, ids]);
+    applyColumns(tableId, allowed.split("\n"), hiddenColumnIds(stored || null, allowed.split("\n")));
+  }, [tableId, allowed, stored]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -52,10 +66,10 @@ export function ColumnMenu({
   }, [open]);
 
   function toggle(id: string) {
-    const next = hidden.includes(id) ? hidden.filter((item) => item !== id) : [...hidden, id];
+    const current = hiddenColumnIds(window.localStorage.getItem(storageKey), allowed.split("\n"));
+    const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
     window.localStorage.setItem(storageKey, JSON.stringify(next));
-    setHidden(next);
-    applyColumns(tableId, ids.split("\n"), next);
+    window.dispatchEvent(new Event(CHANGE));
   }
 
   return (
