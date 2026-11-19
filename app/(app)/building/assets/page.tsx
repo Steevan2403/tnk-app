@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AssetCategories } from "@/components/asset-categories";
 import { EmptyState } from "@/components/ui";
 import { SelectField, TextField } from "@/components/field";
 import {
@@ -12,7 +11,7 @@ import {
   parsePage,
 } from "@/lib/assets";
 import { listAssetCategories, listAssets, requireUser, type AssetRow } from "@/lib/data";
-import { canManageAssetCategories, canManageAssets } from "@/lib/roles";
+import { canManageAssets } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Assets" };
 
@@ -28,7 +27,6 @@ export default async function AssetsPage({
   const warranty = first(params.warranty) === "expired" ? "expired" : "";
   const page = parsePage(first(params.page));
   const canManage = canManageAssets(user.role);
-  const canManageCategories = canManageAssetCategories(user.role);
   const buildingId = user.selectedBuildingId;
 
   if (!buildingId) {
@@ -119,16 +117,6 @@ export default async function AssetsPage({
             )}
           </div>
         </div>
-      ) : null}
-
-      {canManageCategories ? (
-        <AssetCategories
-          categories={categories.map((category) => ({
-            id: category.id,
-            name: category.name,
-            assetCount: category._count.assets,
-          }))}
-        />
       ) : null}
     </section>
   );

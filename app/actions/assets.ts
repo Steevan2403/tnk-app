@@ -377,7 +377,7 @@ export async function renameAssetCategory(_prev: CategoryFormState, formData: Fo
 
 export async function deleteAssetCategory(formData: FormData) {
   const user = await categoryEditor();
-  if (!user) redirect("/building/assets");
+  if (!user) redirect("/building/categories?tab=assets");
 
   const id = String(formData.get("id") ?? "");
   const used = await prisma.asset.count({ where: { categoryId: id } });
@@ -385,7 +385,7 @@ export async function deleteAssetCategory(formData: FormData) {
     await prisma.assetCategory.deleteMany({ where: { id } });
     refresh();
   }
-  redirect("/building/assets");
+  redirect("/building/categories?tab=assets");
 }
 
 async function categoryNameTaken(name: string, ignoreId?: string): Promise<boolean> {

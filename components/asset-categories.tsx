@@ -9,23 +9,45 @@ const buttonClass =
 
 export function AssetCategories({
   categories,
+  canManage,
 }: {
   categories: { id: string; name: string; assetCount: number }[];
+  canManage: boolean;
 }) {
   return (
-    <details className="mt-8 rounded-xl border border-line bg-card p-4">
-      <summary className="cursor-pointer text-sm font-medium text-brand-navy">Asset categories</summary>
-      <div className="mt-4 space-y-4">
-        <AddCategoryForm />
-        <ul className="divide-y divide-line">
-          {categories.map((category) => (
-            <li key={category.id} className="py-3">
-              <RenameCategoryForm category={category} />
-            </li>
-          ))}
-        </ul>
-      </div>
-    </details>
+    <section aria-labelledby="asset-categories-heading" className="rounded-xl border border-line bg-card p-4">
+      <h2 id="asset-categories-heading" className="text-lg font-medium text-brand-navy">
+        Asset categories
+      </h2>
+      {canManage ? (
+        <div className="mt-4 space-y-4">
+          <AddCategoryForm />
+          {categories.length === 0 ? <p className="text-sm text-muted">No categories yet.</p> : null}
+          <ul className="divide-y divide-line">
+            {categories.map((category) => (
+              <li key={`${category.id}-${category.name}`} className="py-3">
+                <RenameCategoryForm category={category} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <NameList names={categories.map((category) => category.name)} />
+      )}
+    </section>
+  );
+}
+
+function NameList({ names }: { names: string[] }) {
+  return (
+    <ul className="mt-4 divide-y divide-line">
+      {names.length === 0 ? <li className="py-2 text-sm text-muted">No categories yet.</li> : null}
+      {names.map((name) => (
+        <li key={name} className="py-2 text-sm">
+          {name}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -33,8 +55,12 @@ function AddCategoryForm() {
   const [state, action, pending] = useActionState(addAssetCategory, {} as CategoryFormState);
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-      {state.error ? <p className="text-sm text-danger sm:col-span-2">{state.error}</p> : null}
-      <TextField label="New category" name="name" error={state.errors?.name} required />
+      {state.error ? (
+        <p role="alert" className="text-sm text-danger sm:col-span-2">
+          {state.error}
+        </p>
+      ) : null}
+      <TextField id="new-asset-category" label="New category" name="name" error={state.errors?.name} required />
       <button type="submit" disabled={pending} className={buttonClass}>
         {pending ? "Adding…" : "Add category"}
       </button>
@@ -70,7 +96,11 @@ function RenameCategoryForm({ category }: { category: { id: string; name: string
       ) : (
         <p className="px-1 py-2 text-sm text-muted">In use</p>
       )}
-      {state.error ? <p className="w-full text-sm text-danger">{state.error}</p> : null}
+      {state.error ? (
+        <p role="alert" className="w-full text-sm text-danger">
+          {state.error}
+        </p>
+      ) : null}
     </div>
   );
 }

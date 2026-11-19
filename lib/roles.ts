@@ -23,7 +23,7 @@ export function canManageAssets(role: string): boolean {
 }
 
 export function canManageAssetCategories(role: string): boolean {
-  return role === "admin";
+  return role === "admin" || role === "manager";
 }
 
 export function canEditCases(role: string): boolean {
@@ -35,7 +35,7 @@ export function canDeleteCases(role: string): boolean {
 }
 
 export function canManageCaseTypes(role: string): boolean {
-  return role === "admin";
+  return role === "admin" || role === "manager";
 }
 
 export function canSendWorkOrders(role: string): boolean {

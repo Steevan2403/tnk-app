@@ -88,9 +88,9 @@ describe("case permissions", () => {
     expect(canDeleteCases("staff")).toBe(false);
   });
 
-  it("lets only an admin manage case types", () => {
+  it("lets an admin or a manager manage case types", () => {
     expect(canManageCaseTypes("admin")).toBe(true);
-    expect(canManageCaseTypes("manager")).toBe(false);
+    expect(canManageCaseTypes("manager")).toBe(true);
     expect(canManageCaseTypes("staff")).toBe(false);
   });
 });
@@ -158,12 +158,12 @@ describe("report permissions", () => {
 });
 
 describe("canManageAssetCategories", () => {
-  it("allows an admin", () => {
+  it("lets an admin or a manager manage asset categories", () => {
     expect(canManageAssetCategories("admin")).toBe(true);
+    expect(canManageAssetCategories("manager")).toBe(true);
   });
 
-  it("blocks manager and staff", () => {
-    expect(canManageAssetCategories("manager")).toBe(false);
+  it("blocks staff", () => {
     expect(canManageAssetCategories("staff")).toBe(false);
   });
 });

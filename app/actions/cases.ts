@@ -548,7 +548,7 @@ export async function renameCaseType(_prev: CaseTypeFormState, formData: FormDat
 
 export async function deleteCaseType(formData: FormData) {
   const user = await requireUser();
-  if (!canManageCaseTypes(user.role)) redirect("/cases");
+  if (!canManageCaseTypes(user.role)) redirect("/building/categories?tab=cases");
 
   const id = String(formData.get("id") ?? "");
   const used = await prisma.case.count({ where: { typeId: id } });
@@ -556,7 +556,7 @@ export async function deleteCaseType(formData: FormData) {
     await prisma.caseType.deleteMany({ where: { id } });
     refresh();
   }
-  redirect("/cases");
+  redirect("/building/categories?tab=cases");
 }
 
 async function caseTypeTaken(name: string, ignoreId?: string): Promise<boolean> {

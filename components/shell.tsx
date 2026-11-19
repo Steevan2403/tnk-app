@@ -5,11 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  BarChart3,
-  Boxes,
+  Building2,
   CalendarDays,
   ChevronDown,
-  ClipboardCheck,
   ClipboardList,
   FolderKanban,
   HardHat,
@@ -26,6 +24,7 @@ import {
 import { signOutAction } from "@/app/actions/auth";
 import { selectBuilding } from "@/app/actions/buildings";
 import { NotificationBell } from "@/components/notification-bell";
+import { buildingNavIsCurrent } from "@/lib/building-hub";
 import { formatAddress, type BuildingRecord } from "@/lib/buildings";
 import type { NotificationListItem } from "@/lib/notifications";
 import { formatRole } from "@/lib/roles";
@@ -36,12 +35,7 @@ const PRIMARY_NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/work-orders", label: "Work Orders", icon: ClipboardList },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/maintenance", label: "Maintenance", icon: Wrench },
-];
-
-const BUILDING_NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/building/assets", label: "Assets", icon: Boxes },
-  { href: "/building/inspections", label: "Inspections", icon: ClipboardCheck },
-  { href: "/building/reports", label: "Reports", icon: BarChart3 },
+  { href: "/building", label: "Building", icon: Building2 },
 ];
 
 const SECONDARY_NAV: { href: string; label: string; icon: LucideIcon }[] = [
@@ -127,10 +121,6 @@ export function Shell({
           {PRIMARY_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} onNavigate={close} />
           ))}
-          <p className="px-3 pt-5 pb-1 text-xs font-semibold tracking-[0.14em] text-white uppercase">Building</p>
-          {BUILDING_NAV.map((item) => (
-            <NavLink key={item.href} {...item} pathname={pathname} onNavigate={close} />
-          ))}
           <div className="my-3 border-t border-white/15" />
           {SECONDARY_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} onNavigate={close} />
@@ -180,7 +170,10 @@ function NavLink({
   pathname: string;
   onNavigate: () => void;
 }) {
-  const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+  const active =
+    href === "/building"
+      ? buildingNavIsCurrent(pathname)
+      : pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
   return (
     <Link
       href={href}

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { setCasesStatus, toggleCaseStar } from "@/app/actions/cases";
 import { CaseBoard } from "@/components/case-board";
-import { CaseTypes } from "@/components/case-types";
 import { SelectAll } from "@/components/case-select";
 import { FilesMark } from "@/components/files-mark";
 import { WorkOrderMark } from "@/components/work-order-mark";
@@ -32,7 +31,7 @@ import {
   requireUser,
   type CaseRow,
 } from "@/lib/data";
-import { canEditCases, canManageCaseTypes } from "@/lib/roles";
+import { canEditCases } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Cases" };
 
@@ -70,7 +69,6 @@ export default async function CasesPage({
   const params = await searchParams;
   const filters = readFilters(params);
   const canEdit = canEditCases(user.role);
-  const canManageTypes = canManageCaseTypes(user.role);
 
   if (!user.selectedBuildingId) {
     return (
@@ -238,10 +236,6 @@ export default async function CasesPage({
             )}
           </div>
         </div>
-      ) : null}
-
-      {canManageTypes ? (
-        <CaseTypes types={types.map((type) => ({ id: type.id, name: type.name, caseCount: type._count.cases }))} />
       ) : null}
     </section>
   );
