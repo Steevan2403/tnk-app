@@ -18,16 +18,19 @@ import {
 } from "@/lib/assets";
 import { parseDocumentName } from "@/lib/contractors";
 import { canManageAssetCategories, canManageAssets } from "@/lib/roles";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { fileBaseName, imageUploadProblem, removeUpload, saveUpload, uploadProblem } from "@/lib/storage";
 
 export type AssetFormState = {
   error?: string;
   errors?: Partial<Record<AssetField, string>>;
+  values?: SubmittedValues;
 };
 
 export type WarrantyFormState = {
   error?: string;
   errors?: Partial<Record<WarrantyField, string>>;
+  values?: SubmittedValues;
 };
 
 export type PhotoFormState = {
@@ -75,7 +78,11 @@ function money(value: string | null): Prisma.Decimal | null {
   return value == null ? null : new Prisma.Decimal(value);
 }
 
-export async function saveAsset(_prev: AssetFormState, formData: FormData): Promise<AssetFormState> {
+export async function saveAsset(prev: AssetFormState, formData: FormData): Promise<AssetFormState> {
+  return attachSubmitted(formData, await saveAssetBody(prev, formData));
+}
+
+async function saveAssetBody(_prev: AssetFormState, formData: FormData): Promise<AssetFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -275,7 +282,11 @@ export async function deleteAssetDocument(formData: FormData) {
   redirect(assetPath(assetId));
 }
 
-export async function saveWarranty(_prev: WarrantyFormState, formData: FormData): Promise<WarrantyFormState> {
+export async function saveWarranty(prev: WarrantyFormState, formData: FormData): Promise<WarrantyFormState> {
+  return attachSubmitted(formData, await saveWarrantyBody(prev, formData));
+}
+
+async function saveWarrantyBody(_prev: WarrantyFormState, formData: FormData): Promise<WarrantyFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -366,7 +377,7 @@ export async function renameAssetCategory(_prev: CategoryFormState, formData: Fo
 
 export async function deleteAssetCategory(formData: FormData) {
   const user = await categoryEditor();
-  if (!user) redirect("/building/assets");
+  if (!user) redirect("/building/categories?tab=assets");
 
   const id = String(formData.get("id") ?? "");
   const used = await prisma.asset.count({ where: { categoryId: id } });
@@ -374,7 +385,7 @@ export async function deleteAssetCategory(formData: FormData) {
     await prisma.assetCategory.deleteMany({ where: { id } });
     refresh();
   }
-  redirect("/building/assets");
+  redirect("/building/categories?tab=assets");
 }
 
 async function categoryNameTaken(name: string, ignoreId?: string): Promise<boolean> {

@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { SelectField } from "@/components/field";
+import { useSubmittedValues } from "@/components/retained-form";
 import { CASE_AREAS, formatArea, type CaseArea } from "@/lib/cases";
+import { listValue, textValue } from "@/lib/form-values";
 
 export type PickerAsset = { id: string; name: string; categoryId: string; categoryName: string };
 
@@ -26,9 +28,15 @@ export function JobAreaPicker({
   apartmentId: string;
   errors?: { area?: string; assetIds?: string; apartmentId?: string };
 }) {
-  const [area, setArea] = useState<CaseArea>(initialArea);
+  const submitted = useSubmittedValues();
+  const submittedArea = textValue(submitted, "area", initialArea);
+  const [area, setArea] = useState<CaseArea>(
+    typeof submittedArea === "string" && (CASE_AREAS as readonly string[]).includes(submittedArea)
+      ? (submittedArea as CaseArea)
+      : initialArea,
+  );
   const [categoryId, setCategoryId] = useState("");
-  const [assetIds, setAssetIds] = useState<string[]>(initialAssetIds);
+  const [assetIds, setAssetIds] = useState<string[]>(listValue(submitted, "assetId", initialAssetIds));
 
   const categories = useMemo(() => {
     const seen = new Map<string, string>();
@@ -106,7 +114,7 @@ export function JobAreaPicker({
         </div>
       ) : null}
       {area === "apartment" ? (
-        <SelectField label="Apartment" name="apartmentId" defaultValue={apartmentId} error={errors?.apartmentId} required>
+        <SelectField label="Apartment" name="apartmentId" defaultValue={apartmentId} error={errors?.apartmentId} required markRequired>
           <option value="">Choose an apartment</option>
           {apartments.map((apartment) => (
             <option key={apartment.id} value={apartment.id}>
@@ -130,8 +138,9 @@ export function AssigneePicker({
   contactIds: string[];
   errors?: { companyIds?: string; contactIds?: string };
 }) {
-  const [companyIds, setCompanyIds] = useState<string[]>(initialCompanyIds);
-  const [contactIds, setContactIds] = useState<string[]>(initialContactIds);
+  const submitted = useSubmittedValues();
+  const [companyIds, setCompanyIds] = useState<string[]>(listValue(submitted, "companyId", initialCompanyIds));
+  const [contactIds, setContactIds] = useState<string[]>(listValue(submitted, "contactId", initialContactIds));
   const contactOptions = companies
     .filter((company) => companyIds.includes(company.id))
     .flatMap((company) => company.contacts.map((contact) => ({ ...contact, companyName: company.name })));

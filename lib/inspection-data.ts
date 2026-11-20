@@ -34,6 +34,7 @@ export type RunListRow = {
 const runInclude = {
   building: { select: { name: true, address: true, suburb: true, state: true, postcode: true } },
   apartment: { select: { id: true, number: true } },
+  assets: { select: { assetId: true, asset: { select: { id: true, name: true } } } },
   inspector: { select: { name: true } },
   areas: {
     orderBy: { position: "asc" as const },
@@ -163,6 +164,20 @@ export async function listInspectionApartments(buildingId: string) {
     orderBy: { number: "asc" },
     select: { id: true, number: true },
   });
+}
+
+export async function listInspectionAssets(buildingId: string) {
+  const assets = await prisma.asset.findMany({
+    where: { buildingId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, categoryId: true, category: { select: { name: true } } },
+  });
+  return assets.map((asset) => ({
+    id: asset.id,
+    name: asset.name,
+    categoryId: asset.categoryId,
+    categoryName: asset.category.name,
+  }));
 }
 
 export async function inspectionPdfInput(buildingId: string, id: string): Promise<InspectionPdfInput | null> {

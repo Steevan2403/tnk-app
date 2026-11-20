@@ -5,11 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  BarChart3,
-  Boxes,
+  Building2,
   CalendarDays,
   ChevronDown,
-  ClipboardCheck,
   ClipboardList,
   FolderKanban,
   HardHat,
@@ -25,7 +23,10 @@ import {
 import { signOutAction } from "@/app/actions/auth";
 import { selectBuilding } from "@/app/actions/buildings";
 import { GlobalSearch } from "@/components/global-search";
+import { NotificationBell } from "@/components/notification-bell";
+import { buildingNavIsCurrent } from "@/lib/building-hub";
 import { formatAddress, type BuildingRecord } from "@/lib/buildings";
+import type { NotificationListItem } from "@/lib/notifications";
 import { formatRole } from "@/lib/roles";
 
 const PRIMARY_NAV: { href: string; label: string; icon: LucideIcon }[] = [
@@ -34,12 +35,7 @@ const PRIMARY_NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/work-orders", label: "Work Orders", icon: ClipboardList },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/maintenance", label: "Maintenance", icon: Wrench },
-];
-
-const BUILDING_NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/building/assets", label: "Assets", icon: Boxes },
-  { href: "/building/inspections", label: "Inspections", icon: ClipboardCheck },
-  { href: "/building/reports", label: "Reports", icon: BarChart3 },
+  { href: "/building", label: "Building", icon: Building2 },
 ];
 
 const SECONDARY_NAV: { href: string; label: string; icon: LucideIcon }[] = [
@@ -52,11 +48,13 @@ export function Shell({
   user,
   buildings,
   selected,
+  notifications,
   children,
 }: {
   user: { name: string; role: string };
   buildings: BuildingRecord[];
   selected: BuildingRecord | null;
+  notifications: { unread: number; items: NotificationListItem[] };
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -84,11 +82,15 @@ export function Shell({
 
   return (
     <div className="app-shell min-h-dvh bg-page md:fixed md:inset-0 md:flex md:overflow-hidden">
+      <a href="#content" className="skip-link">
+        Skip to content
+      </a>
       {open ? (
         <button
           type="button"
           className="fixed inset-0 z-30 bg-brand-navy/50 md:hidden"
           aria-label="Dismiss menu"
+          title="Dismiss menu"
           onClick={() => setOpen(false)}
         />
       ) : null}
@@ -123,10 +125,6 @@ export function Shell({
           {PRIMARY_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} onNavigate={close} />
           ))}
-          <p className="px-3 pt-5 pb-1 text-xs font-semibold tracking-[0.14em] text-white uppercase">Building</p>
-          {BUILDING_NAV.map((item) => (
-            <NavLink key={item.href} {...item} pathname={pathname} onNavigate={close} />
-          ))}
           <div className="my-3 border-t border-white/15" />
           {SECONDARY_NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} onNavigate={close} />
@@ -144,9 +142,10 @@ export function Shell({
             Menu
           </button>
           <GlobalSearch key={`${selected?.id ?? "none"}:${pathname}`} />
+          <NotificationBell key={pathname} unread={notifications.unread} items={notifications.items} />
           <UserMenu name={user.name} role={user.role} />
         </header>
-        <main ref={mainRef} className="flex-1 px-4 py-6 md:min-h-0 md:overflow-y-auto md:px-8 md:py-8">
+        <main id="content" tabIndex={-1} ref={mainRef} className="flex-1 px-4 py-6 md:min-h-0 md:overflow-y-auto md:px-8 md:py-8">
           {children}
         </main>
       </div>
@@ -167,7 +166,10 @@ function NavLink({
   pathname: string;
   onNavigate: () => void;
 }) {
-  const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+  const active =
+    href === "/building"
+      ? buildingNavIsCurrent(pathname)
+      : pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
   return (
     <Link
       href={href}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   caseFieldsFromItem,
+  inspectionLocation,
+  inspectionLocationLabel,
   completionDecision,
   planCaseCreates,
   planTemplateDelete,
@@ -113,13 +115,16 @@ describe("cases from failed items", () => {
         areaName: "Lobby",
         comment: "Example crack near the mailboxes.",
         type: "common_area",
+        area: null,
         apartmentId: null,
+        assetIds: [],
       }),
     ).toEqual({
       subject: "Lobby floor (Lobby)",
       descriptionHtml: "<p>Example crack near the mailboxes.</p>",
       area: "none",
       apartmentId: null,
+      assetIds: [],
     });
 
     expect(
@@ -128,9 +133,11 @@ describe("cases from failed items", () => {
         areaName: "Kitchen",
         comment: "Example chip.",
         type: "private_lot",
+        area: null,
         apartmentId: "apt-104",
+        assetIds: [],
       }),
-    ).toMatchObject({ area: "apartment", apartmentId: "apt-104", subject: "Sink (Kitchen)" });
+    ).toMatchObject({ area: "apartment", apartmentId: "apt-104", assetIds: [], subject: "Sink (Kitchen)" });
 
     expect(
       caseFieldsFromItem({
@@ -138,9 +145,42 @@ describe("cases from failed items", () => {
         areaName: "Kitchen",
         comment: null,
         type: "private_lot",
+        area: null,
         apartmentId: null,
+        assetIds: [],
       }).area,
     ).toBe("none");
+  });
+
+  it("carries a chosen asset into the case, and leaves an explicit N/A as N/A", () => {
+    expect(
+      caseFieldsFromItem({
+        itemName: "Pump seals",
+        areaName: "Plant room",
+        comment: "Example drip.",
+        type: "common_area",
+        area: "asset",
+        apartmentId: null,
+        assetIds: ["lift-1"],
+      }),
+    ).toMatchObject({
+      area: "asset",
+      assetIds: ["lift-1"],
+      apartmentId: null,
+      subject: "Pump seals (Plant room)",
+    });
+
+    expect(
+      caseFieldsFromItem({
+        itemName: "Sink",
+        areaName: "Kitchen",
+        comment: null,
+        type: "private_lot",
+        area: "none",
+        apartmentId: "apt-104",
+        assetIds: ["lift-1"],
+      }),
+    ).toMatchObject({ area: "none", apartmentId: null, assetIds: [] });
   });
 
   it("creates cases for every failed item that does not already have one", () => {
@@ -148,6 +188,40 @@ describe("cases from failed items", () => {
       createIds: ["floor", "lines"],
       alreadyLinked: ["door"],
     });
+  });
+});
+
+describe("inspection location", () => {
+  const known = { assetIds: ["lift-1", "pump-1"], apartmentIds: ["apt-104"] };
+
+  it("accepts N/A, a building asset, or a building apartment", () => {
+    expect(inspectionLocation({ area: "", assetIds: [], apartmentId: "" }, known)).toEqual({
+      ok: true,
+      value: { area: "none", assetIds: [], apartmentId: null },
+    });
+    expect(inspectionLocation({ area: "asset", assetIds: ["lift-1", "lift-1"], apartmentId: "apt-104" }, known)).toEqual({
+      ok: true,
+      value: { area: "asset", assetIds: ["lift-1"], apartmentId: null },
+    });
+    expect(inspectionLocation({ area: "apartment", assetIds: ["lift-1"], apartmentId: "apt-104" }, known)).toEqual({
+      ok: true,
+      value: { area: "apartment", assetIds: [], apartmentId: "apt-104" },
+    });
+    expect(inspectionLocationLabel({ area: "asset", assetNames: ["QA TEST Lift 1"], apartmentNumber: null })).toBe(
+      "Common asset · QA TEST Lift 1",
+    );
+  });
+
+  it("rejects an asset or apartment from outside the building", () => {
+    expect(inspectionLocation({ area: "asset", assetIds: ["other-building"], apartmentId: "" }, known)).toEqual({
+      ok: false,
+      error: "asset",
+    });
+    expect(inspectionLocation({ area: "apartment", assetIds: [], apartmentId: "other" }, known)).toEqual({
+      ok: false,
+      error: "apartment",
+    });
+    expect(inspectionLocation({ area: "roof", assetIds: [], apartmentId: "" }, known).ok).toBe(false);
   });
 });
 

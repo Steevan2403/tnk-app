@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CalendarAdd } from "@/components/calendar-add";
 import { completeOccurrence, deleteMaintenanceEvent, skipOccurrence } from "@/app/actions/maintenance";
 import { deleteConfirmButtonClass, DeleteConfirm } from "@/components/delete-confirm";
 import { FileField, TextArea, TextField } from "@/components/field";
@@ -64,8 +65,8 @@ export function CalendarScreen({
   today: string;
 }) {
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
-      <div>
+    <div className={panel ? "lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6" : undefined}>
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-serif text-3xl">Calendar</h1>
           <div className="flex flex-wrap gap-2 text-sm">
@@ -98,26 +99,31 @@ export function CalendarScreen({
             <Link
               key={link.label}
               href={link.href}
-              aria-pressed={link.current}
+              aria-current={link.current ? "true" : undefined}
               className={`rounded-full px-3 py-1 text-sm ${link.current ? "bg-brand-blue text-white" : "bg-card text-muted ring-1 ring-line"}`}
             >
               {link.label}
             </Link>
           ))}
         </div>
-        <ul className="mt-3 flex flex-wrap gap-2 text-xs">
-          <li className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-medium text-brand-navy">Upcoming</li>
-          <li className="rounded-full bg-red-50 px-2.5 py-1 font-medium text-danger">Overdue</li>
-          <li className="rounded-full bg-[#d1fae5] px-2.5 py-1 font-medium text-[#065f46]">Completed</li>
-          <li className="rounded-full bg-brand-navy/10 px-2.5 py-1 font-medium text-brand-navy">Case</li>
-          <li className="rounded-full border border-line bg-card px-2.5 py-1 font-medium">Work order</li>
-        </ul>
+        <div className="mt-4 rounded-xl border border-line bg-card px-3 py-3">
+          <p className="text-xs font-semibold tracking-[0.14em] text-muted uppercase">Legend</p>
+          <ul className="mt-2 flex flex-wrap gap-2 text-xs" aria-label="Colour legend">
+            <li className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-medium text-brand-navy">Upcoming</li>
+            <li className="rounded-full bg-red-50 px-2.5 py-1 font-medium text-danger">Overdue</li>
+            <li className="rounded-full bg-[#d1fae5] px-2.5 py-1 font-medium text-[#065f46]">Completed</li>
+            <li className="rounded-full bg-brand-navy/10 px-2.5 py-1 font-medium text-brand-navy">Case</li>
+            <li className="rounded-full border border-line bg-page px-2.5 py-1 font-medium">Work order</li>
+          </ul>
+        </div>
 
-        {view === "agenda" ? (
+        {view === "month" ? (
+          <MonthView days={days} todayIso={todayIso} canManage={canManage} />
+        ) : view === "agenda" ? (
           <Agenda days={days} todayIso={todayIso} canManage={canManage} />
         ) : (
           <div className="mt-4 overflow-x-auto rounded-xl border border-line bg-card">
-            <table className={`calendar-grid w-full min-w-[46rem] border-collapse text-sm ${view === "week" ? "min-w-[64rem]" : ""}`}>
+            <table className="calendar-grid w-full min-w-[64rem] border-collapse text-sm">
               <thead>
                 <tr>
                   {WEEKDAYS.map((day) => (
@@ -133,9 +139,9 @@ export function CalendarScreen({
                     {row.map((day) => (
                       <td
                         key={day.iso}
-                        className={`border border-line align-top p-2 ${view === "week" ? "h-48" : "h-32"} ${
-                          day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"
-                        } ${day.inMonth ? "" : "text-muted"}`}
+                        className={`group h-48 border border-line align-top p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${
+                          day.inMonth ? "" : "text-muted"
+                        }`}
                       >
                         <DayBody day={day} canManage={canManage} />
                       </td>
@@ -152,14 +158,58 @@ export function CalendarScreen({
   );
 }
 
-function Agenda({ days, todayIso, canManage }: { days: CalendarDay[]; todayIso: string; canManage: boolean }) {
+function MonthView({ days, todayIso, canManage }: { days: CalendarDay[]; todayIso: string; canManage: boolean }) {
+  return (
+    <>
+      <div className="sm:hidden">
+        <Agenda days={days.filter((day) => day.inMonth)} todayIso={todayIso} canManage={canManage} showWeekday />
+      </div>
+      <div className="mt-4 hidden overflow-hidden rounded-xl border border-line bg-card sm:block">
+        <div role="grid" aria-label="Month" className="calendar-grid grid w-full gap-px bg-line text-sm">
+          <div role="row" className="grid gap-px" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+            {WEEKDAYS.map((day) => (
+              <div key={day} role="columnheader" className="truncate bg-[#f6f7fb] px-2 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
+                {day}
+              </div>
+            ))}
+          </div>
+          {rowsOf(days, 7).map((week) => (
+            <div key={week[0].iso} role="row" className="grid gap-px" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+              {week.map((day) => (
+                <div
+                  key={day.iso}
+                  role="gridcell"
+                  className={`group min-h-32 min-w-0 p-2 ${day.iso === todayIso ? "bg-brand-blue/5" : "bg-card"} ${day.inMonth ? "" : "text-muted"}`}
+                >
+                  <DayBody day={day} canManage={canManage} truncate />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Agenda({
+  days,
+  todayIso,
+  canManage,
+  showWeekday = false,
+}: {
+  days: CalendarDay[];
+  todayIso: string;
+  canManage: boolean;
+  showWeekday?: boolean;
+}) {
   const filled = days.filter((day) => day.items.length > 0);
   if (filled.length === 0) return <p className="mt-6 text-muted">Nothing scheduled in this month.</p>;
   return (
     <div className="mt-4 space-y-4">
       {filled.map((day) => (
-        <section key={day.iso} className={`rounded-xl border border-line bg-card p-4 ${day.iso === todayIso ? "ring-2 ring-brand-blue" : ""}`}>
-          <h2 className="text-lg font-medium">{formatCalendarDate(new Date(`${day.iso}T00:00:00.000Z`))}</h2>
+        <section key={day.iso} className={`group rounded-xl border border-line bg-card p-4 ${day.iso === todayIso ? "ring-2 ring-brand-blue" : ""}`}>
+          <h2 className="text-lg font-medium">{dayHeading(day.iso, showWeekday)}</h2>
           <DayItems day={day} />
           <NewMenu day={day} canManage={canManage} />
         </section>
@@ -168,25 +218,37 @@ function Agenda({ days, todayIso, canManage }: { days: CalendarDay[]; todayIso: 
   );
 }
 
-function DayBody({ day, canManage }: { day: CalendarDay; canManage: boolean }) {
+function dayHeading(iso: string, showWeekday: boolean): string {
+  const date = new Date(`${iso}T00:00:00.000Z`);
+  const label = formatCalendarDate(date);
+  if (!showWeekday) return label;
+  const weekday = new Intl.DateTimeFormat("en-AU", { weekday: "long", timeZone: "UTC" }).format(date);
+  return `${weekday}, ${label}`;
+}
+
+function DayBody({ day, canManage, truncate = false }: { day: CalendarDay; canManage: boolean; truncate?: boolean }) {
   return (
     <>
       <time dateTime={day.iso} className="text-xs font-medium">
         {Number(day.iso.slice(8))}
       </time>
-      <DayItems day={day} />
+      <DayItems day={day} truncate={truncate} />
       <NewMenu day={day} canManage={canManage} />
     </>
   );
 }
 
-function DayItems({ day }: { day: CalendarDay }) {
+function DayItems({ day, truncate = false }: { day: CalendarDay; truncate?: boolean }) {
   if (day.items.length === 0) return null;
   return (
     <ul className="mt-1 space-y-1">
       {day.items.map((item) => (
-        <li key={item.key}>
-          <Link href={item.href} className={`block rounded px-1.5 py-1 text-xs leading-snug ${TONE[item.tone] ?? TONE.upcoming}`}>
+        <li key={item.key} className={truncate ? "min-w-0" : undefined}>
+          <Link
+            href={item.href}
+            title={item.title}
+            className={`block rounded px-1.5 py-1 text-xs leading-snug ${truncate ? "truncate" : "break-words"} ${TONE[item.tone] ?? TONE.upcoming}`}
+          >
             {item.meta ? <span className="mr-1">{item.meta}</span> : null}
             {item.title}
           </Link>
@@ -197,21 +259,8 @@ function DayItems({ day }: { day: CalendarDay }) {
 }
 
 function NewMenu({ day, canManage }: { day: CalendarDay; canManage: boolean }) {
-  return (
-    <details className="mt-1">
-      <summary className="cursor-pointer text-xs text-brand-blue">New</summary>
-      <div className="mt-1 flex flex-col gap-1 text-xs">
-        {canManage ? (
-          <Link href={day.maintenanceHref} className="text-brand-blue hover:underline">
-            Maintenance
-          </Link>
-        ) : null}
-        <Link href={day.caseHref} className="text-brand-blue hover:underline">
-          Case
-        </Link>
-      </div>
-    </details>
-  );
+  const label = `Add event on ${formatCalendarDate(new Date(`${day.iso}T00:00:00.000Z`))}`;
+  return <CalendarAdd label={label} canManage={canManage} maintenanceHref={day.maintenanceHref} caseHref={day.caseHref} />;
 }
 
 function OccurrenceAside({

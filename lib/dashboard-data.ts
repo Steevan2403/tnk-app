@@ -15,7 +15,7 @@ import {
 import { prisma } from "./db";
 import { calendarTitle, monthCells, sydneyToday } from "./maintenance";
 import { loadCalendar, overdueVisitsForBuilding, visibleRange } from "./maintenance-data";
-import { periodLabel } from "./reports";
+import { periodLabel, reportFormatLabel } from "./reports";
 import { siteVisitActivity } from "./check-in";
 import { sentRange, workOrderNumber } from "./work-orders";
 
@@ -336,7 +336,7 @@ export async function loadDashboard(
       id: report.id,
       periodLabel: periodLabel(report.periodFrom, report.periodTo),
       createdLabel: formatDateTime(report.createdAt),
-      formatLabel: report.format === "pdf" ? "PDF" : "Excel",
+      formatLabel: reportFormatLabel(report.format),
       href: `/api/reports/${report.id}/file`,
     })),
   };

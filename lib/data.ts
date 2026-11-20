@@ -2,7 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { auth, signOut } from "@/auth";
-import type { BuildingRecord } from "@/lib/buildings";
+import { selectedBuildingForUser, type BuildingRecord } from "@/lib/buildings";
 import {
   PAGE_SIZE,
   expiredInsuranceWhere,
@@ -19,13 +19,13 @@ import {
 import { PAGE_SIZE as ASSET_PAGE_SIZE, expiredWarrantyWhere, latestWarrantyExpiry } from "@/lib/assets";
 import {
   PAGE_SIZE as CASE_PAGE_SIZE,
-  compareCases,
+  caseTextWhere,
   isCasePriority,
   isCaseStatus,
   overdueCaseWhere,
-  parseCaseNumber,
   type CaseListQuery,
   type CasePriority,
+  type CaseSort,
   type CaseStatus,
 } from "@/lib/cases";
 import {
@@ -34,7 +34,7 @@ import {
   workOrderNumber,
   type WorkOrderStatus,
 } from "@/lib/work-orders";
-import { isCheckInToken } from "@/lib/check-in";
+import { isCheckInToken, workOrderClosedMessage } from "@/lib/check-in";
 import { prisma } from "@/lib/db";
 
 export type CurrentUser = {
@@ -43,6 +43,7 @@ export type CurrentUser = {
   email: string;
   role: string;
   selectedBuildingId: string | null;
+  buildingIds: string[];
 };
 
 const buildingSelect = {
@@ -72,6 +73,7 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
       email: true,
       role: true,
       selectedBuildingId: true,
+      memberships: { select: { buildingId: true } },
     },
   });
 
@@ -80,14 +82,48 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
     redirect("/sign-in");
   }
 
-  return user;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    selectedBuildingId: selectedBuildingForUser(
+      user.role,
+      user.selectedBuildingId,
+      user.memberships.map((membership) => membership.buildingId),
+    ),
+    buildingIds: user.memberships.map((membership) => membership.buildingId),
+  };
 });
 
 export const listBuildings = cache(async (): Promise<BuildingRecord[]> => {
+  const user = await requireUser();
   return prisma.building.findMany({
+    where: user.role === "admin" ? undefined : { members: { some: { userId: user.id } } },
     orderBy: { name: "asc" },
     select: buildingSelect,
   });
+});
+
+export const listManagedUsers = cache(async () => {
+  const people = await prisma.user.findMany({
+    where: { role: { in: ["manager", "staff"] } },
+    orderBy: [{ name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      memberships: { select: { buildingId: true } },
+    },
+  });
+  return people.map((person) => ({
+    id: person.id,
+    name: person.name,
+    email: person.email,
+    role: person.role,
+    buildingIds: person.memberships.map((membership) => membership.buildingId),
+  }));
 });
 
 export const getBuilding = cache(async (id: string): Promise<BuildingRecord | null> => {
@@ -356,6 +392,7 @@ export const listApartmentOptions = cache(async (buildingId: string) => {
 const apartmentDetailInclude = {
   residents: { orderBy: [{ lastName: "asc" as const }, { firstName: "asc" as const }] },
   vehicles: { orderBy: { registration: "asc" as const } },
+  keys: { orderBy: { number: "asc" as const } },
   documents: { orderBy: { uploadedAt: "desc" as const } },
   images: { orderBy: { uploadedAt: "desc" as const } },
   notes: {
@@ -555,15 +592,28 @@ function mapCaseRow(
 }
 
 export async function listCases(query: CaseListQuery): Promise<{ total: number; rows: CaseRow[] }> {
-  const cases = await prisma.case.findMany({
-    where: caseWhere(query),
-    select: caseListSelect(query.userId),
-  });
-  const rows = cases
-    .map(mapCaseRow)
-    .sort((a, b) => compareCases(a, b, query.sort, query.dir));
-  const start = (query.page - 1) * CASE_PAGE_SIZE;
-  return { total: rows.length, rows: rows.slice(start, start + CASE_PAGE_SIZE) };
+  const where = caseWhere(query);
+  const [total, records] = await Promise.all([
+    prisma.case.count({ where }),
+    prisma.case.findMany({
+      where,
+      select: caseListSelect(query.userId),
+      orderBy: caseOrderBy(query.sort, query.dir),
+      skip: (query.page - 1) * CASE_PAGE_SIZE,
+      take: CASE_PAGE_SIZE,
+    }),
+  ]);
+  return { total, rows: records.map(mapCaseRow) };
+}
+
+function caseOrderBy(sort: CaseSort, dir: "asc" | "desc"): Prisma.CaseOrderByWithRelationInput[] {
+  const number = { number: dir };
+  if (sort === "start") return [{ startDate: dir }, number];
+  if (sort === "subject") return [{ subject: dir }, number];
+  if (sort === "type") return [{ type: { name: dir } }, number];
+  if (sort === "priority") return [{ priorityRank: dir }, number];
+  if (sort === "status") return [{ statusRank: dir }, number];
+  return [number];
 }
 
 export async function listCaseBoard(query: Omit<CaseListQuery, "sort" | "dir" | "page">): Promise<CaseRow[]> {
@@ -713,12 +763,7 @@ function caseWhere(query: CaseListQuery): Prisma.CaseWhereInput {
   }
   if (query.overdue) filters.push(overdueCaseWhere());
   const q = query.q.trim();
-  if (q) {
-    const or: Prisma.CaseWhereInput[] = [{ subject: { contains: q } }, { descriptionHtml: { contains: q } }];
-    const number = parseCaseNumber(q);
-    if (number) or.push({ number });
-    filters.push({ OR: or });
-  }
+  if (q) filters.push({ OR: caseTextWhere(query.buildingId, q) });
   return { AND: filters };
 }
 
@@ -860,7 +905,7 @@ export async function listWorkOrderContractors(assignedIds: string[]) {
 
 export async function getCheckInWorkOrder(token: string) {
   if (!isCheckInToken(token)) return null;
-  return prisma.workOrder.findUnique({
+  const record = await prisma.workOrder.findUnique({
     where: { checkInToken: token },
     include: {
       case: {
@@ -873,6 +918,8 @@ export async function getCheckInWorkOrder(token: string) {
       visits: { orderBy: { checkedInAt: "desc" } },
     },
   });
+  if (!record || workOrderClosedMessage(record.status)) return null;
+  return record;
 }
 
 export async function getWorkOrderDetail(buildingId: string, id: string) {
@@ -906,10 +953,20 @@ export async function getWorkOrderMessage(buildingId: string, id: string) {
   });
 }
 
-export async function listOutbox(page: number) {
+function outboxMessageWhere(buildingId: string): Prisma.OutboxMessageWhereInput {
+  return {
+    OR: [{ buildingId }, { workOrder: { case: { buildingId } } }],
+  };
+}
+
+export async function listOutbox(page: number, user: CurrentUser) {
+  const buildingId = selectedBuildingForUser(user.role, user.selectedBuildingId, user.buildingIds);
+  if (!buildingId) return { total: 0, rows: [] };
+  const where = outboxMessageWhere(buildingId);
   const [total, rows] = await Promise.all([
-    prisma.outboxMessage.count(),
+    prisma.outboxMessage.count({ where }),
     prisma.outboxMessage.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * WORK_ORDER_PAGE_SIZE,
       take: WORK_ORDER_PAGE_SIZE,
@@ -917,6 +974,15 @@ export async function listOutbox(page: number) {
     }),
   ]);
   return { total, rows };
+}
+
+export async function getOutboxAttachment(user: CurrentUser, id: string) {
+  const buildingId = selectedBuildingForUser(user.role, user.selectedBuildingId, user.buildingIds);
+  if (!buildingId) return null;
+  return prisma.outboxAttachment.findFirst({
+    where: { id, message: outboxMessageWhere(buildingId) },
+    select: { name: true, storedName: true },
+  });
 }
 
 function workOrderWhere(query: WorkOrderListQuery): Prisma.WorkOrderWhereInput {

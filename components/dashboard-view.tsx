@@ -10,6 +10,7 @@ import {
   canDeleteBuildingNote,
   canEditBuildingNote,
   canManageUsefulNumbers,
+  sortActionRows,
   sydneyDayLabel,
   telHref,
   CHART_PERIODS,
@@ -73,51 +74,64 @@ function Card({
 }
 
 function ActionCard({ data }: { data: DashboardData }) {
-  const rows = [
-    { label: "Overdue cases", count: data.counts.overdueCases, href: data.links.overdueCases, zero: "No overdue cases." },
+  const rows = sortActionRows([
+    {
+      label: "Overdue cases",
+      count: data.counts.overdueCases,
+      href: data.links.overdueCases,
+      quiet: "No overdue cases.",
+      detail: "Open cases past their due date.",
+    },
     {
       label: "Overdue maintenance",
       count: data.counts.overdueMaintenance,
       href: data.links.overdueMaintenance,
-      zero: "No overdue visits in the last 12 months.",
+      quiet: "No overdue visits in the last 12 months.",
+      detail: "Visits still open from the last 12 months.",
     },
     {
       label: "Expired warranties",
       count: data.counts.expiredWarranties,
       href: data.links.expiredWarranties,
-      zero: "No expired warranties.",
+      quiet: "No expired warranties.",
+      detail: "Asset warranties that have ended.",
     },
     {
       label: "Expired insurance",
       count: data.counts.expiredInsurance,
       href: data.links.expiredInsurance,
-      zero: "No expired insurance.",
+      quiet: "No expired insurance.",
+      detail: "Contractor insurance past its end date.",
     },
     {
       label: "Failed inspection items",
       count: data.counts.failedInspections,
       href: data.links.failedInspections,
-      zero: "No failed items without a case in the last 90 days.",
+      quiet: "No failed items without a case in the last 90 days.",
+      detail: "Failed items with no case in the last 90 days.",
     },
-  ];
+  ]);
   return (
     <Card title="Items needing action" id="dashboard-actions">
       <ul className="mt-3 divide-y divide-line">
-        {rows.map((row) => (
-          <li key={row.label} className="py-2">
-            <Link href={row.href} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-page">
-              <span>{row.label}</span>
-              <span
-                className={`inline-flex min-w-8 justify-center rounded-full px-2 py-0.5 text-sm font-semibold ${
-                  row.count > 0 ? "bg-red-50 text-danger" : "bg-page text-muted"
-                }`}
-              >
-                {row.count}
-              </span>
-            </Link>
-            {row.count === 0 ? <p className="text-sm text-muted">{row.zero}</p> : null}
-          </li>
-        ))}
+        {rows.map((row) => {
+          const quiet = row.count === 0;
+          return (
+            <li key={row.label} data-action-count={row.count} className={`py-2 ${quiet ? "action-quiet text-muted" : ""}`}>
+              <Link href={row.href} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-page">
+                <span>{row.label}</span>
+                <span
+                  className={`inline-flex min-w-8 justify-center rounded-full px-2 py-0.5 text-sm font-semibold ${
+                    row.count > 0 ? "bg-red-50 text-danger" : "bg-page text-muted"
+                  }`}
+                >
+                  {row.count}
+                </span>
+              </Link>
+              <p className="px-2 text-sm text-muted">{quiet ? row.quiet : row.detail}</p>
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );
@@ -229,7 +243,7 @@ function Donut({
     };
   });
   return (
-    <svg viewBox="0 0 120 120" className="h-40 w-40" role="img" aria-label={`Cases by type, ${total} in the last ${period === 1 ? "month" : `${period} months`}`}>
+    <svg viewBox="0 0 120 120" className="h-40 w-40" role="group" aria-label={`Cases by type, ${total} in the last ${period === 1 ? "month" : `${period} months`}`}>
       <circle cx="60" cy="60" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="16" />
       {placed.map(({ slice, index, length, offset }) => (
         <a key={slice.typeId} href={slice.href} aria-label={`${slice.typeName}, ${slice.count}`}>

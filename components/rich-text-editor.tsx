@@ -3,6 +3,8 @@
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
+import { useSubmittedValues } from "@/components/retained-form";
+import { textValue } from "@/lib/form-values";
 
 export function RichTextEditor({
   name,
@@ -13,7 +15,9 @@ export function RichTextEditor({
   defaultValue: string;
   error?: string;
 }) {
-  const [html, setHtml] = useState(defaultValue);
+  const submitted = useSubmittedValues();
+  const initial = String(textValue(submitted, name, defaultValue) ?? "");
+  const [html, setHtml] = useState(initial);
   const editor = useEditor({
     immediatelyRender: false,
     shouldRerenderOnTransaction: true,
@@ -28,7 +32,7 @@ export function RichTextEditor({
         link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
       }),
     ],
-    content: defaultValue,
+    content: initial,
     editorProps: {
       attributes: {
         id: "case-description",

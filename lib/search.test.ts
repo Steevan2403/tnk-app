@@ -52,7 +52,19 @@ describe("search plan", () => {
 });
 
 describe("record filters", () => {
-  it("matches a case by number, subject, or description in one building", () => {
+  it("matches a case by number, subject, description, linked asset, or apartment in one building", () => {
+    const linked = [
+      { assets: { some: { asset: { buildingId: "tower", name: { contains: "Lift" } } } } },
+      { apartment: { buildingId: "tower", OR: [{ number: { contains: "Lift" } }, { lotNumber: { contains: "Lift" } }] } },
+    ];
+    expect(caseSearchWhere("tower", "Lift")).toEqual({
+      AND: [
+        { buildingId: "tower" },
+        {
+          OR: [{ subject: { contains: "Lift" } }, { descriptionHtml: { contains: "Lift" } }, ...linked],
+        },
+      ],
+    });
     expect(caseSearchWhere("tower", "300")).toEqual({
       AND: [
         { buildingId: "tower" },
@@ -60,19 +72,15 @@ describe("record filters", () => {
           OR: [
             { subject: { contains: "300" } },
             { descriptionHtml: { contains: "300" } },
+            { assets: { some: { asset: { buildingId: "tower", name: { contains: "300" } } } } },
+            { apartment: { buildingId: "tower", OR: [{ number: { contains: "300" } }, { lotNumber: { contains: "300" } }] } },
             { number: 300 },
           ],
         },
       ],
     });
-    expect(caseSearchWhere("tower", "drip")).toEqual({
-      AND: [
-        { buildingId: "tower" },
-        { OR: [{ subject: { contains: "drip" } }, { descriptionHtml: { contains: "drip" } }] },
-      ],
-    });
-    expect(JSON.stringify(caseSearchWhere("court", "300"))).toContain("court");
-    expect(JSON.stringify(caseSearchWhere("court", "300"))).not.toContain("tower");
+    expect(JSON.stringify(caseSearchWhere("court", "Lift"))).toContain("court");
+    expect(JSON.stringify(caseSearchWhere("court", "Lift"))).not.toContain("tower");
   });
 
   it("matches a work order by number, subject, or contractor in one building", () => {

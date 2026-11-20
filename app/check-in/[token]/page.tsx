@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { CheckInForm } from "@/components/check-in-form";
 import { formatAddress } from "@/lib/buildings";
-import { closedVisitNotice, INVALID_CHECK_IN_LINK, openSiteVisit, prefilledContractorName } from "@/lib/check-in";
+import { openSiteVisit, prefilledContractorName } from "@/lib/check-in";
 import { formatDateTime } from "@/lib/contractors";
 import { getCheckInWorkOrder } from "@/lib/data";
 import { workOrderNumber } from "@/lib/work-orders";
@@ -15,18 +16,10 @@ export default async function CheckInPage({ params }: { params: Promise<{ token:
   await connection();
   const { token } = await params;
   const record = await getCheckInWorkOrder(token);
-  if (!record) {
-    return (
-      <CheckInFrame>
-        <h1 className="font-serif text-3xl">Check-in link</h1>
-        <p className="mt-3 text-muted">{INVALID_CHECK_IN_LINK}</p>
-      </CheckInFrame>
-    );
-  }
+  if (!record) notFound();
 
   const number = workOrderNumber(record.case.number, record.suffix);
   const open = openSiteVisit(record.visits);
-  const notice = closedVisitNotice(record.status, open != null);
 
   return (
     <CheckInFrame>
@@ -40,14 +33,11 @@ export default async function CheckInPage({ params }: { params: Promise<{ token:
           Checked in {formatDateTime(open.checkedInAt)} as {open.contractorName}.
         </p>
       ) : null}
-      {notice ? <p className="mt-4 text-sm text-danger">{notice}</p> : null}
-      {notice && !open ? null : (
-        <CheckInForm
-          token={token}
-          action={open ? "check_out" : "check_in"}
-          defaultName={prefilledContractorName(record.contactName, record.companyName)}
-        />
-      )}
+      <CheckInForm
+        token={token}
+        action={open ? "check_out" : "check_in"}
+        defaultName={prefilledContractorName(record.contactName, record.companyName)}
+      />
     </CheckInFrame>
   );
 }

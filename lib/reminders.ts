@@ -69,9 +69,19 @@ async function sendReminder(reminder: DueReminder): Promise<boolean> {
       await tx.maintenanceReminder.create({
         data: { eventId: reminder.eventId, occursOn },
       });
+      const event = await tx.maintenanceEvent.findUnique({
+        where: { id: reminder.eventId },
+        select: { buildingId: true },
+      });
       for (const to of reminder.to) {
         await deliverMail(
-          { to, subject: reminder.subject, body: reminder.body, attachments: [] },
+          {
+            to,
+            subject: reminder.subject,
+            body: reminder.body,
+            attachments: [],
+            buildingId: event?.buildingId,
+          },
           { mailbox: mailboxFor(tx) },
         );
       }

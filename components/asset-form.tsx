@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useActionState } from "react";
 import { saveAsset, type AssetFormState } from "@/app/actions/assets";
 import { SelectField, TextArea, TextField } from "@/components/field";
+import { RetainedForm, useSubmittedValues } from "@/components/retained-form";
+import { textValue } from "@/lib/form-values";
 
 const buttonClass =
   "rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue disabled:opacity-60";
@@ -48,7 +50,7 @@ export function AssetForm({
   const back = asset ? `/building/assets/${asset.id}` : "/building/assets";
 
   return (
-    <form action={action} className="form-card mt-6 max-w-2xl space-y-4">
+    <RetainedForm action={action} className="form-card mt-6 max-w-2xl space-y-4" values={state.values}>
       {asset ? <input type="hidden" name="assetId" value={asset.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">
@@ -160,7 +162,7 @@ export function AssetForm({
           Cancel
         </Link>
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 
@@ -177,8 +179,9 @@ function ServiceFields({
   companyError?: string;
   contactError?: string;
 }) {
-  const [company, setCompany] = useState(companyId);
-  const [contact, setContact] = useState(contactId);
+  const submitted = useSubmittedValues();
+  const [company, setCompany] = useState(String(textValue(submitted, "companyId", companyId) ?? ""));
+  const [contact, setContact] = useState(String(textValue(submitted, "contactId", contactId) ?? ""));
   const contacts = companies.find((item) => item.id === company)?.contacts ?? [];
 
   return (

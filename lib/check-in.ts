@@ -2,7 +2,8 @@ import { randomBytes } from "node:crypto";
 import { workOrderNumber } from "./work-orders";
 
 export const CHECK_IN_NAME_MAX = 120;
-export const INVALID_CHECK_IN_LINK = "This check-in link is not valid or has expired.";
+export const INVALID_CHECK_IN_LINK =
+  "This check-in link is not valid. It can be used for more than one visit until the work order is completed or cancelled.";
 
 export type SiteAction = "check_in" | "check_out";
 
@@ -44,13 +45,6 @@ export function workOrderClosedMessage(status: string): string | null {
   return null;
 }
 
-export function closedVisitNotice(status: string, hasOpenVisit: boolean): string | null {
-  if (!hasOpenVisit) return workOrderClosedMessage(status);
-  if (status === "completed") return "This work order is completed. Check out to finish this visit.";
-  if (status === "cancelled") return "This work order is cancelled. Check out to finish this visit.";
-  return null;
-}
-
 export function decideSiteAction(input: {
   status: string;
   action: SiteAction;
@@ -58,18 +52,15 @@ export function decideSiteAction(input: {
   name: string;
 }): { ok: true; name: string } | { ok: false; error: string } {
   const closed = workOrderClosedMessage(input.status);
+  if (closed) return { ok: false, error: closed };
   if (input.action === "check_in") {
-    if (closed) return { ok: false, error: closed };
     if (input.hasOpenVisit) return { ok: false, error: "You are already checked in. Check out when you leave." };
     const name = input.name.trim();
     if (!name) return { ok: false, error: "Enter your name." };
     if (name.length > CHECK_IN_NAME_MAX) return { ok: false, error: `Use ${CHECK_IN_NAME_MAX} characters or fewer.` };
     return { ok: true, name };
   }
-  if (!input.hasOpenVisit) {
-    if (closed) return { ok: false, error: closed };
-    return { ok: false, error: "Check in before checking out." };
-  }
+  if (!input.hasOpenVisit) return { ok: false, error: "Check in before checking out." };
   return { ok: true, name: "" };
 }
 

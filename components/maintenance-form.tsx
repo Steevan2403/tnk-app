@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { deleteMaintenanceFile, saveMaintenance, type MaintenanceFormState } from "@/app/actions/maintenance";
 import { CheckField, FileField, SelectField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 import { AssigneePicker, JobAreaPicker, type PickerAsset, type PickerCompany } from "@/components/job-pickers";
 import { FREQUENCIES, formatFrequency, type Frequency } from "@/lib/maintenance";
 import type { CaseArea } from "@/lib/cases";
@@ -50,7 +51,7 @@ export function MaintenanceForm({
   const [remind, setRemind] = useState(event?.remindContractor ?? false);
 
   return (
-    <form action={action} className="form-card mt-6 max-w-3xl space-y-8">
+    <RetainedForm action={action} className="form-card mt-6 max-w-3xl space-y-8" values={state.values}>
       {event ? <input type="hidden" name="id" value={event.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">
@@ -188,7 +189,7 @@ export function MaintenanceForm({
           Cancel
         </Link>
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 

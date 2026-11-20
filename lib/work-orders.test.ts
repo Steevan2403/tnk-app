@@ -4,6 +4,7 @@ import {
   defaultWorkOrderSubject,
   nextWorkOrderSuffix,
   parseWorkOrderForm,
+  sentRangeError,
   resolveWorkOrderContact,
   suffixFromRank,
   sydneyDateTimeToUtc,
@@ -92,6 +93,42 @@ describe("work order contacts", () => {
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.errors.contactId).toBe("Choose a contact of that company with an email.");
   });
+
+  it("rejects the form when no contact is chosen", () => {
+    const data = new FormData();
+    data.set("companyId", "plumbing");
+    data.set("subject", "Example subject");
+    data.set("message", "Example instructions.");
+    const parsed = parseWorkOrderForm(data, context);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.errors.contactId).toBe("Choose a contact of that company with an email.");
+  });
+
+  it("rejects a contact who has no email", () => {
+    const data = new FormData();
+    data.set("companyId", "fire");
+    data.set("contactId", "blank");
+    data.set("subject", "Example subject");
+    const parsed = parseWorkOrderForm(data, context);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.errors.contactId).toBe("Choose a contact of that company with an email.");
+  });
+
+  it("accepts a contact of that company who has an email", () => {
+    const data = new FormData();
+    data.set("companyId", "plumbing");
+    data.set("contactId", "casey");
+    data.set("subject", "Example subject");
+    data.set("message", "Example instructions.");
+    const parsed = parseWorkOrderForm(data, context);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.contactId).toBe("casey");
+      expect(parsed.value.contactEmail).toBe("casey.placeholder@example.com");
+      expect(parsed.value.subject).toBe("Example subject");
+      expect(parsed.value.message).toBe("Example instructions.");
+    }
+  });
 });
 
 describe("file sizes", () => {
@@ -154,6 +191,18 @@ describe("work order email", () => {
     );
     expect(omittedAttachmentNotice("305-A", [])).toBeNull();
     expect(omittedAttachmentNotice("", ["clip.mp4"])).toBeNull();
+  });
+});
+
+describe("sent date range", () => {
+  it("rejects a from date that is after the to date", () => {
+    expect(sentRangeError("2026-12-01", "2026-11-01")).toBe(
+      "Sent from is after sent to. Choose a from date on or before the to date.",
+    );
+    expect(sentRangeError("2026-11-01", "2026-12-01")).toBeNull();
+    expect(sentRangeError("2026-11-01", "2026-11-01")).toBeNull();
+    expect(sentRangeError("", "2026-11-01")).toBeNull();
+    expect(sentRangeError("not-a-date", "2026-11-01")).toBeNull();
   });
 });
 

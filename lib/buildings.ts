@@ -104,6 +104,23 @@ export function parseBuildingForm(
   };
 }
 
+// Admins can open every building. Everyone else can open only assigned buildings.
+export function canUseBuilding(role: string, buildingId: string, memberBuildingIds: readonly string[]): boolean {
+  if (role === "admin") return true;
+  return memberBuildingIds.includes(buildingId);
+}
+
+// A stored selection counts only when this person can still open that building.
+export function selectedBuildingForUser(
+  role: string,
+  selectedBuildingId: string | null,
+  memberBuildingIds: readonly string[],
+): string | null {
+  if (!selectedBuildingId) return null;
+  if (!canUseBuilding(role, selectedBuildingId, memberBuildingIds)) return null;
+  return selectedBuildingId;
+}
+
 export function formatAddress(building: {
   address: string;
   suburb: string;

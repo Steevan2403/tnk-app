@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { parseBuildingForm, type BuildingField } from "@/lib/buildings";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/data";
-import { canManageBuildings } from "@/lib/roles";
+import { listBuildings, requireUser } from "@/lib/data";
+import { canAssignBuildings, canManageBuildings } from "@/lib/roles";
 
 export type BuildingFormState = {
   error?: string;
@@ -40,8 +40,9 @@ export async function saveBuilding(
 export async function selectBuilding(formData: FormData) {
   const user = await requireUser();
   const buildingId = String(formData.get("buildingId") ?? "");
-  const building = await prisma.building.findUnique({ where: { id: buildingId } });
-  if (!building) return;
+  const buildings = await listBuildings();
+  const building = buildings.find((item) => item.id === buildingId);
+  if (!building) notFound();
 
   await prisma.user.update({
     where: { id: user.id },
@@ -50,4 +51,39 @@ export async function selectBuilding(formData: FormData) {
 
   revalidatePath("/", "layout");
   redirect("/dashboard");
+}
+
+export async function saveUserBuildings(formData: FormData) {
+  const actor = await requireUser();
+  if (!canAssignBuildings(actor.role)) notFound();
+
+  const userId = String(formData.get("userId") ?? "");
+  const requested = formData.getAll("buildingId").map((value) => String(value));
+  const person = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, selectedBuildingId: true },
+  });
+  if (!person || (person.role !== "manager" && person.role !== "staff")) notFound();
+
+  const found = await prisma.building.findMany({
+    where: { id: { in: requested } },
+    select: { id: true },
+  });
+  const allowed = new Set(found.map((building) => building.id));
+  const buildingIds = requested.filter((id, index) => allowed.has(id) && requested.indexOf(id) === index);
+  const selectedBuildingId =
+    person.selectedBuildingId && buildingIds.includes(person.selectedBuildingId) ? person.selectedBuildingId : null;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.userBuilding.deleteMany({ where: { userId } });
+    if (buildingIds.length > 0) {
+      await tx.userBuilding.createMany({
+        data: buildingIds.map((buildingId) => ({ userId, buildingId })),
+      });
+    }
+    await tx.user.update({ where: { id: userId }, data: { selectedBuildingId } });
+  });
+
+  revalidatePath("/", "layout");
+  redirect("/settings/users");
 }

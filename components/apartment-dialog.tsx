@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState, type FormEvent } from "react";
 import { saveApartment, type ApartmentFormState } from "@/app/actions/residents";
 import { TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 import { apartmentClientErrors, type ApartmentField } from "@/lib/residents";
 
 const buttonClass =
@@ -60,7 +61,7 @@ export function ApartmentDialog({
           aria-labelledby={apartment ? "edit-apartment-title" : "new-apartment-title"}
           className="w-full max-w-md rounded-2xl border border-line bg-card p-6 shadow-2xl"
         >
-          <form action={action} className="space-y-4" onSubmit={onSubmit}>
+          <RetainedForm action={action} className="space-y-4" onSubmit={onSubmit} values={state.values}>
             <h2 id={apartment ? "edit-apartment-title" : "new-apartment-title"} className="font-serif text-2xl">
               {apartment ? "Edit apartment" : "New apartment"}
             </h2>
@@ -98,7 +99,7 @@ export function ApartmentDialog({
                 Cancel
               </button>
             </div>
-          </form>
+          </RetainedForm>
         </div>
       </div>
     </>

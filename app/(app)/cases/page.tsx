@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { setCasesStatus, toggleCaseStar } from "@/app/actions/cases";
+import { toggleCaseStar } from "@/app/actions/cases";
 import { CaseBoard } from "@/components/case-board";
-import { CaseTypes } from "@/components/case-types";
+import { CaseBulkBar } from "@/components/case-bulk-bar";
+import { CaseFilters } from "@/components/case-filters";
+import { ColumnMenu } from "@/components/column-menu";
 import { SelectAll } from "@/components/case-select";
 import { FilesMark } from "@/components/files-mark";
 import { WorkOrderMark } from "@/components/work-order-mark";
@@ -32,7 +34,7 @@ import {
   requireUser,
   type CaseRow,
 } from "@/lib/data";
-import { canEditCases, canManageCaseTypes } from "@/lib/roles";
+import { canEditCases } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Cases" };
 
@@ -61,6 +63,20 @@ const SORT_LABELS: Record<CaseSort, string> = {
   status: "Status",
 };
 
+const OPTIONAL_CASE_COLUMNS = [
+  { id: "start", label: "Start date" },
+  { id: "type", label: "Type" },
+  { id: "priority", label: "Priority" },
+  { id: "status", label: "Status" },
+];
+
+const CASE_COLUMN_BY_SORT: Partial<Record<CaseSort, string>> = {
+  start: "start",
+  type: "type",
+  priority: "priority",
+  status: "status",
+};
+
 export default async function CasesPage({
   searchParams,
 }: {
@@ -70,7 +86,6 @@ export default async function CasesPage({
   const params = await searchParams;
   const filters = readFilters(params);
   const canEdit = canEditCases(user.role);
-  const canManageTypes = canManageCaseTypes(user.role);
 
   if (!user.selectedBuildingId) {
     return (
@@ -133,6 +148,15 @@ export default async function CasesPage({
               Board
             </ViewLink>
           </div>
+          {active.view === "list" ? (
+            <ColumnMenu
+              userId={user.id}
+              table="cases"
+              tableId="case-list"
+              columns={OPTIONAL_CASE_COLUMNS}
+              kept="Case number and subject stay visible."
+            />
+          ) : null}
           {canEdit ? (
             <Link href="/cases/new" className="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue">
               New case
@@ -141,9 +165,10 @@ export default async function CasesPage({
         </div>
       </div>
 
-      <form method="get" action="/cases" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <CaseFilters count={activeFilterCount(active)}>
+      <form method="get" action="/cases" className="filter-card grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {active.view === "board" ? <input type="hidden" name="view" value="board" /> : null}
-        <TextField label="Search cases" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, or description" />
+        <TextField label="Search cases" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, asset, or apartment" />
         <SelectField label="Type" name="type" defaultValue={active.typeId}>
           <option value="">All types</option>
           {types.map((type) => (
@@ -192,6 +217,7 @@ export default async function CasesPage({
           </button>
         </div>
       </form>
+      </CaseFilters>
       {filtered ? (
         <Link href={active.view === "board" ? "/cases?view=board" : "/cases"} className="mt-3 inline-block text-sm text-brand-blue hover:underline">
           Clear filters
@@ -212,7 +238,9 @@ export default async function CasesPage({
         listed.rows.length === 0 ? (
           <EmptyState>{filtered ? "No cases match." : "No cases yet."}</EmptyState>
         ) : (
-          <CaseResults rows={listed.rows} filters={active} returnTo={returnTo} canEdit={canEdit} />
+          <div id="case-list">
+            <CaseResults rows={listed.rows} filters={active} returnTo={returnTo} canEdit={canEdit} />
+          </div>
         )
       ) : null}
 
@@ -239,10 +267,6 @@ export default async function CasesPage({
           </div>
         </div>
       ) : null}
-
-      {canManageTypes ? (
-        <CaseTypes types={types.map((type) => ({ id: type.id, name: type.name, caseCount: type._count.cases }))} />
-      ) : null}
     </section>
   );
 }
@@ -260,25 +284,7 @@ function CaseResults({
 }) {
   return (
     <>
-      {canEdit ? (
-        <form id="case-bulk" action={setCasesStatus} className="mt-4 flex flex-wrap items-end gap-3">
-          <input type="hidden" name="returnTo" value={returnTo} />
-          <label className="flex items-center gap-2 pb-2 text-sm md:hidden">
-            <SelectAll />
-            Select all
-          </label>
-          <SelectField label="Change status" name="status" defaultValue="new">
-            {CASE_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {formatStatus(status)}
-              </option>
-            ))}
-          </SelectField>
-          <button type="submit" className="rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue">
-            Update selected
-          </button>
-        </form>
-      ) : null}
+      {canEdit ? <CaseBulkBar returnTo={returnTo} /> : null}
       <ul className="mt-4 space-y-3 md:hidden">
         {rows.map((row) => (
           <li key={row.id} className="rounded-xl border border-line bg-card p-4">
@@ -291,12 +297,17 @@ function CaseResults({
               </div>
               <StarButton row={row} returnTo={returnTo} />
             </div>
-            <p className="mt-2 text-sm text-muted">
-              {formatCalendarDate(row.startDate)} · {row.typeName}
+            <p className="mt-2 flex flex-wrap gap-x-2 text-sm text-muted">
+              <span data-column="start">{formatCalendarDate(row.startDate)}</span>
+              <span data-column="type">{row.typeName}</span>
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <PriorityBadge priority={row.priority} />
-              <StatusBadge status={row.status} label={formatStatus(row.status)} />
+              <span data-column="priority">
+                <PriorityBadge priority={row.priority} />
+              </span>
+              <span data-column="status">
+                <StatusBadge status={row.status} label={formatStatus(row.status)} />
+              </span>
               {row.hasFiles ? <FilesMark /> : null}
               {row.hasWorkOrders ? <WorkOrderMark /> : null}
             </div>
@@ -309,7 +320,12 @@ function CaseResults({
             <tr>
               <th className="px-4 py-3 font-medium">{canEdit ? <SelectAll /> : null}</th>
               {CASE_SORTS.map((sort) => (
-                <th key={sort} className="px-4 py-3 font-medium" aria-sort={filters.sort === sort ? (filters.dir === "asc" ? "ascending" : "descending") : "none"}>
+                <th
+                  key={sort}
+                  data-column={CASE_COLUMN_BY_SORT[sort]}
+                  className="px-4 py-3 font-medium"
+                  aria-sort={filters.sort === sort ? (filters.dir === "asc" ? "ascending" : "descending") : "none"}
+                >
                   <Link href={sortHref(filters, sort)} className="hover:text-brand-blue">
                     {SORT_LABELS[sort]}
                     {filters.sort === sort ? (filters.dir === "asc" ? " ↑" : " ↓") : ""}
@@ -333,7 +349,7 @@ function CaseResults({
                     #{row.number}
                   </Link>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-column="start">
                   <time dateTime={formatIsoDate(row.startDate)}>{formatCalendarDate(row.startDate)}</time>
                 </td>
                 <td className="px-4 py-3">
@@ -341,11 +357,13 @@ function CaseResults({
                     {row.subject}
                   </Link>
                 </td>
-                <td className="px-4 py-3">{row.typeName}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-column="type">
+                  {row.typeName}
+                </td>
+                <td className="px-4 py-3" data-column="priority">
                   <PriorityBadge priority={row.priority} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-column="status">
                   <StatusBadge status={row.status} label={formatStatus(row.status)} />
                 </td>
                 <td className="px-4 py-3">
@@ -379,7 +397,8 @@ function StarButton({ row, returnTo }: { row: CaseRow; returnTo: string }) {
         type="submit"
         aria-pressed={row.starred}
         aria-label={row.starred ? `Unstar case ${row.number}` : `Star case ${row.number}`}
-        className={`text-lg leading-none ${row.starred ? "text-amber-500" : "text-muted"}`}
+        title={row.starred ? `Unstar case ${row.number}` : `Star case ${row.number}`}
+        className={`touch-target inline-flex items-center justify-center text-lg leading-none ${row.starred ? "text-amber-500" : "text-muted"}`}
       >
         {row.starred ? "★" : "☆"}
       </button>
@@ -439,6 +458,20 @@ function readFilters(params: Record<string, string | string[] | undefined>): Fil
     page: parsePage(first(params.page)),
     view: first(params.view) === "board" ? "board" : "list",
   };
+}
+
+function activeFilterCount(filters: Filters): number {
+  let count = 0;
+  if (filters.q) count += 1;
+  if (filters.typeId) count += 1;
+  if (filters.priority) count += 1;
+  if (filters.status) count += 1;
+  if (filters.companyId) count += 1;
+  if (filters.from) count += 1;
+  if (filters.to) count += 1;
+  if (filters.starred) count += 1;
+  if (filters.overdue) count += 1;
+  return count;
 }
 
 function first(value: string | string[] | undefined): string {

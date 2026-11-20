@@ -9,8 +9,8 @@ test("admin manages contractor categories and staff can only view them", async (
   mkdirSync(artifacts, { recursive: true });
 
   await signIn(page, "admin@tnk.example", "example-admin-pass");
-  await page.getByRole("link", { name: "Contractors", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Contractors" })).toBeVisible();
+  await page.goto("/building/categories?tab=contractors");
+  await expect(page.getByRole("heading", { name: "Categories", exact: true })).toBeVisible();
 
   const categories = page.getByRole("region", { name: "Contractor categories" });
   await expect(categories).toBeVisible();
@@ -40,7 +40,7 @@ test("admin manages contractor categories and staff can only view them", async (
   );
   await expect(categories.locator('input[name="name"][value="Plumbing"]')).toBeVisible();
 
-  await page.getByRole("link", { name: "Companies", exact: true }).click();
+  await page.goto("/contractors?tab=companies");
   await expect(page.getByRole("row", { name: /Sample Plumbing Co/ }).getByText("Plumbing", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "New company" }).click();
@@ -54,7 +54,7 @@ test("admin manages contractor categories and staff can only view them", async (
   await page.getByRole("button", { name: "Add contact" }).click();
   await expect(page.getByText("Glen Example")).toBeVisible();
 
-  await page.getByRole("link", { name: "All contractors" }).click();
+  await page.goto("/building/categories?tab=contractors");
   const glazingRow = categoryRow(page.getByRole("region", { name: "Contractor categories" }), "Glazing");
   const glazingHandle = await glazingRow.elementHandle();
   if (!glazingHandle) throw new Error("Glazing category row was not on the page.");
@@ -63,6 +63,8 @@ test("admin manages contractor categories and staff can only view them", async (
   if (!nameInput || !saveButton) throw new Error("Glazing category row is missing its name field.");
   await nameInput.fill("Glass");
   await saveButton.click();
+  await expect(page.locator('input[name="name"][value="Glass"]')).toBeVisible();
+  await page.goto("/contractors");
   await expect(page.getByRole("option", { name: "Glass", exact: true })).toHaveCount(1);
   await expect(page.getByRole("option", { name: "Glazing", exact: true })).toHaveCount(0);
 
@@ -94,7 +96,7 @@ test("admin manages contractor categories and staff can only view them", async (
   await page.getByLabel("Contractor").selectOption({ label: "Example Glazier" });
   await expect(page.getByText("Category: Electrical")).toBeVisible();
 
-  await page.goto("/contractors");
+  await page.goto("/building/categories?tab=contractors");
   const managed = page.getByRole("region", { name: "Contractor categories" });
   const glass = categoryRow(managed, "Glass");
   await glass.getByRole("button", { name: "Remove Glass" }).click();
@@ -106,7 +108,7 @@ test("admin manages contractor categories and staff can only view them", async (
   await expect(managed.locator('input[name="name"][value="Electrical"]')).toBeVisible();
   await managed.screenshot({ path: path.join(artifacts, "contractor-categories.png") });
 
-  await page.getByRole("link", { name: "Companies", exact: true }).click();
+  await page.goto("/contractors?tab=companies");
   await expect(page.getByRole("link", { name: "Example Glazier" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Sample Plumbing Co" })).toBeVisible();
 
@@ -115,7 +117,7 @@ test("admin manages contractor categories and staff can only view them", async (
   await expect(page).toHaveURL(/\/sign-in$/);
 
   await signIn(page, "staff@tnk.example", "example-staff-pass");
-  await page.getByRole("link", { name: "Contractors", exact: true }).click();
+  await page.goto("/building/categories?tab=contractors");
   const staffCategories = page.getByRole("region", { name: "Contractor categories" });
   await expect(staffCategories.getByText("Plumbing", { exact: true })).toBeVisible();
   await expect(staffCategories.getByText("Electrical", { exact: true })).toBeVisible();
@@ -125,6 +127,7 @@ test("admin manages contractor categories and staff can only view them", async (
   await expect(staffCategories.getByRole("button", { name: "Save" })).toHaveCount(0);
   await expect(staffCategories.getByLabel("New category")).toHaveCount(0);
 
+  await page.goto("/contractors");
   await page.getByRole("link", { name: "Example Glazier" }).click();
   await expect(page.getByText("Electrical · Approved")).toBeVisible();
   await expect(page.getByRole("link", { name: "Edit", exact: true })).toHaveCount(0);
@@ -156,5 +159,6 @@ async function signIn(page: Page, email: string, password: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }

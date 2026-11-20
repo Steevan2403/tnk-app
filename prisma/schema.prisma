@@ -19,6 +19,7 @@ enum UserRole {
 enum ReportFormat {
   pdf
   xlsx
+  docx
 }
 
 enum ContractorStatus {
@@ -37,6 +38,15 @@ enum Occupancy {
   investment
 }
 
+enum KeyType {
+  door
+  mailbox
+  garage_remote
+  fob
+  swipe_card
+  other
+}
+
 model User {
   id                 String           @id @default(cuid())
   email              String           @unique
@@ -44,7 +54,8 @@ model User {
   passwordHash       String
   role               UserRole
   selectedBuildingId String?
-  selectedBuilding   Building?        @relation(fields: [selectedBuildingId], references: [id], onDelete: SetNull)
+  selectedBuilding   Building?        @relation("SelectedBuilding", fields: [selectedBuildingId], references: [id], onDelete: SetNull)
+  memberships        UserBuilding[]
   contractorNotes    ContractorNote[]
   apartmentNotes     ApartmentNote[]
   casesCreated       Case[]
@@ -59,6 +70,7 @@ model User {
   buildingNotes      BuildingNote[]
   buildingActivities BuildingActivity[]
   generatedReports   GeneratedReport[]
+  notifications      Notification[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 }
@@ -78,7 +90,8 @@ model Building {
   siteContactEmail  String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
-  selectedBy        User[]
+  selectedBy        User[]           @relation("SelectedBuilding")
+  members           UserBuilding[]
   apartments        Apartment[]
   assets            Asset[]
   cases                Case[]
@@ -89,6 +102,19 @@ model Building {
   usefulNumbers        UsefulNumber[]
   generatedReports     GeneratedReport[]
   activities           BuildingActivity[]
+  notifications        Notification[]
+  outboxMessages       OutboxMessage[]
+}
+
+// Which buildings a manager or a staff member can open. Admins are not listed here.
+model UserBuilding {
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, buildingId])
+  @@index([buildingId])
 }
 
 // Contractors belong to the account, not to one building.
@@ -184,7 +210,7 @@ model ContractorInsurance {
   @@index([expiresOn])
 }
 
-// Apartments and the people, vehicles, and files on them belong to one building.
+// Apartments and the people, vehicles, keys, and files on them belong to one building.
 model Apartment {
   id         String              @id @default(cuid())
   buildingId String
@@ -194,6 +220,7 @@ model Apartment {
   occupancy  Occupancy           @default(owner_occupied)
   residents  Resident[]
   vehicles   Vehicle[]
+  keys       ApartmentKey[]
   documents  ApartmentDocument[]
   images     ApartmentImage[]
   notes      ApartmentNote[]
@@ -247,6 +274,21 @@ model Vehicle {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  @@index([apartmentId])
+}
+
+model ApartmentKey {
+  id          String    @id @default(cuid())
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  number      String
+  type        KeyType
+  location    String?
+  comment     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([apartmentId, number])
   @@index([apartmentId])
 }
 
@@ -349,6 +391,7 @@ model Asset {
   warranties       AssetWarranty[]
   caseLinks        CaseAsset[]
   maintenanceLinks MaintenanceAsset[]
+  inspectionLinks  InspectionRunAsset[]
   createdAt        DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -465,7 +508,9 @@ model Case {
   startDate           DateTime
   dueDate             DateTime
   priority            CasePriority   @default(low)
+  priorityRank        Int            @default(3)
   status              CaseStatus     @default(new)
+  statusRank          Int            @default(0)
   completedAt         DateTime?
   subject             String
   descriptionHtml     String         @default("")
@@ -809,11 +854,14 @@ model OutboxMessage {
   toAddress   String
   subject     String
   body        String
+  buildingId  String?
+  building    Building?          @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   workOrderId String?
   workOrder   WorkOrder?         @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
   attachments OutboxAttachment[]
   createdAt   DateTime           @default(now())
 
+  @@index([buildingId])
   @@index([workOrderId])
   @@index([createdAt])
 }
@@ -881,6 +929,8 @@ model InspectionRun {
   type         InspectionType
   apartmentId  String?
   apartment    Apartment?         @relation(fields: [apartmentId], references: [id], onDelete: SetNull)
+  area         CaseArea?
+  assets       InspectionRunAsset[]
   inspectorId  String
   inspector    User               @relation(fields: [inspectorId], references: [id], onDelete: Restrict)
   inspectedAt  DateTime
@@ -895,6 +945,16 @@ model InspectionRun {
   @@index([inspectorId])
   @@index([apartmentId])
   @@index([completedAt])
+}
+
+model InspectionRunAsset {
+  runId   String
+  run     InspectionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([runId, assetId])
+  @@index([assetId])
 }
 
 model InspectionRunArea {
@@ -985,6 +1045,31 @@ model BuildingActivity {
 
   @@index([buildingId, createdAt])
   @@index([actorId])
+}
+
+enum NotificationKind {
+  check_in
+  check_out
+  case_created
+  case_status
+  work_order_sent
+}
+
+// In-app only. One row is a message for one person about one building.
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buildingId String
+  building   Building         @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  kind       NotificationKind
+  title      String
+  link       String
+  createdAt  DateTime         @default(now())
+  readAt     DateTime?
+
+  @@index([userId, buildingId, createdAt])
+  @@index([buildingId])
 }
 
 // One row for the whole account: company name, fallback site contact, and work order terms.

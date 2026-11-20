@@ -277,6 +277,16 @@ export function safeWorkOrdersPath(value: string): string {
   return "/work-orders";
 }
 
+export function sentRangeError(from: string, to: string): string | null {
+  const start = parseDateOnly(from);
+  const end = parseDateOnly(to);
+  if (!start || !end) return null;
+  if (start.getTime() > end.getTime()) {
+    return "Sent from is after sent to. Choose a from date on or before the to date.";
+  }
+  return null;
+}
+
 export function sentRange(from: string, to: string): { from: Date | null; to: Date | null } {
   const start = from && parseDateOnly(from) ? sydneyDayStart(from) : null;
   const endDay = to && parseDateOnly(to) ? nextDateOnly(to) : null;

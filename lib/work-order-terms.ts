@@ -25,7 +25,9 @@ export function siteContactValue(buildingValue: string | null | undefined, setti
 
 export function buildingLine(name: string, strataPlan: string | null | undefined): string {
   const plan = strataPlan?.trim();
-  return `${name} - ${plan || "N/A"}`;
+  const title = name.trim();
+  if (!plan) return title;
+  return `${title} - ${plan}`;
 }
 
 export function assignedContractorLine(company: string, contact: string, phone: string): string {

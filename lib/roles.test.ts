@@ -4,6 +4,7 @@ import {
   canEditCases,
   canManageAssetCategories,
   canManageAssets,
+  canAssignBuildings,
   canManageBuildings,
   canCancelWorkOrders,
   canManageCaseTypes,
@@ -27,6 +28,17 @@ describe("canManageBuildings", () => {
   it("blocks manager and staff", () => {
     expect(canManageBuildings("manager")).toBe(false);
     expect(canManageBuildings("staff")).toBe(false);
+  });
+});
+
+describe("canAssignBuildings", () => {
+  it("allows an admin to assign buildings", () => {
+    expect(canAssignBuildings("admin")).toBe(true);
+  });
+
+  it("blocks manager and staff from assigning buildings", () => {
+    expect(canAssignBuildings("manager")).toBe(false);
+    expect(canAssignBuildings("staff")).toBe(false);
   });
 });
 
@@ -76,9 +88,9 @@ describe("case permissions", () => {
     expect(canDeleteCases("staff")).toBe(false);
   });
 
-  it("lets only an admin manage case types", () => {
+  it("lets an admin or a manager manage case types", () => {
     expect(canManageCaseTypes("admin")).toBe(true);
-    expect(canManageCaseTypes("manager")).toBe(false);
+    expect(canManageCaseTypes("manager")).toBe(true);
     expect(canManageCaseTypes("staff")).toBe(false);
   });
 });
@@ -146,12 +158,12 @@ describe("report permissions", () => {
 });
 
 describe("canManageAssetCategories", () => {
-  it("allows an admin", () => {
+  it("lets an admin or a manager manage asset categories", () => {
     expect(canManageAssetCategories("admin")).toBe(true);
+    expect(canManageAssetCategories("manager")).toBe(true);
   });
 
-  it("blocks manager and staff", () => {
-    expect(canManageAssetCategories("manager")).toBe(false);
+  it("blocks staff", () => {
     expect(canManageAssetCategories("staff")).toBe(false);
   });
 });

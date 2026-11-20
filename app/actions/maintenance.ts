@@ -19,11 +19,13 @@ import {
   type MaintenanceField,
 } from "@/lib/maintenance";
 import { canManageMaintenance, canRecordOccurrence } from "@/lib/roles";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { removeUpload, saveUpload } from "@/lib/storage";
 
 export type MaintenanceFormState = {
   error?: string;
   errors?: Partial<Record<MaintenanceField, string>>;
+  values?: SubmittedValues;
 };
 
 const denied = "You do not have permission to change maintenance.";
@@ -46,7 +48,11 @@ async function recorder() {
   return { ...user, buildingId: user.selectedBuildingId };
 }
 
-export async function saveMaintenance(_prev: MaintenanceFormState, formData: FormData): Promise<MaintenanceFormState> {
+export async function saveMaintenance(prev: MaintenanceFormState, formData: FormData): Promise<MaintenanceFormState> {
+  return attachSubmitted(formData, await saveMaintenanceBody(prev, formData));
+}
+
+async function saveMaintenanceBody(_prev: MaintenanceFormState, formData: FormData): Promise<MaintenanceFormState> {
   const user = await manager();
   if (!user) return { error: denied };
 

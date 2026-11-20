@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/data";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { prisma } from "@/lib/db";
 import {
   parseAgentForm,
@@ -36,16 +37,19 @@ import {
 export type ApartmentFormState = {
   error?: string;
   errors?: Partial<Record<ApartmentField, string>>;
+  values?: SubmittedValues;
 };
 
 export type ResidentFormState = {
   error?: string;
   errors?: Partial<Record<ResidentField, string>>;
+  values?: SubmittedValues;
 };
 
 export type VehicleFormState = {
   error?: string;
   errors?: Partial<Record<VehicleField, string>>;
+  values?: SubmittedValues;
 };
 
 export type NoteFormState = {
@@ -66,11 +70,13 @@ export type ImageFormState = {
 export type OwnerFormState = {
   error?: string;
   errors?: Partial<Record<OwnerField, string>>;
+  values?: SubmittedValues;
 };
 
 export type AgentFormState = {
   error?: string;
   errors?: Partial<Record<AgentField, string>>;
+  values?: SubmittedValues;
 };
 
 const denied = "You do not have permission to change apartments or residents.";
@@ -108,7 +114,11 @@ function isUniqueConflict(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-export async function saveApartment(_prev: ApartmentFormState, formData: FormData): Promise<ApartmentFormState> {
+export async function saveApartment(prev: ApartmentFormState, formData: FormData): Promise<ApartmentFormState> {
+  return attachSubmitted(formData, await saveApartmentBody(prev, formData));
+}
+
+async function saveApartmentBody(_prev: ApartmentFormState, formData: FormData): Promise<ApartmentFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -194,7 +204,11 @@ export async function setOccupancy(formData: FormData) {
   redirect(apartmentPath(id));
 }
 
-export async function saveResident(_prev: ResidentFormState, formData: FormData): Promise<ResidentFormState> {
+export async function saveResident(prev: ResidentFormState, formData: FormData): Promise<ResidentFormState> {
+  return attachSubmitted(formData, await saveResidentBody(prev, formData));
+}
+
+async function saveResidentBody(_prev: ResidentFormState, formData: FormData): Promise<ResidentFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -266,7 +280,11 @@ export async function addApartmentNote(_prev: NoteFormState, formData: FormData)
   redirect(apartmentPath(apartmentId, String(formData.get("tab") ?? "")));
 }
 
-export async function saveVehicle(_prev: VehicleFormState, formData: FormData): Promise<VehicleFormState> {
+export async function saveVehicle(prev: VehicleFormState, formData: FormData): Promise<VehicleFormState> {
+  return attachSubmitted(formData, await saveVehicleBody(prev, formData));
+}
+
+async function saveVehicleBody(_prev: VehicleFormState, formData: FormData): Promise<VehicleFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -461,7 +479,11 @@ export async function deleteApartmentImage(formData: FormData) {
   redirect(apartmentPath(apartmentId, "images"));
 }
 
-export async function saveOwner(_prev: OwnerFormState, formData: FormData): Promise<OwnerFormState> {
+export async function saveOwner(prev: OwnerFormState, formData: FormData): Promise<OwnerFormState> {
+  return attachSubmitted(formData, await saveOwnerBody(prev, formData));
+}
+
+async function saveOwnerBody(_prev: OwnerFormState, formData: FormData): Promise<OwnerFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -504,7 +526,11 @@ export async function deleteOwner(formData: FormData) {
   redirect(apartmentPath(apartmentId));
 }
 
-export async function saveAgent(_prev: AgentFormState, formData: FormData): Promise<AgentFormState> {
+export async function saveAgent(prev: AgentFormState, formData: FormData): Promise<AgentFormState> {
+  return attachSubmitted(formData, await saveAgentBody(prev, formData));
+}
+
+async function saveAgentBody(_prev: AgentFormState, formData: FormData): Promise<AgentFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 

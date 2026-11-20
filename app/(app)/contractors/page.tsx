@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { approveCompany } from "@/app/actions/contractors";
-import { ContractorCategories } from "@/components/contractor-categories";
 import { EmptyState } from "@/components/ui";
 import { SelectField, TextField } from "@/components/field";
 import { InsuranceBadge } from "@/components/insurance-badge";
@@ -158,8 +157,6 @@ export default async function ContractorsPage({
           </div>
         </div>
       ) : null}
-
-      <ContractorCategories categories={categories} canManage={canManage} />
     </section>
   );
 }

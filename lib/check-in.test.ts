@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  closedVisitNotice,
+  INVALID_CHECK_IN_LINK,
   decideSiteAction,
   formatDuration,
   formatLocation,
@@ -19,6 +19,12 @@ describe("check-in token", () => {
     expect(token).not.toBe(newCheckInToken());
     expect(isCheckInToken("preview")).toBe(false);
     expect(isCheckInToken("seed-check-in-300-a-example")).toBe(true);
+  });
+
+  it("says a link stays reusable until the work order is completed or cancelled", () => {
+    expect(INVALID_CHECK_IN_LINK.toLowerCase()).not.toContain("expired");
+    expect(INVALID_CHECK_IN_LINK).toContain("more than one visit");
+    expect(INVALID_CHECK_IN_LINK).toContain("completed or cancelled");
   });
 });
 
@@ -59,13 +65,17 @@ describe("on-site decisions", () => {
     });
   });
 
-  it("still allows check-out when a visit is open on a completed work order", () => {
+  it("stops check-out as well once the work order is completed or cancelled", () => {
     expect(decideSiteAction({ status: "completed", action: "check_out", hasOpenVisit: true, name: "" })).toEqual({
-      ok: true,
-      name: "",
+      ok: false,
+      error: "This work order is completed. On-site check-in is closed.",
     });
-    expect(closedVisitNotice("completed", true)).toBe("This work order is completed. Check out to finish this visit.");
-    expect(closedVisitNotice("new", false)).toBeNull();
+    expect(decideSiteAction({ status: "cancelled", action: "check_in", hasOpenVisit: true, name: "Riley Example" })).toEqual({
+      ok: false,
+      error: "This work order is cancelled. On-site check-in is closed.",
+    });
+    expect(workOrderClosedMessage("completed")).toBe("This work order is completed. On-site check-in is closed.");
+    expect(workOrderClosedMessage("new")).toBeNull();
   });
 
   it("asks for a name and limits its length", () => {

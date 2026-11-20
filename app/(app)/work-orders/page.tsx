@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ColumnMenu } from "@/components/column-menu";
 import { EmptyState, StatusBadge } from "@/components/ui";
 import { WorkOrderStatusSelect } from "@/components/work-order-status";
 import { SelectField, TextField } from "@/components/field";
@@ -13,9 +14,19 @@ import {
   formatWorkOrderStatus,
   isWorkOrderStatus,
   sentRange,
+  sentRangeError,
 } from "@/lib/work-orders";
 
 export const metadata: Metadata = { title: "Work Orders" };
+
+const OPTIONAL_WORK_ORDER_COLUMNS = [
+  { id: "company", label: "Sent to" },
+  { id: "contact", label: "Contact" },
+  { id: "status", label: "Status" },
+  { id: "type", label: "Case type" },
+  { id: "sent", label: "Sent" },
+  { id: "sentBy", label: "Sent by" },
+];
 
 type Filters = {
   q: string;
@@ -46,6 +57,7 @@ export default async function WorkOrdersPage({
   const companies = await listWorkOrderCompanies();
   const companyId = companies.some((company) => company.id === filters.companyId) ? filters.companyId : "";
   const status = isWorkOrderStatus(filters.status) ? filters.status : "";
+  const rangeError = sentRangeError(filters.from, filters.to);
   const range = sentRange(filters.from, filters.to);
   const active: Filters = {
     ...filters,
@@ -54,19 +66,21 @@ export default async function WorkOrdersPage({
     from: range.from ? filters.from : "",
     to: range.to ? filters.to : "",
   };
-  const listed = await listWorkOrders({
-    buildingId: user.selectedBuildingId,
-    q: active.q,
-    status: active.status,
-    companyId: active.companyId,
-    sentFrom: range.from,
-    sentTo: range.to,
-    page: active.page,
-  });
+  const listed = rangeError
+    ? { total: 0, rows: [] }
+    : await listWorkOrders({
+        buildingId: user.selectedBuildingId,
+        q: active.q,
+        status: active.status,
+        companyId: active.companyId,
+        sentFrom: range.from,
+        sentTo: range.to,
+        page: active.page,
+      });
   const totalPages = Math.max(1, Math.ceil(listed.total / PAGE_SIZE));
   const page = Math.min(active.page, totalPages);
   const rows =
-    page === active.page
+    rangeError || page === active.page
       ? listed.rows
       : (
           await listWorkOrders({
@@ -86,7 +100,18 @@ export default async function WorkOrdersPage({
 
   return (
     <section>
-      <h1 className="font-serif text-3xl">Work Orders</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-serif text-3xl">Work Orders</h1>
+        {rows.length > 0 ? (
+          <ColumnMenu
+            userId={user.id}
+            table="work-orders"
+            tableId="work-order-list"
+            columns={OPTIONAL_WORK_ORDER_COLUMNS}
+            kept="Work order number and case subject stay visible."
+          />
+        ) : null}
+      </div>
       <form method="get" className="filter-card mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <TextField label="Search work orders" name="q" type="search" defaultValue={active.q} placeholder="Number, subject, or contractor" />
         <SelectField label="Status" name="status" defaultValue={active.status}>
@@ -118,11 +143,17 @@ export default async function WorkOrdersPage({
           Clear filters
         </Link>
       ) : null}
-      <p className="mt-4 text-sm text-muted">{listed.total === 1 ? "1 work order" : `${listed.total} work orders`}</p>
-      {rows.length === 0 ? (
+      {rangeError ? (
+        <p role="alert" className="mt-4 text-sm text-danger">
+          {rangeError}
+        </p>
+      ) : (
+        <p className="mt-4 text-sm text-muted">{listed.total === 1 ? "1 work order" : `${listed.total} work orders`}</p>
+      )}
+      {rangeError ? null : rows.length === 0 ? (
         <EmptyState>{filtered ? "No work orders match." : "No work orders yet."}</EmptyState>
       ) : (
-        <>
+        <div id="work-order-list">
           <ul className="mt-4 space-y-3 md:hidden">
             {rows.map((row) => (
               <li key={row.id} className="rounded-xl border border-line bg-card p-4">
@@ -134,13 +165,16 @@ export default async function WorkOrdersPage({
                   <RowLinks row={row} />
                 </div>
                 <p className="mt-2">{row.caseSubject}</p>
-                <p className="mt-1 text-sm text-muted">
-                  {row.companyName} · {row.contactName}
+                <p className="mt-1 flex flex-wrap gap-x-2 text-sm text-muted">
+                  <span data-column="company">{row.companyName}</span>
+                  <span data-column="contact">{row.contactName}</span>
                 </p>
-                <p className="mt-1 text-sm text-muted">
-                  {row.caseType} · {formatDateTime(row.sentAt)} · {row.sentByName}
+                <p className="mt-1 flex flex-wrap gap-x-2 text-sm text-muted">
+                  <span data-column="type">{row.caseType}</span>
+                  <span data-column="sent">{formatDateTime(row.sentAt)}</span>
+                  <span data-column="sentBy">{row.sentByName}</span>
                 </p>
-                <div className="mt-3">
+                <div className="mt-3" data-column="status">
                   {canChange ? (
                     <WorkOrderStatusSelect id={row.id} number={row.number} status={row.status} canCancel={canCancel} returnTo={returnTo} />
                   ) : (
@@ -156,12 +190,24 @@ export default async function WorkOrdersPage({
                 <tr>
                   <th className="px-4 py-3 font-medium">Work order</th>
                   <th className="px-4 py-3 font-medium">Case subject</th>
-                  <th className="px-4 py-3 font-medium">Sent to</th>
-                  <th className="px-4 py-3 font-medium">Contact</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Case type</th>
-                  <th className="px-4 py-3 font-medium">Sent</th>
-                  <th className="px-4 py-3 font-medium">Sent by</th>
+                  <th className="px-4 py-3 font-medium" data-column="company">
+                    Sent to
+                  </th>
+                  <th className="px-4 py-3 font-medium" data-column="contact">
+                    Contact
+                  </th>
+                  <th className="px-4 py-3 font-medium" data-column="status">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-medium" data-column="type">
+                    Case type
+                  </th>
+                  <th className="px-4 py-3 font-medium" data-column="sent">
+                    Sent
+                  </th>
+                  <th className="px-4 py-3 font-medium" data-column="sentBy">
+                    Sent by
+                  </th>
                   <th className="px-4 py-3 font-medium">
                     <span className="sr-only">PDF and email</span>
                   </th>
@@ -177,9 +223,13 @@ export default async function WorkOrdersPage({
                       {row.onSiteName ? <p className="text-sm text-brand-green">On site · {row.onSiteName}</p> : null}
                     </td>
                     <td className="px-4 py-3">{row.caseSubject}</td>
-                    <td className="px-4 py-3">{row.companyName}</td>
-                    <td className="px-4 py-3">{row.contactName}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" data-column="company">
+                      {row.companyName}
+                    </td>
+                    <td className="px-4 py-3" data-column="contact">
+                      {row.contactName}
+                    </td>
+                    <td className="px-4 py-3" data-column="status">
                       {canChange ? (
                         <WorkOrderStatusSelect
                           id={row.id}
@@ -192,9 +242,15 @@ export default async function WorkOrdersPage({
                         <StatusBadge status={row.status} label={formatWorkOrderStatus(row.status)} />
                       )}
                     </td>
-                    <td className="px-4 py-3">{row.caseType}</td>
-                    <td className="px-4 py-3">{formatDateTime(row.sentAt)}</td>
-                    <td className="px-4 py-3">{row.sentByName}</td>
+                    <td className="px-4 py-3" data-column="type">
+                      {row.caseType}
+                    </td>
+                    <td className="px-4 py-3" data-column="sent">
+                      {formatDateTime(row.sentAt)}
+                    </td>
+                    <td className="px-4 py-3" data-column="sentBy">
+                      {row.sentByName}
+                    </td>
                     <td className="px-4 py-3">
                       <RowLinks row={row} />
                     </td>
@@ -203,7 +259,7 @@ export default async function WorkOrdersPage({
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
       {totalPages > 1 ? (
         <div className="mt-4 flex items-center justify-between text-sm">

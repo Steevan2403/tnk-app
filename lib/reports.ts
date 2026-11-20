@@ -139,7 +139,23 @@ export function periodLabel(from: Date, to: Date): string {
   return `${formatCalendarDate(from)} to ${formatCalendarDate(to)}`;
 }
 
-export function reportFileName(from: Date, to: Date, format: "pdf" | "xlsx"): string {
+export type ReportFileFormat = "pdf" | "xlsx" | "docx";
+
+export const CASE_TABLE_HEADERS = ["Case #", "Started", "Completed", "Subject", "Type", "Contractor", "Priority", "Status"] as const;
+
+export function reportFileExtension(format: ReportFileFormat): ".pdf" | ".xlsx" | ".docx" {
+  if (format === "pdf") return ".pdf";
+  if (format === "docx") return ".docx";
+  return ".xlsx";
+}
+
+export function reportFormatLabel(format: ReportFileFormat): string {
+  if (format === "pdf") return "PDF";
+  if (format === "docx") return "Word";
+  return "Excel";
+}
+
+export function reportFileName(from: Date, to: Date, format: ReportFileFormat): string {
   return `management-report-${formatIsoDate(from)}-to-${formatIsoDate(to)}.${format}`;
 }
 
@@ -303,13 +319,13 @@ export function optionsJson(selection: ReportSelection, sections: ReportSections
 export function parseReportRequest(
   formData: FormData,
 ):
-  | { ok: true; value: { selection: Omit<ReportSelection, "excludedIds">; caseIds: string[]; sections: ReportSections; format: "pdf" | "xlsx" } }
+  | { ok: true; value: { selection: Omit<ReportSelection, "excludedIds">; caseIds: string[]; sections: ReportSections; format: ReportFileFormat } }
   | { ok: false; error: string } {
   const from = parseDateOnly(String(formData.get("from") ?? ""));
   const to = parseDateOnly(String(formData.get("to") ?? ""));
   if (!from || !to || from.getTime() > to.getTime()) return { ok: false, error: "Choose a start date and an end date." };
   const format = String(formData.get("format") ?? "");
-  if (format !== "pdf" && format !== "xlsx") return { ok: false, error: "Choose PDF or Excel." };
+  if (format !== "pdf" && format !== "xlsx" && format !== "docx") return { ok: false, error: "Choose PDF, Excel, or Word." };
   const sections = defaultSections();
   for (const key of SECTION_KEYS) sections[key] = false;
   for (const key of textList(formData, "section")) {

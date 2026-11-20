@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { saveCompany, type CompanyFormState } from "@/app/actions/contractors";
 import { SelectField, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 import { formatAbn } from "@/lib/contractors";
 
 const initial: CompanyFormState = {};
@@ -29,7 +30,7 @@ export function CompanyForm({
   const [state, action, pending] = useActionState(saveCompany, initial);
 
   return (
-    <form action={action} className="form-card mt-6 max-w-xl space-y-4">
+    <RetainedForm action={action} className="form-card mt-6 max-w-xl space-y-4" values={state.values}>
       {company ? <input type="hidden" name="id" value={company.id} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">
@@ -110,6 +111,6 @@ export function CompanyForm({
           Cancel
         </Link>
       </div>
-    </form>
+    </RetainedForm>
   );
 }
