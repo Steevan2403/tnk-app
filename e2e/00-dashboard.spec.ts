@@ -13,13 +13,33 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("heading", { name: "Example Tower" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Items needing action" })).toBeVisible();
 
-  const overdueCases = page.getByRole("link", { name: "Overdue cases 3", exact: true });
+  const overdueCases = page.getByRole("link", { name: "Overdue cases 5", exact: true });
   await expect(overdueCases).toBeVisible();
   await expect(overdueCases.locator("span").nth(1)).toHaveClass(/text-danger/);
   await expect(page.getByRole("link", { name: "Overdue maintenance 3", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Expired warranties 1", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Expired insurance 1", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Failed inspection items 2", exact: true })).toBeVisible();
+
+  const actionItems = page.getByRole("region", { name: "Items needing action" }).getByRole("listitem");
+  await expect(actionItems).toHaveCount(5);
+  const actionLabels = ["Overdue cases", "Overdue maintenance", "Expired warranties", "Expired insurance", "Failed inspection items"];
+  for (const [index, label] of actionLabels.entries()) {
+    await expect(actionItems.nth(index)).toContainText(label);
+  }
+  await expect(actionItems.filter({ hasText: "Expired insurance" })).toContainText("Contractor insurance past its end date.");
+  const actionCounts = await actionItems.evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute("data-action-count"))));
+  let seenZero = false;
+  for (const count of actionCounts) {
+    expect(Number.isInteger(count)).toBe(true);
+    if (count === 0) seenZero = true;
+    else expect(seenZero).toBe(false);
+  }
+  for (const item of await actionItems.all()) {
+    const count = Number(await item.getAttribute("data-action-count"));
+    if (count === 0) await expect(item).toHaveClass(/action-quiet/);
+    else await expect(item).not.toHaveClass(/action-quiet/);
+  }
 
   await expect(page.getByRole("link", { name: "15 Residents", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "12 Apartments", exact: true })).toBeVisible();
@@ -29,7 +49,7 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("link", { name: "3 Work orders this month", exact: true })).toBeVisible();
 
   await expect(page.getByRole("link", { name: "Repair & maintenance 8", exact: true })).toBeVisible();
-  await expect(page.getByRole("img", { name: /Cases by type, 13/ })).toBeVisible();
+  await expect(page.getByRole("group", { name: /Cases by type, 13/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "310-A", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example pump service", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example car park gate service", exact: true })).toBeVisible();
@@ -58,7 +78,7 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page).toHaveURL(/\/cases\?overdue=1/);
   await expect(page.getByRole("heading", { name: "Cases" })).toBeVisible();
   await expect(page.getByLabel("Overdue only")).toBeChecked();
-  await expect(page.getByText("3 cases", { exact: true })).toBeVisible();
+  await expect(page.getByText("5 cases", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example fire pump drip" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Example noise complaint for apartment 104" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Lobby floor (Lobby)" })).toBeVisible();
@@ -84,7 +104,7 @@ test("admin sees seeded dashboard counts, filters overdue cases, and staff canno
   await expect(page.getByRole("link", { name: "02 0000 2222" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add number" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add note" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Overdue cases 3", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Overdue cases 5", exact: true })).toBeVisible();
 });
 
 async function signIn(page: Page, email: string, password: string) {

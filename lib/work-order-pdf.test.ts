@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
@@ -62,6 +66,37 @@ describe("work order PDF", () => {
     expect(pdfDraws(bytes, "1. Example authorisation is required.")).toBe(true);
   });
 
+  it("hides empty contact rows, drops a missing plan, and prints terms only when they are set", async () => {
+    const empty = await buildWorkOrderPdf(
+      input({
+        buildingLine: "Harbour House",
+        siteContactName: "",
+        siteContactMobile: "  ",
+        siteContactEmail: "",
+        terms: "  \n",
+      }),
+    );
+    const blankText = pdfText(empty);
+    expect(blankText).toContain("Harbour House");
+    expect(blankText).not.toContain("N/A");
+    expect(blankText).not.toContain("Site Contact");
+    expect(blankText).not.toContain("Mobile");
+    expect(blankText).not.toContain("Email");
+    expect(blankText).not.toContain("Terms & Conditions");
+
+    const filled = await buildWorkOrderPdf(input());
+    const filledText = pdfText(filled);
+    expect(filledText).toContain("Example Tower - SP 10048");
+    expect(filledText).toContain("Site Contact");
+    expect(filledText).toContain("Alex Example");
+    expect(filledText).toContain("Mobile");
+    expect(filledText).toContain("0400 000 001");
+    expect(filledText).toContain("Email");
+    expect(filledText).toContain("site.tower@example.com");
+    expect(filledText).toContain("Terms & Conditions");
+    expect(filledText).toContain("Example authorisation is required.");
+  });
+
   it("omits terms when they are blank and flows long text onto another page", async () => {
     const blank = await buildWorkOrderPdf(input({ terms: "  \n" }));
     expect(pdfDraws(Buffer.from(blank), "Terms & Conditions")).toBe(false);
@@ -78,6 +113,13 @@ describe("work order PDF", () => {
     expect(pdfDraws(bytes, "Example description line 40.")).toBe(true);
   });
 });
+
+function pdfText(bytes: Uint8Array): string {
+  const dir = mkdtempSync(path.join(tmpdir(), "work-order-pdf-"));
+  const file = path.join(dir, "work-order.pdf");
+  writeFileSync(file, bytes);
+  return execFileSync("pdftotext", ["-layout", file, "-"], { encoding: "utf8" });
+}
 
 function pdfDraws(bytes: Buffer, value: string): boolean {
   const hex = Buffer.from(value, "latin1").toString("hex").toUpperCase();

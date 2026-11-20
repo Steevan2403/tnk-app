@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAddress, parseBuildingForm } from "./buildings";
+import { canUseBuilding, formatAddress, parseBuildingForm, selectedBuildingForUser } from "./buildings";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -16,6 +16,34 @@ const valid = {
   photoUrl: "",
   lotCount: "48",
 };
+
+const tower = "seed_example_tower";
+const court = "seed_sample_court";
+
+describe("building membership", () => {
+  it("keeps a manager on Example Tower and drops Sample Court", () => {
+    expect(canUseBuilding("manager", tower, [tower])).toBe(true);
+    expect(canUseBuilding("manager", court, [tower])).toBe(false);
+    expect(selectedBuildingForUser("manager", court, [tower])).toBeNull();
+    expect(selectedBuildingForUser("manager", tower, [tower])).toBe(tower);
+  });
+
+  it("lets an admin keep any selected building, including one with no membership row", () => {
+    expect(canUseBuilding("admin", court, [])).toBe(true);
+    expect(selectedBuildingForUser("admin", court, [])).toBe(court);
+  });
+
+  it("gives a person with no buildings no selected building", () => {
+    expect(selectedBuildingForUser("staff", tower, [])).toBeNull();
+    expect(selectedBuildingForUser("staff", null, [tower])).toBeNull();
+  });
+
+  it("lets staff open only the buildings they are assigned", () => {
+    expect(canUseBuilding("staff", tower, [tower, court])).toBe(true);
+    expect(canUseBuilding("staff", court, [tower, court])).toBe(true);
+    expect(selectedBuildingForUser("staff", court, [tower])).toBeNull();
+  });
+});
 
 describe("parseBuildingForm", () => {
   it("accepts a complete building", () => {

@@ -138,6 +138,7 @@ export async function emailGeneratedReport(formData: FormData): Promise<void> {
       ].join("\n"),
       attachmentNames: [report.fileName],
       attachments: [{ name: report.fileName, storedName }],
+      buildingId: user.buildingId,
     });
   } catch (error) {
     await removeUpload(storedName);

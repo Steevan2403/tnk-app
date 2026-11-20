@@ -1,3 +1,4 @@
+import { isCaseArea, type CaseArea } from "./cases";
 import { plainTextToCaseHtml } from "./maintenance";
 import { canManageInspectionTemplates } from "./roles";
 
@@ -262,25 +263,84 @@ export function caseSubjectForItem(itemName: string, areaName: string): string {
   return subject.slice(0, NAME_MAX).trim();
 }
 
+export type InspectionLocation = {
+  area: CaseArea;
+  assetIds: string[];
+  apartmentId: string | null;
+};
+
+export function inspectionLocation(
+  input: { area: string; assetIds: string[]; apartmentId: string },
+  known: { assetIds: string[]; apartmentIds: string[] },
+): { ok: true; value: InspectionLocation } | { ok: false; error: "area" | "asset" | "apartment" } {
+  const raw = input.area.trim();
+  const area = raw === "" ? "none" : raw;
+  if (!isCaseArea(area)) return { ok: false, error: "area" };
+  if (area === "none") return { ok: true, value: { area, assetIds: [], apartmentId: null } };
+  if (area === "asset") {
+    const assetIds = uniqueIds(input.assetIds);
+    if (assetIds.length === 0 || assetIds.some((id) => !known.assetIds.includes(id))) {
+      return { ok: false, error: "asset" };
+    }
+    return { ok: true, value: { area, assetIds, apartmentId: null } };
+  }
+  const apartmentId = input.apartmentId.trim();
+  if (!apartmentId || !known.apartmentIds.includes(apartmentId)) return { ok: false, error: "apartment" };
+  return { ok: true, value: { area, assetIds: [], apartmentId } };
+}
+
+export function inspectionLocationLabel(input: {
+  area: string | null;
+  assetNames: string[];
+  apartmentNumber: string | null;
+}): string {
+  if (input.area === "asset") {
+    const names = input.assetNames.filter((name) => name.trim());
+    return names.length > 0 ? `Common asset · ${names.join(", ")}` : "Common asset";
+  }
+  if (input.area === "apartment" || (input.area == null && input.apartmentNumber)) {
+    return input.apartmentNumber ? `Private lot · Apartment ${input.apartmentNumber}` : "Private lot";
+  }
+  return "N/A";
+}
+
 export function caseFieldsFromItem(input: {
   itemName: string;
   areaName: string;
   comment: string | null;
   type: InspectionType;
+  area: CaseArea | null;
   apartmentId: string | null;
+  assetIds: string[];
 }): {
   subject: string;
   descriptionHtml: string;
-  area: "apartment" | "none";
+  area: CaseArea;
   apartmentId: string | null;
+  assetIds: string[];
 } {
-  const apartmentId = input.type === "private_lot" && input.apartmentId ? input.apartmentId : null;
-  return {
-    subject: caseSubjectForItem(input.itemName, input.areaName),
-    descriptionHtml: plainTextToCaseHtml(input.comment ?? ""),
-    area: apartmentId ? "apartment" : "none",
-    apartmentId,
-  };
+  const subject = caseSubjectForItem(input.itemName, input.areaName);
+  const descriptionHtml = plainTextToCaseHtml(input.comment ?? "");
+  const assetIds = uniqueIds(input.assetIds);
+  if (input.area === "asset" && assetIds.length > 0) {
+    return { subject, descriptionHtml, area: "asset", apartmentId: null, assetIds };
+  }
+  const apartmentId =
+    input.area === "apartment" || (input.area == null && input.type === "private_lot") ? input.apartmentId : null;
+  if (apartmentId) return { subject, descriptionHtml, area: "apartment", apartmentId, assetIds: [] };
+  return { subject, descriptionHtml, area: "none", apartmentId: null, assetIds: [] };
+}
+
+function uniqueIds(values: string[]): string[] {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const value of values) {
+    const id = value.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
 }
 
 export function completedRange(from: Date | null, to: Date | null): { gte?: Date; lt?: Date } | null {

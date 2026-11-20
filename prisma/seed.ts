@@ -1,7 +1,7 @@
 import { deflateSync } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
 import { formatAddress } from "../lib/buildings";
-import { FIRST_CASE_NUMBER, formatPriority } from "../lib/cases";
+import { FIRST_CASE_NUMBER, caseRankPatch, formatPriority } from "../lib/cases";
 import { formatCalendarDate } from "../lib/contractors";
 import { createGeneratedReport } from "../lib/report-data";
 import {
@@ -254,8 +254,9 @@ async function main() {
     });
   }
 
-  const [adminHash, staffHash] = await Promise.all([
+  const [adminHash, managerHash, staffHash] = await Promise.all([
     hashPassword("example-admin-pass"),
+    hashPassword("example-manager-pass"),
     hashPassword("example-staff-pass"),
   ]);
 
@@ -304,6 +305,32 @@ async function main() {
       data: { selectedBuildingId: "seed_example_tower" },
     });
   }
+
+  const manager = await prisma.user.upsert({
+    where: { email: "manager@tnk.example" },
+    update: {
+      name: "Example Manager",
+      passwordHash: managerHash,
+      role: "manager",
+    },
+    create: {
+      email: "manager@tnk.example",
+      name: "Example Manager",
+      passwordHash: managerHash,
+      role: "manager",
+      selectedBuildingId: "seed_example_tower",
+    },
+  });
+
+  if (!manager.selectedBuildingId) {
+    await prisma.user.update({
+      where: { id: manager.id },
+      data: { selectedBuildingId: "seed_example_tower" },
+    });
+  }
+
+  await assignBuildings(manager.id, ["seed_example_tower"]);
+  await assignBuildings(staff.id, ["seed_example_tower", "seed_sample_court"]);
 
   for (const company of companies) {
     await prisma.contractorCompany.upsert({
@@ -360,6 +387,7 @@ async function main() {
   await seedInspections(admin.id, staff.id);
   await seedDashboard(admin.id, staff.id);
   await seedManagementReport(admin.id, admin.name);
+  await seedNotifications(admin.id);
 }
 
 const apartmentPlan = [
@@ -394,6 +422,13 @@ const residentPlan = [
   ["seed_res_quinn", "303", "Quinn", "Sample", "tenant", null, "0400 000 014", "quinn.sample@example.com", "2024-10-01", null, true],
   ["seed_res_reese", "303", "Reese", "Example", "other", null, "0400 000 015", "reese.example@example.com", "2024-10-01", null, false],
 ] as const;
+
+async function assignBuildings(userId: string, buildingIds: string[]) {
+  await prisma.userBuilding.deleteMany({ where: { userId } });
+  await prisma.userBuilding.createMany({
+    data: buildingIds.map((buildingId) => ({ userId, buildingId })),
+  });
+}
 
 function day(value: string | null): Date | null {
   return value ? new Date(`${value}T00:00:00.000Z`) : null;
@@ -453,6 +488,29 @@ async function seedApartments(authorId: string) {
 
   for (const vehicle of vehicles) {
     await prisma.vehicle.upsert({ where: { id: vehicle.id }, update: vehicle, create: vehicle });
+  }
+
+  const keys = [
+    {
+      id: "seed_key_101_door",
+      apartmentId: "seed_apt_101",
+      number: "101-D",
+      type: "door" as const,
+      location: "Key cabinet",
+      comment: "Example front door key for apartment 101.",
+    },
+    {
+      id: "seed_key_101_mail",
+      apartmentId: "seed_apt_101",
+      number: "101-M",
+      type: "mailbox" as const,
+      location: "Mail room",
+      comment: "Example mailbox key for apartment 101.",
+    },
+  ];
+
+  for (const key of keys) {
+    await prisma.apartmentKey.upsert({ where: { id: key.id }, update: key, create: key });
   }
 
   const owner = {
@@ -1089,6 +1147,7 @@ async function seedCases(authorId: string) {
       dueDate: onDay(item.dueDate),
       priority: item.priority,
       status: item.status,
+      ...caseRankPatch(item),
       completedAt: item.completedAt ? new Date(item.completedAt) : null,
       subject: item.subject,
       descriptionHtml: item.descriptionHtml,
@@ -1375,12 +1434,20 @@ async function seedWorkOrders(authorId: string) {
     });
     await prisma.outboxMessage.upsert({
       where: { id: messageId },
-      update: { toAddress: item.contactEmail, subject: item.subject, body, workOrderId: item.id, createdAt: sentAt },
+      update: {
+        toAddress: item.contactEmail,
+        subject: item.subject,
+        body,
+        buildingId: "seed_example_tower",
+        workOrderId: item.id,
+        createdAt: sentAt,
+      },
       create: {
         id: messageId,
         toAddress: item.contactEmail,
         subject: item.subject,
         body,
+        buildingId: "seed_example_tower",
         workOrderId: item.id,
         createdAt: sentAt,
       },
@@ -1852,6 +1919,7 @@ async function seedInspections(adminId: string, staffId: string) {
     apartmentId: null,
     createdById: adminId,
     inspectionItemId: "seed_insp_done_floor",
+    ...caseRankPatch({ priority: "low", status: "new" }),
   };
   await prisma.case.upsert({
     where: { id: "seed_case_16" },
@@ -2107,6 +2175,52 @@ async function seedDashboard(adminId: string, staffId: string) {
       notes: entry.notes,
     };
     await prisma.usefulNumber.upsert({ where: { id: entry.id }, update: data, create: { id: entry.id, ...data } });
+  }
+}
+
+async function seedNotifications(adminId: string) {
+  const rows = [
+    {
+      id: "seed_notice_tower_case",
+      buildingId: "seed_example_tower",
+      kind: "case_created" as const,
+      title: "New case 300: Example fire pump drip.",
+      link: "/cases/300",
+      createdAt: new Date("2026-11-18T01:00:00.000Z"),
+    },
+    {
+      id: "seed_notice_tower_status",
+      buildingId: "seed_example_tower",
+      kind: "case_status" as const,
+      title: "Case 307 moved to In progress.",
+      link: "/cases/307",
+      createdAt: new Date("2026-11-18T02:00:00.000Z"),
+    },
+    {
+      id: "seed_notice_tower_work_order",
+      buildingId: "seed_example_tower",
+      kind: "work_order_sent" as const,
+      title: "Work order 300-A was sent to Fictional Fire Services.",
+      link: "/work-orders/seed_wo_01a",
+      createdAt: new Date("2026-11-18T03:00:00.000Z"),
+    },
+    {
+      id: "seed_notice_court",
+      buildingId: "seed_sample_court",
+      kind: "case_created" as const,
+      title: "Example notice for Sample Court.",
+      link: "/dashboard",
+      createdAt: new Date("2026-11-17T01:00:00.000Z"),
+    },
+  ];
+  for (const row of rows) {
+    const data = { ...row, userId: adminId, readAt: null };
+    const { id, ...fields } = data;
+    await prisma.notification.upsert({
+      where: { id },
+      update: fields,
+      create: data,
+    });
   }
 }
 

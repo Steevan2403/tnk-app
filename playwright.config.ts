@@ -8,6 +8,7 @@ export default defineConfig({
   globalSetup: "./e2e/global-setup.ts",
   use: {
     baseURL: "http://localhost:3000",
+    locale: "en-AU",
     trace: "on-first-retry",
   },
   webServer: {

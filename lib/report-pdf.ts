@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
-import type { ReportSections, ReportSummary } from "./reports";
+import { CASE_TABLE_HEADERS, type ReportSections, type ReportSummary } from "./reports";
 import { logoFilePath, logoPaths } from "./work-order-pdf";
 
 const NAVY = rgb(0, 0, 128 / 255);
@@ -400,17 +400,10 @@ class Sheet {
   }
 }
 
+const CASE_WIDTHS = [58, 62, 64, 100, 68, 72, 48, 43];
+
 function tableColumns(): { title: string; width: number }[] {
-  return [
-    { title: "Case #", width: 58 },
-    { title: "Started", width: 62 },
-    { title: "Completed", width: 64 },
-    { title: "Subject", width: 100 },
-    { title: "Type", width: 68 },
-    { title: "Contractor", width: 72 },
-    { title: "Priority", width: 48 },
-    { title: "Status", width: 43 },
-  ];
+  return CASE_TABLE_HEADERS.map((title, index) => ({ title, width: CASE_WIDTHS[index] ?? 40 }));
 }
 
 function drawLogo(page: PDFPage, svg: string, x: number, top: number, width: number) {

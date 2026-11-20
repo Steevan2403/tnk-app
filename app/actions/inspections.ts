@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sanitizeCaseHtml } from "@/lib/case-html";
-import { caseCreatedActivity, defaultCaseDates, fileAddedActivity, nextCaseNumber } from "@/lib/cases";
+import { caseCreatedActivity, caseRankPatch, defaultCaseDates, fileAddedActivity, nextCaseNumber } from "@/lib/cases";
 import { parseDateOnly } from "@/lib/contractors";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
@@ -13,6 +13,7 @@ import { buildInspectionPdf } from "@/lib/inspection-pdf";
 import {
   caseFieldsFromItem,
   completionDecision,
+  inspectionLocation,
   duplicateTemplateName,
   formatSydneyDate,
   planTemplateDelete,
@@ -28,13 +29,16 @@ import {
   type TemplateField,
 } from "@/lib/inspections";
 import { mailTransport, sendSmtp, type OutgoingMail } from "@/lib/mail";
+import { notifyBuilding } from "@/lib/notifications";
 import { canEditCases, canManageInspectionTemplates, canRunInspections } from "@/lib/roles";
 import { copyStoredFile, imageUploadProblem, removeUpload, saveBytes, saveUpload } from "@/lib/storage";
 import { mailboxFor } from "@/lib/work-order-draft";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 
 export type TemplateFormState = {
   error?: string;
   errors?: Partial<Record<TemplateField, string>>;
+  values?: SubmittedValues;
 };
 
 export type ReportEmailState = {
@@ -74,7 +78,11 @@ function uniqueFields(error: unknown): string[] {
     .filter(Boolean);
 }
 
-export async function saveTemplate(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
+export async function saveTemplate(prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
+  return attachSubmitted(formData, await saveTemplateBody(prev, formData));
+}
+
+async function saveTemplateBody(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
   const user = await templateEditor();
   if (!user) return { error: templateDenied };
 
@@ -208,17 +216,25 @@ export async function startInspection(formData: FormData) {
   const inspectedAt = parseDateOnly(String(formData.get("inspectedAt") ?? ""));
   if (!inspectedAt) redirect(`${startPath}?error=date`);
 
-  let apartmentId: string | null = null;
-  if (template.type === "private_lot") {
-    const requested = String(formData.get("apartmentId") ?? "").trim();
-    const apartment = requested
-      ? await prisma.apartment.findFirst({
-          where: { id: requested, buildingId: user.buildingId },
-          select: { id: true },
-        })
-      : null;
-    if (!apartment) redirect(`${startPath}?error=apartment`);
-    apartmentId = apartment.id;
+  const [knownAssets, knownApartments] = await Promise.all([
+    prisma.asset.findMany({ where: { buildingId: user.buildingId }, select: { id: true } }),
+    prisma.apartment.findMany({ where: { buildingId: user.buildingId }, select: { id: true } }),
+  ]);
+  const location = inspectionLocation(
+    {
+      area: String(formData.get("area") ?? ""),
+      assetIds: formData.getAll("assetId").map((value) => String(value)),
+      apartmentId: String(formData.get("apartmentId") ?? ""),
+    },
+    {
+      assetIds: knownAssets.map((asset) => asset.id),
+      apartmentIds: knownApartments.map((apartment) => apartment.id),
+    },
+  );
+  if (!location.ok) {
+    const chosen = String(formData.get("area") ?? "").trim();
+    const areaQuery = chosen ? `&area=${encodeURIComponent(chosen)}` : "";
+    redirect(`${startPath}?error=${location.error}${areaQuery}`);
   }
 
   const snapshot = snapshotTemplate({
@@ -241,7 +257,11 @@ export async function startInspection(formData: FormData) {
       templateId: template.id,
       name: snapshot.name,
       type: snapshot.type,
-      apartmentId,
+      area: location.value.area,
+      apartmentId: location.value.apartmentId,
+      assets: location.value.assetIds.length
+        ? { create: location.value.assetIds.map((assetId) => ({ assetId })) }
+        : undefined,
       inspectorId: user.id,
       inspectedAt,
       status: "in_progress",
@@ -445,6 +465,7 @@ export async function emailInspectionReport(_prev: ReportEmailState, formData: F
     await mailboxFor(prisma).save({
       ...mail,
       attachmentNames: mail.attachments.map((attachment) => attachment.name),
+      buildingId: user.buildingId,
     });
     if (mailTransport() === "smtp") {
       try {
@@ -485,7 +506,9 @@ async function createCaseForItem(
       areaName: item.areaName,
       comment: item.comment,
       type: run.type,
+      area: run.area,
       apartmentId: run.apartmentId,
+      assetIds: run.assets.map((link) => link.assetId),
     });
     const dates = defaultCaseDates();
     const startDate = parseDateOnly(dates.startDate);
@@ -516,12 +539,16 @@ async function createCaseForItem(
               dueDate,
               priority: "low",
               status: "new",
+              ...caseRankPatch({ priority: "low", status: "new" }),
               subject: fields.subject,
               descriptionHtml,
               internalNotes: `Created from inspection ${run.name}, ${item.areaName}, ${item.name}.`,
               includeInReport: true,
               area: fields.area,
               apartmentId: fields.apartmentId,
+              assets: fields.assetIds.length
+                ? { create: fields.assetIds.map((assetId) => ({ assetId })) }
+                : undefined,
               createdById: user.id,
               inspectionItemId: item.id,
               files: copies.length
@@ -544,6 +571,13 @@ async function createCaseForItem(
                 ],
               },
             },
+          });
+          await notifyBuilding(tx, {
+            buildingId: user.buildingId,
+            actorId: user.id,
+            kind: "case_created",
+            title: `New case ${number}: ${fields.subject}`,
+            link: `/cases/${number}`,
           });
         });
         return true;

@@ -22,7 +22,7 @@ export function ContractorCategories({
   return (
     <section
       aria-labelledby="contractor-categories-heading"
-      className="mt-8 rounded-xl border border-line bg-card p-4"
+      className="rounded-xl border border-line bg-card p-4"
     >
       <h2 id="contractor-categories-heading" className="text-lg font-medium text-brand-navy">
         Contractor categories
@@ -33,7 +33,7 @@ export function ContractorCategories({
           {categories.length === 0 ? <p className="text-sm text-muted">No categories yet.</p> : null}
           <ul className="divide-y divide-line">
             {categories.map((category) => (
-              <li key={category.id} className="py-3">
+              <li key={`${category.id}-${category.name}`} className="py-3">
                 <CategoryRow category={category} />
               </li>
             ))}

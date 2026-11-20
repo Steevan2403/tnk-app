@@ -3,7 +3,8 @@ import { formatArea, formatPriority, formatStatus } from "./cases";
 import { formatCalendarDate, formatDateTime, formatIsoDate } from "./contractors";
 import { prisma } from "./db";
 import { formatSydneyDate, resultCounts } from "./inspections";
-import { buildManagementPdf, type ReportPdfCase, type ReportPdfInspection } from "./report-pdf";
+import { buildManagementDocx } from "./report-docx";
+import { buildManagementPdf, type ManagementReportPdfInput, type ReportPdfCase, type ReportPdfInspection } from "./report-pdf";
 import { buildManagementXlsx } from "./report-xlsx";
 import {
   htmlToPlain,
@@ -11,12 +12,15 @@ import {
   maintenanceEventsForReport,
   optionsJson,
   periodLabel,
+  reportFileExtension,
   reportFileName,
+  reportFormatLabel,
   reportVisits,
   selectReportCases,
   summariseReport,
   visitStatusLabel,
   type ReportCase,
+  type ReportFileFormat,
   type ReportSections,
   type ReportSelection,
 } from "./reports";
@@ -48,7 +52,7 @@ export type CatalogOption = { id: string; label: string };
 export type ListedReport = {
   id: string;
   periodLabel: string;
-  format: "pdf" | "xlsx";
+  format: ReportFileFormat;
   formatLabel: string;
   fileName: string;
   createdAt: Date;
@@ -95,7 +99,7 @@ export async function loadReportCatalog(buildingId: string): Promise<{
       id: report.id,
       periodLabel: periodLabel(report.periodFrom, report.periodTo),
       format: report.format,
-      formatLabel: report.format === "pdf" ? "PDF" : "Excel",
+      formatLabel: reportFormatLabel(report.format),
       fileName: report.fileName,
       createdAt: report.createdAt,
       createdLabel: formatDateTime(report.createdAt),
@@ -111,82 +115,20 @@ export async function createGeneratedReport(input: {
   userName: string;
   selection: ReportSelection;
   sections: ReportSections;
-  format: "pdf" | "xlsx";
+  format: ReportFileFormat;
   preparedAt?: Date;
 }): Promise<{ id: string }> {
   const preparedAt = input.preparedAt ?? new Date();
-  const building = await prisma.building.findUnique({
-    where: { id: input.buildingId },
-    select: { name: true, address: true, suburb: true, state: true, postcode: true },
-  });
-  if (!building) throw new Error("That building could not be found.");
-
-  const candidates = await loadCandidates(input.buildingId);
-  const selected = selectReportCases(candidates, input.selection);
-  const events = await prisma.maintenanceEvent.findMany({
-    where: { buildingId: input.buildingId },
-    select: {
-      subject: true,
-      startDate: true,
-      endDate: true,
-      frequency: true,
-      intervalMonths: true,
-      occurrences: { select: { occursOn: true, state: true } },
-    },
-  });
-  const visits = reportVisits(
-    maintenanceEventsForReport(events),
-    input.selection.from,
-    input.selection.to,
+  const report = await managementReportInput({
+    buildingId: input.buildingId,
+    userName: input.userName,
+    selection: input.selection,
+    sections: input.sections,
     preparedAt,
-  );
-  const runs = await loadInspectionRuns(input.buildingId);
-  const inspections = inspectionsInPeriod(runs, input.selection.from, input.selection.to);
-  const summary = summariseReport({
-    cases: selected,
-    from: input.selection.from,
-    to: input.selection.to,
-    visits,
-    runs: inspections,
   });
-  const label = periodLabel(input.selection.from, input.selection.to);
   const fileName = reportFileName(input.selection.from, input.selection.to, input.format);
-  const extension = input.format === "pdf" ? ".pdf" : ".xlsx";
-  const bytes =
-    input.format === "pdf"
-      ? await buildManagementPdf({
-          buildingName: building.name,
-          buildingAddress: formatAddress(building),
-          periodLabel: label,
-          preparedBy: input.userName,
-          preparedOn: formatDateTime(preparedAt),
-          sections: input.sections,
-          summary,
-          cases: await casePages(input.buildingId, selected, input.sections),
-          visits: visits.map((visit) => ({
-            when: formatCalendarDate(visit.occursOn),
-            subject: visit.subject,
-            status: visitStatusLabel(visit.status),
-          })),
-          inspections: inspections.map(toPdfInspection),
-        })
-      : await buildManagementXlsx({
-          cases: selected.map((item) => ({
-            number: item.number,
-            started: formatCalendarDate(item.startDate),
-            completed: item.completedAt ? formatCalendarDate(item.completedAt) : "-",
-            subject: item.subject,
-            typeName: item.typeName,
-            contractor: contractorLabel(item.companyNames),
-            priority: formatPriority(item.priority),
-            status: formatStatus(item.status),
-          })),
-          visits: visits.map((visit) => ({
-            when: formatCalendarDate(visit.occursOn),
-            subject: visit.subject,
-            status: visitStatusLabel(visit.status),
-          })),
-        });
+  const extension = reportFileExtension(input.format);
+  const bytes = await renderManagementReport(input.format, report);
 
   let storedName: string | null = null;
   try {
@@ -220,6 +162,64 @@ export async function createGeneratedReport(input: {
     if (storedName) await removeUpload(storedName);
     throw error;
   }
+}
+
+async function managementReportInput(input: {
+  buildingId: string;
+  userName: string;
+  selection: ReportSelection;
+  sections: ReportSections;
+  preparedAt: Date;
+}): Promise<ManagementReportPdfInput> {
+  const building = await prisma.building.findUnique({
+    where: { id: input.buildingId },
+    select: { name: true, address: true, suburb: true, state: true, postcode: true },
+  });
+  if (!building) throw new Error("That building could not be found.");
+
+  const selected = selectReportCases(await loadCandidates(input.buildingId), input.selection);
+  const events = await prisma.maintenanceEvent.findMany({
+    where: { buildingId: input.buildingId },
+    select: {
+      subject: true,
+      startDate: true,
+      endDate: true,
+      frequency: true,
+      intervalMonths: true,
+      occurrences: { select: { occursOn: true, state: true } },
+    },
+  });
+  const visits = reportVisits(maintenanceEventsForReport(events), input.selection.from, input.selection.to, input.preparedAt);
+  const runs = await loadInspectionRuns(input.buildingId);
+  const inspections = inspectionsInPeriod(runs, input.selection.from, input.selection.to);
+  return {
+    buildingName: building.name,
+    buildingAddress: formatAddress(building),
+    periodLabel: periodLabel(input.selection.from, input.selection.to),
+    preparedBy: input.userName,
+    preparedOn: formatDateTime(input.preparedAt),
+    sections: input.sections,
+    summary: summariseReport({
+      cases: selected,
+      from: input.selection.from,
+      to: input.selection.to,
+      visits,
+      runs: inspections,
+    }),
+    cases: await casePages(input.buildingId, selected, input.sections),
+    visits: visits.map((visit) => ({
+      when: formatCalendarDate(visit.occursOn),
+      subject: visit.subject,
+      status: visitStatusLabel(visit.status),
+    })),
+    inspections: inspections.map(toPdfInspection),
+  };
+}
+
+async function renderManagementReport(format: ReportFileFormat, report: ManagementReportPdfInput): Promise<Uint8Array> {
+  if (format === "pdf") return buildManagementPdf(report);
+  if (format === "docx") return buildManagementDocx(report);
+  return buildManagementXlsx({ cases: report.cases, visits: report.visits });
 }
 
 type Candidate = ReportCase & {

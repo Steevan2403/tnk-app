@@ -143,6 +143,7 @@ export function mailboxFor(db: Prisma.TransactionClient | PrismaClient): Mailbox
           toAddress: mail.to,
           subject: mail.subject,
           body: mail.body,
+          buildingId: mail.buildingId,
           workOrderId: mail.workOrderId,
           attachments: {
             create: mail.attachments.map((attachment) => ({

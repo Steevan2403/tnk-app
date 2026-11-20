@@ -24,7 +24,10 @@ export function CaseBoard({ rows, returnTo }: { rows: CaseRow[]; returnTo: strin
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className={`mt-4 flex gap-3 overflow-x-auto pb-3 ${pending ? "opacity-70" : ""}`}>
+    <div
+      data-case-board
+      className={`mt-4 flex gap-3 overflow-x-auto pb-3 max-md:snap-x max-md:snap-mandatory max-md:scroll-px-1 ${pending ? "opacity-70" : ""}`}
+    >
       {CASE_STATUSES.map((status) => {
         const cards = rows.filter((row) => row.status === status);
         return (
@@ -50,9 +53,9 @@ export function CaseBoard({ rows, returnTo }: { rows: CaseRow[]; returnTo: strin
                 void setCaseStatus(data);
               });
             }}
-            className={`flex w-64 shrink-0 flex-col rounded-xl border border-line border-t-4 bg-white/80 p-3 ${COLUMN_TONE[status]}`}
+            className={`flex w-64 shrink-0 snap-start flex-col rounded-xl border border-line border-t-4 bg-white/80 p-3 max-md:w-[calc(100vw-4.75rem)] max-md:min-w-[16rem] ${COLUMN_TONE[status]}`}
           >
-            <h2 className="text-sm font-medium text-brand-navy">
+            <h2 className="whitespace-nowrap text-sm font-medium text-brand-navy">
               {formatStatus(status)} <span className="text-muted">({cards.length})</span>
             </h2>
             <ul className="mt-3 space-y-2">

@@ -51,6 +51,9 @@ test("search finds building records, follows the keyboard, and stays inside role
     await search.fill("CCTV");
     await expect(list.getByRole("option", { name: /Lobby camera 1/ })).toBeVisible();
 
+    await search.fill("Common area door");
+    await expect(list.getByRole("option", { name: /Example door closer adjustment/ })).toBeVisible();
+
     await search.fill("Lot exit");
     const inspections = list.getByRole("group", { name: "Inspections" });
     await expect(inspections.getByRole("option", { name: /Template/ })).toBeVisible();

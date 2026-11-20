@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { startInspection } from "@/app/actions/inspections";
-import { SelectField, TextField } from "@/components/field";
+import { TextField } from "@/components/field";
+import { JobAreaPicker } from "@/components/job-pickers";
+import { isCaseArea, type CaseArea } from "@/lib/cases";
 import { formatIsoDate } from "@/lib/contractors";
 import { requireUser } from "@/lib/data";
-import { getTemplate, listInspectionApartments } from "@/lib/inspection-data";
+import { getTemplate, listInspectionApartments, listInspectionAssets } from "@/lib/inspection-data";
 import { formatInspectionType } from "@/lib/inspections";
 import { sydneyToday } from "@/lib/maintenance";
 import { canRunInspections } from "@/lib/roles";
@@ -25,8 +27,13 @@ export default async function StartInspectionPage({
   if (!template) notFound();
   const query = await searchParams;
   const error = first(query.error);
-  const apartments = template.type === "private_lot" ? await listInspectionApartments(user.selectedBuildingId) : [];
-  const itemCount = template.areas.reduce((sum, area) => sum + area.items.length, 0);
+  const areaQuery = first(query.area);
+  const area: CaseArea = isCaseArea(areaQuery) ? areaQuery : "none";
+  const [assets, apartments] = await Promise.all([
+    listInspectionAssets(user.selectedBuildingId),
+    listInspectionApartments(user.selectedBuildingId),
+  ]);
+  const itemCount = template.areas.reduce((sum, section) => sum + section.items.length, 0);
 
   return (
     <section>
@@ -55,31 +62,21 @@ export default async function StartInspectionPage({
             required
             error={error === "date" ? "Enter a valid inspection date." : undefined}
           />
-          {template.type === "private_lot" ? (
-            apartments.length === 0 ? (
-              <p className="text-muted">Add an apartment before starting a private lot inspection.</p>
-            ) : (
-              <SelectField
-                label="Apartment"
-                name="apartmentId"
-                defaultValue=""
-                required
-                error={error === "apartment" ? "Choose an apartment." : undefined}
-              >
-                <option value="">Choose an apartment</option>
-                {apartments.map((apartment) => (
-                  <option key={apartment.id} value={apartment.id}>
-                    Apartment {apartment.number}
-                  </option>
-                ))}
-              </SelectField>
-            )
-          ) : null}
-          {template.type === "private_lot" && apartments.length === 0 ? null : (
-            <button type="submit" className="rounded-md bg-brand-navy px-4 py-3 text-base font-medium text-white hover:bg-brand-blue">
-              Start inspection
-            </button>
-          )}
+          <JobAreaPicker
+            assets={assets}
+            apartments={apartments}
+            area={area}
+            assetIds={[]}
+            apartmentId=""
+            errors={{
+              area: error === "area" ? "Choose a job area." : undefined,
+              assetIds: error === "asset" ? "Choose an asset in this building." : undefined,
+              apartmentId: error === "apartment" ? "Choose an apartment in this building." : undefined,
+            }}
+          />
+          <button type="submit" className="rounded-md bg-brand-navy px-4 py-3 text-base font-medium text-white hover:bg-brand-blue">
+            Start inspection
+          </button>
         </form>
       )}
     </section>

@@ -36,7 +36,7 @@ test("admin creates a case for an asset and contractor, updates the board, and s
   await expect(page.getByRole("heading", { name: "New case" })).toBeVisible();
   await page.getByLabel("Case type").selectOption({ label: "Repair & maintenance" });
   await page.getByLabel("Priority").selectOption({ label: "High" });
-  await page.getByRole("radio", { name: "Asset" }).check();
+  await page.getByRole("radio", { name: "Common asset" }).check();
   await page.getByRole("checkbox", { name: "Fire pump 1" }).check();
   await page.getByRole("checkbox", { name: "Fictional Fire Services" }).check();
   await page.getByRole("checkbox", { name: "Avery Sample" }).check();

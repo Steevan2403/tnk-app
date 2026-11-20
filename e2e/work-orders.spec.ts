@@ -56,7 +56,7 @@ test("admin sends a work order from a case and it shows on the list, PDF, outbox
   await page.setViewportSize({ width: 390, height: 844 });
   await shot(page, "work-order-send-mobile.png");
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page.getByRole("button", { name: "Email work order to contractor" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Example noise complaint for apartment 104" })).toBeVisible();
   await expect(page.getByText("Sent work order 305-A to Fictional Fire Services (Avery Sample).")).toBeVisible();
@@ -182,7 +182,7 @@ test("a file that does not fit is linked, and smaller files are still attached",
   await expect(page.getByRole("status")).toContainText("The selected files are over 10 MB");
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({ path: path.join(artifacts, "work-order-send-too-big.png"), fullPage: true });
-  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page.getByRole("button", { name: "Email work order to contractor" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Example fire panel service" })).toBeVisible();
   await expect(page.getByRole("status")).toContainText(

@@ -275,6 +275,15 @@ export function ReportBuilder({
           >
             {pending ? "Generating…" : "Generate Excel"}
           </button>
+          <button
+            type="submit"
+            name="format"
+            value="docx"
+            disabled={pending || !periodOk}
+            className="rounded-md border border-brand-navy px-4 py-2 text-sm font-medium text-brand-navy hover:bg-brand-navy hover:text-white disabled:opacity-60"
+          >
+            {pending ? "Generating…" : "Generate Word"}
+          </button>
         </div>
       </form>
     </section>

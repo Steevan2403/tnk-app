@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { deleteCase, deleteCaseFile, setCaseStatus, toggleCaseStar } from "@/app/actions/cases";
+import { addCaseToCalendar, deleteCase, deleteCaseFile, setCaseStatus, toggleCaseStar } from "@/app/actions/cases";
 import { CaseFileForm, CommentForm } from "@/components/case-record-forms";
+import { ImageThumb } from "@/components/image-thumb";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { SelectField } from "@/components/field";
+import { MoreActions } from "@/components/more-actions";
 import { PriorityBadge } from "@/components/priority-badge";
 import { EmptyState, Panel, StatusBadge } from "@/components/ui";
 import { sanitizeCaseHtml } from "@/lib/case-html";
 import {
   CASE_FILE_KINDS,
   CASE_STATUSES,
+  caseStatusSurface,
   fileKindLabel,
   formatArea,
   formatCalendarDate,
@@ -25,6 +28,7 @@ import {
 import { openSiteVisit, siteVisitActivity } from "@/lib/check-in";
 import { formatWorkOrderStatus, omittedAttachmentNotice, workOrderNumber } from "@/lib/work-orders";
 import { caseNeighbors, caseStarred, getCaseByNumber, requireUser, type CaseDetail } from "@/lib/data";
+import { caseCalendarHref, caseCalendarOffer } from "@/lib/maintenance";
 import { canDeleteCases, canEditCases } from "@/lib/roles";
 
 const FILE_LABELS: Record<CaseFileKind, string> = {
@@ -64,6 +68,9 @@ export default async function CasePage({
   ]);
   const canEdit = canEditCases(user.role);
   const canDelete = canDeleteCases(user.role);
+  const calendarOffer = caseCalendarOffer(user.role, record.maintenanceEvent?.id ?? null);
+  const calendarOn = formatIsoDate(record.occurrenceOn ?? record.dueDate);
+  const statusSurface = caseStatusSurface(canEdit);
   const replyTo = first(query.reply);
   const mailNotice = omittedAttachmentNotice(first(query.sent), many(query.omitted));
   const overdue = isCaseOverdue(record);
@@ -92,7 +99,11 @@ export default async function CasePage({
           <h1 className="font-serif text-3xl">{record.subject}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-muted">
             <span>Case #{record.number}</span>
-            <StatusBadge status={record.status} label={formatStatus(record.status)} />
+            {statusSurface === "badge" ? (
+              <span data-case-status="badge">
+                <StatusBadge status={record.status} label={formatStatus(record.status)} />
+              </span>
+            ) : null}
             <PriorityBadge priority={record.priority} />
           </p>
           {record.maintenanceEvent && record.occurrenceOn ? (
@@ -141,6 +152,25 @@ export default async function CasePage({
               {starred ? "Starred" : "Star"}
             </button>
           </form>
+          {calendarOffer === "linked" && record.maintenanceEvent ? (
+            <Link
+              href={caseCalendarHref(record.maintenanceEvent.id, calendarOn)}
+              className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue"
+            >
+              On calendar
+            </Link>
+          ) : null}
+          {calendarOffer === "add" ? (
+            <form action={addCaseToCalendar}>
+              <input type="hidden" name="number" value={record.number} />
+              <button
+                type="submit"
+                className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue"
+              >
+                Add to calendar
+              </button>
+            </form>
+          ) : null}
           {canEdit ? (
             <Link href={`/cases/${record.number}/work-order`} className="rounded-lg border border-line bg-card px-3 py-1.5 text-sm font-medium text-brand-navy shadow-sm hover:border-brand-blue">
               Send work order
@@ -152,14 +182,17 @@ export default async function CasePage({
             </Link>
           ) : null}
           {canDelete ? (
-            <form action={deleteCase}>
-              <input type="hidden" name="number" value={record.number} />
-              <ConfirmSubmit
-                label="Delete case"
-                message="Delete this case, including its files, comments, and activity?"
-                className="text-sm text-danger hover:underline"
-              />
-            </form>
+            <MoreActions>
+              <form action={deleteCase}>
+                <input type="hidden" name="number" value={record.number} />
+                <ConfirmSubmit
+                  role="menuitem"
+                  label="Delete case"
+                  message="Delete this case, including its files, comments, and activity?"
+                  className="block w-full rounded-md px-3 py-2 text-left text-sm text-danger hover:bg-red-50"
+                />
+              </form>
+            </MoreActions>
           ) : null}
         </div>
       </div>
@@ -170,8 +203,8 @@ export default async function CasePage({
         </p>
       ) : null}
 
-      {canEdit ? (
-        <form action={setCaseStatus} className="mt-4 flex flex-wrap items-end gap-3">
+      {statusSurface === "dropdown" ? (
+        <form action={setCaseStatus} data-case-status="dropdown" className="mt-4 flex flex-wrap items-end gap-3">
           <input type="hidden" name="number" value={record.number} />
           <input type="hidden" name="returnTo" value={`/cases/${record.number}`} />
           <SelectField label="Status" name="status" defaultValue={record.status}>
@@ -202,9 +235,6 @@ export default async function CasePage({
             <Field label="Priority">
               <PriorityBadge priority={record.priority} />
             </Field>
-            <Field label="Status">
-              <StatusBadge status={record.status} label={formatStatus(record.status)} />
-            </Field>
             <Field label="Management report" value={record.includeInReport ? "Included" : "Not included"} />
             <Field label="Completed" value={record.completedAt ? formatDateTime(record.completedAt) : "—"} />
             <div className="sm:col-span-2">
@@ -221,7 +251,7 @@ export default async function CasePage({
             <p className="mt-3 text-sm text-muted">{formatArea(record.area)}</p>
             {record.area === "asset" ? <AssetLinks record={record} /> : null}
             {record.area === "apartment" ? <ApartmentLink record={record} /> : null}
-            {record.area === "none" ? <p className="mt-3">Not applicable</p> : null}
+            {record.area === "none" ? <p className="mt-3">{formatArea(record.area)}</p> : null}
           </Panel>
           <Panel title="Assigned contractors">
             <Assigned record={record} />
@@ -415,9 +445,7 @@ function FileSection({
         <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {files.map((file) => (
             <li key={file.id}>
-              <a href={`/api/case-files/${file.id}`}>
-                <GalleryImage name={file.name} src={`/api/case-files/${file.id}`} />
-              </a>
+              <ImageThumb name={file.name} src={`/api/case-files/${file.id}`} />
               <p className="mt-2 truncate text-sm">{file.name}</p>
               {canDelete ? <RemoveFile caseNumber={record.number} fileId={file.id} name={file.name} /> : null}
             </li>
@@ -526,14 +554,6 @@ function CaseActivity({ record }: { record: CaseDetail }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function GalleryImage({ name, src }: { name: string; src: string }) {
-  return (
-    // The file route checks the signed-in user, which the image optimizer does not.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={name} className="aspect-square w-full rounded-md object-cover" />
   );
 }
 

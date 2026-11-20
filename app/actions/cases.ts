@@ -4,14 +4,17 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sanitizeCaseHtml } from "@/lib/case-html";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import {
   caseCreatedActivity,
+  caseRankPatch,
   changedFieldLabels,
   type CaseActivityEntry,
   commentAddedActivity,
   fieldChangeActivity,
   fileAddedActivity,
   formatIsoDate,
+  formatStatus,
   isCaseFileKind,
   isCaseStatus,
   nextCaseNumber,
@@ -27,13 +30,16 @@ import {
 } from "@/lib/cases";
 import { requireUser } from "@/lib/data";
 import { maintenanceLinkFromForm } from "@/lib/maintenance-data";
+import { caseCalendarOffer, oneOffFromCase } from "@/lib/maintenance";
+import { notifyBuilding } from "@/lib/notifications";
 import { prisma } from "@/lib/db";
-import { canDeleteCases, canEditCases, canManageCaseTypes } from "@/lib/roles";
+import { canDeleteCases, canEditCases, canManageCaseTypes, canManageMaintenance } from "@/lib/roles";
 import { fileBaseName, imageUploadProblem, removeUpload, saveUpload, uploadProblem, videoUploadProblem } from "@/lib/storage";
 
 export type CaseFormState = {
   error?: string;
   errors?: Partial<Record<CaseField, string>>;
+  values?: SubmittedValues;
 };
 
 export type CaseFileFormState = {
@@ -77,7 +83,11 @@ function casePath(number: number): string {
   return `/cases/${number}`;
 }
 
-export async function saveCase(_prev: CaseFormState, formData: FormData): Promise<CaseFormState> {
+export async function saveCase(prev: CaseFormState, formData: FormData): Promise<CaseFormState> {
+  return attachSubmitted(formData, await saveCaseBody(prev, formData));
+}
+
+async function saveCaseBody(_prev: CaseFormState, formData: FormData): Promise<CaseFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -147,6 +157,7 @@ export async function saveCase(_prev: CaseFormState, formData: FormData): Promis
             ...caseData(parsed.value, descriptionHtml),
             status: change.status,
             completedAt: change.completedAt,
+            ...caseRankPatch({ status: change.status }),
           },
         });
         await tx.caseAsset.deleteMany({ where: { caseId: existing.id } });
@@ -175,6 +186,15 @@ export async function saveCase(_prev: CaseFormState, formData: FormData): Promis
               kind: activity.kind,
               summary: activity.summary,
             })),
+          });
+        }
+        if (change.activity) {
+          await notifyBuilding(tx, {
+            buildingId: user.buildingId,
+            actorId: user.id,
+            kind: "case_status",
+            title: `Case ${existing.number} moved to ${formatStatus(change.status)}.`,
+            link: casePath(existing.number),
           });
         }
       });
@@ -229,6 +249,13 @@ export async function saveCase(_prev: CaseFormState, formData: FormData): Promis
   }
 
   if (!saved) return { error: "The case could not be saved." };
+  await notifyBuilding(prisma, {
+    buildingId: user.buildingId,
+    actorId: user.id,
+    kind: "case_created",
+    title: `New case ${allocated}: ${parsed.value.subject}`,
+    link: casePath(allocated),
+  });
   refresh();
   redirect(casePath(allocated));
 }
@@ -268,16 +295,27 @@ export async function setCaseStatus(formData: FormData) {
     completedAt: existing.completedAt,
     now: new Date(),
   });
-  if (change?.activity) {
-    await prisma.case.update({
-      where: { id: existing.id },
-      data: {
-        status: change.status,
-        completedAt: change.completedAt,
-        activities: {
-          create: { actorId: user.id, kind: change.activity.kind, summary: change.activity.summary },
+  const activity = change?.activity;
+  if (activity) {
+    await prisma.$transaction(async (tx) => {
+      await tx.case.update({
+        where: { id: existing.id },
+        data: {
+          status: change.status,
+          completedAt: change.completedAt,
+          ...caseRankPatch({ status: change.status }),
+          activities: {
+            create: { actorId: user.id, kind: activity.kind, summary: activity.summary },
+          },
         },
-      },
+      });
+      await notifyBuilding(tx, {
+        buildingId: user.buildingId,
+        actorId: user.id,
+        kind: "case_status",
+        title: `Case ${number} moved to ${formatStatus(change.status)}.`,
+        link: casePath(number),
+      });
     });
     refresh();
   }
@@ -304,7 +342,7 @@ export async function setCasesStatus(formData: FormData) {
 
   const cases = await prisma.case.findMany({
     where: { buildingId: user.buildingId, number: { in: numbers } },
-    select: { id: true, status: true, completedAt: true },
+    select: { id: true, number: true, status: true, completedAt: true },
   });
   const now = new Date();
   await prisma.$transaction(async (tx) => {
@@ -316,15 +354,94 @@ export async function setCasesStatus(formData: FormData) {
         data: {
           status: change.status,
           completedAt: change.completedAt,
+          ...caseRankPatch({ status: change.status }),
           activities: {
             create: { actorId: user.id, kind: change.activity.kind, summary: change.activity.summary },
           },
         },
       });
+      await notifyBuilding(tx, {
+        buildingId: user.buildingId,
+        actorId: user.id,
+        kind: "case_status",
+        title: `Case ${existing.number} moved to ${formatStatus(change.status)}.`,
+        link: casePath(existing.number),
+      });
     }
   });
   refresh();
   redirect(returnTo);
+}
+
+export async function addCaseToCalendar(formData: FormData) {
+  const user = await requireUser();
+  const number = parseCaseNumber(String(formData.get("number") ?? ""));
+  const back = number == null ? "/cases" : `/cases/${number}`;
+  if (!user.selectedBuildingId || number == null || !canManageMaintenance(user.role)) redirect(back);
+
+  const buildingId = user.selectedBuildingId;
+  const record = await prisma.case.findFirst({
+    where: { buildingId, number },
+    include: {
+      assets: { select: { assetId: true } },
+      companies: { select: { companyId: true } },
+      contacts: { select: { contactId: true } },
+    },
+  });
+  if (!record) redirect("/cases");
+  if (caseCalendarOffer(user.role, record.maintenanceEventId) !== "add") redirect(back);
+
+  const draft = oneOffFromCase({
+    number: record.number,
+    subject: record.subject,
+    dueDate: record.dueDate,
+    area: record.area,
+    apartmentId: record.apartmentId,
+    assetIds: record.assets.map((link) => link.assetId),
+    companyIds: record.companies.map((link) => link.companyId),
+    contactIds: record.contacts.map((link) => link.contactId),
+  });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const open = await tx.case.findFirst({
+        where: { id: record.id, buildingId, maintenanceEventId: null },
+        select: { id: true },
+      });
+      if (!open) return;
+      const event = await tx.maintenanceEvent.create({
+        data: {
+          buildingId,
+          createdById: user.id,
+          subject: draft.subject,
+          description: draft.description,
+          startDate: draft.startDate,
+          endDate: draft.endDate,
+          frequency: draft.frequency,
+          intervalMonths: draft.intervalMonths,
+          remindContractor: draft.remindContractor,
+          reminderDays: draft.reminderDays,
+          area: draft.area,
+          apartmentId: draft.apartmentId,
+          assets: draft.assetIds.length ? { create: draft.assetIds.map((assetId) => ({ assetId })) } : undefined,
+          companies: draft.companyIds.length ? { create: draft.companyIds.map((companyId) => ({ companyId })) } : undefined,
+          contacts: draft.contactIds.length ? { create: draft.contactIds.map((contactId) => ({ contactId })) } : undefined,
+        },
+      });
+      const linked = await tx.case.updateMany({
+        where: { id: record.id, buildingId, maintenanceEventId: null },
+        data: { maintenanceEventId: event.id, occurrenceOn: record.dueDate },
+      });
+      if (linked.count === 0) await tx.maintenanceEvent.delete({ where: { id: event.id } });
+    });
+  } catch (error) {
+    console.error(error);
+  }
+
+  refresh();
+  revalidatePath("/calendar");
+  revalidatePath("/maintenance");
+  redirect(back);
 }
 
 export async function toggleCaseStar(formData: FormData) {
@@ -507,7 +624,7 @@ export async function renameCaseType(_prev: CaseTypeFormState, formData: FormDat
 
 export async function deleteCaseType(formData: FormData) {
   const user = await requireUser();
-  if (!canManageCaseTypes(user.role)) redirect("/cases");
+  if (!canManageCaseTypes(user.role)) redirect("/building/categories?tab=cases");
 
   const id = String(formData.get("id") ?? "");
   const used = await prisma.case.count({ where: { typeId: id } });
@@ -515,7 +632,7 @@ export async function deleteCaseType(formData: FormData) {
     await prisma.caseType.deleteMany({ where: { id } });
     refresh();
   }
-  redirect("/cases");
+  redirect("/building/categories?tab=cases");
 }
 
 async function caseTypeTaken(name: string, ignoreId?: string): Promise<boolean> {
@@ -532,6 +649,7 @@ function caseData(value: CaseInput, descriptionHtml: string) {
     dueDate: value.dueDate,
     priority: value.priority,
     status: value.status,
+    ...caseRankPatch(value),
     subject: value.subject,
     descriptionHtml,
     internalNotes: value.internalNotes,

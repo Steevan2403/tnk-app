@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { CASE_TABLE_HEADERS } from "./reports";
 
 export type ReportSheetCase = {
   number: number;
@@ -25,7 +26,7 @@ export async function buildManagementXlsx(input: {
   book.creator = "TNK Property Services";
   book.created = new Date();
   const cases = book.addWorksheet("Cases");
-  cases.addRow(["Case #", "Started", "Completed", "Subject", "Type", "Contractor", "Priority", "Status"]);
+  cases.addRow([...CASE_TABLE_HEADERS]);
   for (const item of input.cases) {
     cases.addRow([
       item.number,

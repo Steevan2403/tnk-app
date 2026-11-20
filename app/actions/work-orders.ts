@@ -8,7 +8,9 @@ import { newCheckInToken } from "@/lib/check-in";
 import { mailTransport, packEmailAttachments, sendSmtp, type OutgoingMail } from "@/lib/mail";
 import { requireUser } from "@/lib/data";
 import { prisma } from "@/lib/db";
+import { notifyBuilding } from "@/lib/notifications";
 import { canCancelWorkOrders, canSendWorkOrders } from "@/lib/roles";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { removeUpload, saveBytes, storedFileSize } from "@/lib/storage";
 import { mailboxFor, prepareWorkOrderDraft, toPdfInput, workOrderPhotoBytes } from "@/lib/work-order-draft";
 import { buildWorkOrderPdf } from "@/lib/work-order-pdf";
@@ -28,6 +30,7 @@ import {
 export type WorkOrderFormState = {
   error?: string;
   errors?: Partial<Record<WorkOrderField, string>>;
+  values?: SubmittedValues;
 };
 
 const denied = "You do not have permission to send work orders.";
@@ -40,11 +43,16 @@ function isUniqueConflict(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormData): Promise<WorkOrderFormState> {
+export async function sendWorkOrder(prev: WorkOrderFormState, formData: FormData): Promise<WorkOrderFormState> {
+  return attachSubmitted(formData, await sendWorkOrderBody(prev, formData));
+}
+
+async function sendWorkOrderBody(_prev: WorkOrderFormState, formData: FormData): Promise<WorkOrderFormState> {
   const user = await requireUser();
   if (!canSendWorkOrders(user.role) || !user.selectedBuildingId) return { error: denied };
+  const buildingId = user.selectedBuildingId;
 
-  const prepared = await prepareWorkOrderDraft(user.selectedBuildingId, formData);
+  const prepared = await prepareWorkOrderDraft(buildingId, formData);
   if (!prepared.ok) return { error: prepared.error, errors: prepared.errors };
   const draft = prepared.draft;
 
@@ -121,6 +129,12 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
               files: draft.files.length ? { create: draft.files.map((file) => ({ caseFileId: file.id })) } : undefined,
             },
           });
+          // A sent work order assigns that company to the case. Sending again keeps the one row.
+          await tx.caseCompany.upsert({
+            where: { caseId_companyId: { caseId: draft.caseId, companyId: draft.companyId } },
+            update: {},
+            create: { caseId: draft.caseId, companyId: draft.companyId },
+          });
           await tx.caseActivity.create({
             data: {
               caseId: draft.caseId,
@@ -129,7 +143,19 @@ export async function sendWorkOrder(_prev: WorkOrderFormState, formData: FormDat
               summary: workOrderSentSummary(number, draft.companyName, draft.contactName),
             },
           });
-          await mailboxFor(tx).save({ ...mail, attachmentNames: mail.attachments.map((item) => item.name), workOrderId: created.id });
+          await notifyBuilding(tx, {
+            buildingId,
+            actorId: user.id,
+            kind: "work_order_sent",
+            title: `Work order ${number} was sent to ${draft.companyName}.`,
+            link: `/work-orders/${created.id}`,
+          });
+          await mailboxFor(tx).save({
+            ...mail,
+            attachmentNames: mail.attachments.map((item) => item.name),
+            workOrderId: created.id,
+            buildingId,
+          });
         });
         outgoing = mail;
         saved = true;

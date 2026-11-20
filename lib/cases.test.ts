@@ -2,12 +2,19 @@ import { describe, expect, it } from "vitest";
 import { sanitizeCaseHtml } from "./case-html";
 import {
   FIRST_CASE_NUMBER,
+  caseRankPatch,
+  caseTextWhere,
+  caseStatusSurface,
+  formatArea,
+  compareCases,
   nextCaseNumber,
   overdueCaseWhere,
   overdueCases,
   parseCaseForm,
   statusChange,
   type CaseFormContext,
+  type CasePriority,
+  type CaseStatus,
 } from "./cases";
 
 function form(fields: Record<string, string | string[]>): FormData {
@@ -47,6 +54,34 @@ const valid = {
   includeInReport: "on",
 };
 
+describe("case status on the detail page", () => {
+  it("keeps the dropdown when it can be changed, and a badge when it cannot", () => {
+    expect(caseStatusSurface(true)).toBe("dropdown");
+    expect(caseStatusSurface(false)).toBe("badge");
+  });
+});
+
+describe("case search", () => {
+  it("matches a linked asset name and an apartment number or lot, inside one building", () => {
+    expect(caseTextWhere("tower", "Lift")).toEqual([
+      { subject: { contains: "Lift" } },
+      { descriptionHtml: { contains: "Lift" } },
+      { assets: { some: { asset: { buildingId: "tower", name: { contains: "Lift" } } } } },
+      { apartment: { buildingId: "tower", OR: [{ number: { contains: "Lift" } }, { lotNumber: { contains: "Lift" } }] } },
+    ]);
+    expect(JSON.stringify(caseTextWhere("court", "104"))).toContain("court");
+    expect(JSON.stringify(caseTextWhere("court", "104"))).not.toContain("tower");
+  });
+});
+
+describe("job area labels", () => {
+  it("renames the options and keeps the stored values behind them", () => {
+    expect(formatArea("asset")).toBe("Common asset");
+    expect(formatArea("apartment")).toBe("Private lot");
+    expect(formatArea("none")).toBe("N/A");
+  });
+});
+
 describe("case numbers per building", () => {
   it("starts at 300 and stays independent for each building", () => {
     expect(FIRST_CASE_NUMBER).toBe(300);
@@ -68,7 +103,25 @@ describe("case numbers per building", () => {
   });
 });
 
+describe("priority", () => {
+  it("asks for a priority when none was chosen", () => {
+    const missing = parseCaseForm(form({ ...valid, priority: "" }), context);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.errors.priority).toBe("Choose a priority.");
+  });
+});
+
 describe("due date", () => {
+  it("uses seven days after the start date when the due date is left blank", () => {
+    const blank = parseCaseForm(form({ ...valid, startDate: "2026-11-01", dueDate: "" }), context);
+    expect(blank.ok).toBe(true);
+    if (blank.ok) expect(blank.value.dueDate.toISOString()).toBe("2026-11-08T00:00:00.000Z");
+
+    const monthEnd = parseCaseForm(form({ ...valid, startDate: "2026-11-28", dueDate: "" }), context);
+    expect(monthEnd.ok).toBe(true);
+    if (monthEnd.ok) expect(monthEnd.value.dueDate.toISOString()).toBe("2026-12-05T00:00:00.000Z");
+  });
+
   it("rejects a due date before the start date and allows the same day", () => {
     const early = parseCaseForm(form({ ...valid, startDate: "2026-11-18", dueDate: "2026-11-17" }), context);
     expect(early.ok).toBe(false);
@@ -184,5 +237,35 @@ describe("status change activity", () => {
     const same = statusChange({ from: "new", to: "new", completedAt: null, now });
     expect(same?.activity).toBeNull();
     expect(statusChange({ from: "new", to: "paused", completedAt: null, now })).toBeNull();
+  });
+});
+
+describe("case list order", () => {
+  const row = (priority: CasePriority, status: CaseStatus, number: number) => ({
+    number,
+    startDate: new Date("2026-11-01T00:00:00.000Z"),
+    subject: "Example",
+    typeName: "Repair",
+    priority,
+    status,
+  });
+
+  it("ranks priority and status the same way the list comparison does", () => {
+    const priorities: CasePriority[] = ["low", "urgent", "medium", "high"];
+    const byRank = [...priorities].sort(
+      (a, b) => (caseRankPatch({ priority: a }).priorityRank ?? 0) - (caseRankPatch({ priority: b }).priorityRank ?? 0),
+    );
+    const byCompare = [...priorities].sort((a, b) => compareCases(row(a, "new", 1), row(b, "new", 1), "priority", "asc"));
+    expect(byRank).toEqual(byCompare);
+
+    const statuses: CaseStatus[] = ["closed", "new", "completed", "awaiting_quote", "in_progress"];
+    const statusRank = [...statuses].sort(
+      (a, b) => (caseRankPatch({ status: a }).statusRank ?? 0) - (caseRankPatch({ status: b }).statusRank ?? 0),
+    );
+    const statusCompare = [...statuses].sort((a, b) =>
+      compareCases(row("low", a, 1), row("low", b, 1), "status", "asc"),
+    );
+    expect(statusRank).toEqual(statusCompare);
+    expect(caseRankPatch({ priority: "nope", status: "paused" })).toEqual({});
   });
 });

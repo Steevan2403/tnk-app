@@ -1,11 +1,13 @@
-import { inflateSync } from "node:zlib";
+import { inflateRawSync, inflateSync } from "node:zlib";
 import { readFile } from "node:fs/promises";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
+import { buildManagementDocx } from "./report-docx";
 import { buildManagementPdf } from "./report-pdf";
 import { buildManagementXlsx } from "./report-xlsx";
 import {
+  CASE_TABLE_HEADERS,
   defaultSections,
   inspectionsInPeriod,
   lastQuarterPeriod,
@@ -268,7 +270,83 @@ describe("report files", () => {
     expect(numbers).not.toContain("12");
     expect(maintenance!.getCell("B2").value).toBe("Example pump service");
   });
+
+  it("builds a Word document that opens and contains the building, case subject, and table headers", async () => {
+    const selected = selectReportCases(cases, selection({ excludedIds: ["drop-12"] }));
+    const summary = summariseReport({ cases: selected, from, to, visits: [], runs: [] });
+    const docx = await buildManagementDocx({
+      buildingName: "Example Tower",
+      buildingAddress: "100 Example Street, Sydney NSW 2000",
+      periodLabel: "1 Nov 2026 to 30 Nov 2026",
+      preparedBy: "Example Admin",
+      preparedOn: "18 Nov 2026, 5:00 pm",
+      sections: defaultSections(),
+      summary,
+      cases: selected.map((row) => ({
+        number: row.number,
+        subject: row.subject,
+        typeName: row.typeName,
+        status: "New",
+        priority: "Low",
+        started: "12 Nov 2026",
+        completed: "-",
+        contractor: "None",
+        description: "Example description.",
+        history: ["18 Nov 2026, 12:00 pm - Case created."],
+        jobArea: "Not applicable",
+        photos: [],
+        quotes: [],
+        invoices: [],
+        documents: [],
+        notes: null,
+        workOrders: row.number === 8 ? ["8-A - Example Plumbing - Sent"] : [],
+      })),
+      visits: [{ when: "2 Nov 2026", subject: "Example pump service", status: "Completed" }],
+      inspections: [],
+    });
+    const xml = documentXml(docx);
+    expect(xml).toContain("Example Tower");
+    expect(xml).toContain("Example hot water leak");
+    expect(xml).toContain("Example switchboard check");
+    expect(xml).not.toContain("Example lobby camera quote");
+    expect(xml).toContain("8-A");
+    expect(xml).toContain("Example Plumbing");
+    for (const header of CASE_TABLE_HEADERS) expect(xml).toContain(header);
+    for (const header of ["Work order", "Contractor", "Status"]) expect(xml).toContain(header);
+  });
 });
+
+function documentXml(bytes: Uint8Array): string {
+  const xml = zipEntry(Buffer.from(bytes), "word/document.xml");
+  expect(xml).toBeTruthy();
+  return xml!.toString("utf8");
+}
+
+function zipEntry(zip: Buffer, name: string): Buffer | null {
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (end < 0 || end + 22 > zip.length) return null;
+  const count = zip.readUInt16LE(end + 10);
+  let offset = zip.readUInt32LE(end + 16);
+  for (let index = 0; index < count; index += 1) {
+    if (offset + 46 > zip.length || zip.readUInt32LE(offset) !== 0x02014b50) return null;
+    const method = zip.readUInt16LE(offset + 10);
+    const compressed = zip.readUInt32LE(offset + 20);
+    const nameLength = zip.readUInt16LE(offset + 28);
+    const extraLength = zip.readUInt16LE(offset + 30);
+    const commentLength = zip.readUInt16LE(offset + 32);
+    const local = zip.readUInt32LE(offset + 42);
+    const entryName = zip.subarray(offset + 46, offset + 46 + nameLength).toString("utf8");
+    offset += 46 + nameLength + extraLength + commentLength;
+    if (entryName !== name) continue;
+    if (local + 30 > zip.length) return null;
+    const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+    const data = zip.subarray(start, start + compressed);
+    if (method === 0) return Buffer.from(data);
+    if (method === 8) return inflateRawSync(data);
+    return null;
+  }
+  return null;
+}
 
 function pdfHas(bytes: Buffer, value: string): boolean {
   const text = inflatePdf(bytes);

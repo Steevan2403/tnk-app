@@ -7,7 +7,7 @@ export const PAGE_SIZE = 50;
 
 export const RESIDENT_TABS = ["residents", "apartments"] as const;
 
-export const APARTMENT_TABS = ["residents", "vehicles", "documents", "images", "requests"] as const;
+export const APARTMENT_TABS = ["residents", "vehicles", "keys", "documents", "images", "requests"] as const;
 
 export const RESIDENT_TYPES = ["owner", "tenant", "other"] as const;
 

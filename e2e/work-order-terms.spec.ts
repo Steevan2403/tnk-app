@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -40,6 +40,28 @@ test("admin saves work order terms and the preview PDF includes them", async ({ 
   expect(text).toContain("Example invoices go to accounts@example.com");
   expect(text).toContain("Terms & Conditions");
   execFileSync("pdftoppm", ["-png", "-singlefile", "-f", "1", "-l", "1", "-r", "140", pdfPath, path.join(artifacts, "work-order-page-1")]);
+  copyFileSync(path.join(artifacts, "work-order-page-1.png"), path.join(artifacts, "work-order-pdf-page.png"));
+});
+
+test("blank work order terms leave the terms section off the PDF", async ({ page }) => {
+  await signIn(page, "admin@tnk.example", "example-admin-pass");
+  await page.goto("/settings/work-order-terms");
+  await page.getByLabel("Terms & Conditions").fill("   ");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+
+  const response = await page.request.get("/api/settings/work-order-preview");
+  expect(response.ok()).toBeTruthy();
+  const pdfPath = path.join("/opt/cursor/artifacts", "work-order-preview-blank.pdf");
+  mkdirSync("/opt/cursor/artifacts", { recursive: true });
+  writeFileSync(pdfPath, await response.body());
+  const text = execFileSync("pdftotext", ["-layout", pdfPath, "-"], { encoding: "utf8" });
+  expect(text).toContain("WORK ORDER #300-A");
+  expect(text).not.toContain("Terms & Conditions");
+
+  await page.getByLabel("Terms & Conditions").fill(terms);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
 });
 
 test("staff cannot edit work order terms", async ({ page }) => {

@@ -65,8 +65,8 @@ export function fileBaseName(name: string): string {
   return base.slice(0, 180);
 }
 
-export async function saveBytes(bytes: Uint8Array, extension: ".pdf" | ".xlsx"): Promise<string> {
-  if (extension !== ".pdf" && extension !== ".xlsx") throw new Error("Could not store that file.");
+export async function saveBytes(bytes: Uint8Array, extension: ".pdf" | ".xlsx" | ".docx"): Promise<string> {
+  if (extension !== ".pdf" && extension !== ".xlsx" && extension !== ".docx") throw new Error("Could not store that file.");
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) throw new Error("Could not store that file.");
   const storedName = `${randomBytes(16).toString("hex")}${extension}`;
   await mkdir(uploadDir(), { recursive: true });

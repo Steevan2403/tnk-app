@@ -11,6 +11,7 @@ import {
   type WarrantyFormState,
 } from "@/app/actions/assets";
 import { FileField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 
 const buttonClass =
   "rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue disabled:opacity-60";
@@ -66,7 +67,7 @@ export function WarrantyForm({
 }) {
   const [state, action, pending] = useActionState(saveWarranty, {} as WarrantyFormState);
   return (
-    <form action={action} className="mt-4 grid gap-4">
+    <RetainedForm action={action} className="mt-4 grid gap-4" values={state.values}>
       <input type="hidden" name="assetId" value={assetId} />
       {warranty ? <input type="hidden" name="warrantyId" value={warranty.id} /> : null}
       {state.error ? <Alert>{state.error}</Alert> : null}
@@ -106,7 +107,7 @@ export function WarrantyForm({
           </Link>
         ) : null}
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 

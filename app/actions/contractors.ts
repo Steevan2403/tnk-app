@@ -21,21 +21,25 @@ import {
   type NoteField,
 } from "@/lib/contractors";
 import { canManageContractors } from "@/lib/roles";
+import { attachSubmitted, type SubmittedValues } from "@/lib/form-values";
 import { fileBaseName, removeUpload, saveUpload, uploadProblem } from "@/lib/storage";
 
 export type CompanyFormState = {
   error?: string;
   errors?: Partial<Record<CompanyField, string>>;
+  values?: SubmittedValues;
 };
 
 export type ContactFormState = {
   error?: string;
   errors?: Partial<Record<ContactField, string>>;
+  values?: SubmittedValues;
 };
 
 export type InsuranceFormState = {
   error?: string;
   errors?: Partial<Record<InsuranceField, string>>;
+  values?: SubmittedValues;
 };
 
 export type NoteFormState = {
@@ -76,7 +80,11 @@ function companyPath(companyId: string): string {
   return companyId ? `/contractors/${companyId}` : "/contractors";
 }
 
-export async function saveCompany(_prev: CompanyFormState, formData: FormData): Promise<CompanyFormState> {
+export async function saveCompany(prev: CompanyFormState, formData: FormData): Promise<CompanyFormState> {
+  return attachSubmitted(formData, await saveCompanyBody(prev, formData));
+}
+
+async function saveCompanyBody(_prev: CompanyFormState, formData: FormData): Promise<CompanyFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -161,7 +169,11 @@ export async function addNote(_prev: NoteFormState, formData: FormData): Promise
   redirect(companyPath(companyId));
 }
 
-export async function saveContact(_prev: ContactFormState, formData: FormData): Promise<ContactFormState> {
+export async function saveContact(prev: ContactFormState, formData: FormData): Promise<ContactFormState> {
+  return attachSubmitted(formData, await saveContactBody(prev, formData));
+}
+
+async function saveContactBody(_prev: ContactFormState, formData: FormData): Promise<ContactFormState> {
   const user = await editor();
   if (!user) return { error: denied };
 
@@ -199,7 +211,11 @@ export async function deleteContact(formData: FormData) {
   redirect(companyPath(companyId));
 }
 
-export async function saveInsurance(
+export async function saveInsurance(prev: InsuranceFormState, formData: FormData): Promise<InsuranceFormState> {
+  return attachSubmitted(formData, await saveInsuranceBody(prev, formData));
+}
+
+async function saveInsuranceBody(
   _prev: InsuranceFormState,
   formData: FormData,
 ): Promise<InsuranceFormState> {

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { caseTextWhere } from "./cases";
 import { canManageInspectionTemplates } from "./roles";
 
 export const QUICK_PER_GROUP = 5;
@@ -93,10 +94,7 @@ function exactCaseNumber(value: string): number | null {
 
 export function caseSearchWhere(buildingId: string, query: string): Prisma.CaseWhereInput {
   const q = normalizeSearchQuery(query);
-  const or: Prisma.CaseWhereInput[] = [{ subject: { contains: q } }, { descriptionHtml: { contains: q } }];
-  const number = exactCaseNumber(q);
-  if (number) or.push({ number });
-  return { AND: [{ buildingId }, { OR: or }] };
+  return { AND: [{ buildingId }, { OR: caseTextWhere(buildingId, q) }] };
 }
 
 export function workOrderSearchWhere(buildingId: string, query: string): Prisma.WorkOrderWhereInput {

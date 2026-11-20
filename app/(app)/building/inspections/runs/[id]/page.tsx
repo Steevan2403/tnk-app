@@ -7,7 +7,7 @@ import { ItemAnswer } from "@/components/inspection-item-form";
 import { requireUser } from "@/lib/data";
 import { getRun } from "@/lib/inspection-data";
 import { formatAddress } from "@/lib/buildings";
-import { formatInspectionType, formatSydneyDate, progressCount, resultCounts } from "@/lib/inspections";
+import { formatInspectionType, formatSydneyDate, inspectionLocationLabel, progressCount, resultCounts } from "@/lib/inspections";
 import { formatDateTime } from "@/lib/cases";
 import { canEditCases, canManageInspectionTemplates, canRunInspections } from "@/lib/roles";
 
@@ -57,8 +57,12 @@ export default async function InspectionRunPage({
         <div>
           <h1 className="font-serif text-3xl">{run.name}</h1>
           <p className="mt-2 text-muted">
-            {formatInspectionType(run.type)} · {run.building.name}
-            {run.type === "private_lot" ? ` · Apartment ${run.apartment?.number ?? "not recorded"}` : ""}
+            {formatInspectionType(run.type)} · {run.building.name} ·{" "}
+            {inspectionLocationLabel({
+              area: run.area,
+              assetNames: run.assets.map((link) => link.asset.name).sort((a, b) => a.localeCompare(b, "en")),
+              apartmentNumber: run.apartment?.number ?? null,
+            })}
           </p>
           <p className="mt-1 text-sm text-muted">
             {run.inspector.name} · {formatSydneyDate(run.inspectedAt)}

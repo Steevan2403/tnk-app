@@ -13,6 +13,7 @@ import {
   type NoteFormState,
 } from "@/app/actions/contractors";
 import { FileField, TextArea, TextField } from "@/components/field";
+import { RetainedForm } from "@/components/retained-form";
 
 const buttonClass =
   "rounded-md bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-blue disabled:opacity-60";
@@ -51,7 +52,7 @@ export function ContactForm({
 }) {
   const [state, action, pending] = useActionState(saveContact, {} as ContactFormState);
   return (
-    <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2">
+    <RetainedForm action={action} className="mt-4 grid gap-4 sm:grid-cols-2" values={state.values}>
       <input type="hidden" name="companyId" value={companyId} />
       {contact ? <input type="hidden" name="contactId" value={contact.id} /> : null}
       {state.error ? (
@@ -92,9 +93,9 @@ export function ContactForm({
           <Link href={`/contractors/${companyId}`} className={cancelClass}>
             Cancel
           </Link>
-        ) : null}
+          ) : null}
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 
@@ -114,7 +115,7 @@ export function InsuranceForm({
 }) {
   const [state, action, pending] = useActionState(saveInsurance, {} as InsuranceFormState);
   return (
-    <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2">
+    <RetainedForm action={action} className="mt-4 grid gap-4 sm:grid-cols-2" values={state.values}>
       <input type="hidden" name="companyId" value={companyId} />
       {insurance ? <input type="hidden" name="insuranceId" value={insurance.id} /> : null}
       {state.error ? (
@@ -176,9 +177,9 @@ export function InsuranceForm({
           <Link href={`/contractors/${companyId}`} className={cancelClass}>
             Cancel
           </Link>
-        ) : null}
+          ) : null}
       </div>
-    </form>
+    </RetainedForm>
   );
 }
 
